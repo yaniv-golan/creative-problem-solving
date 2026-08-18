@@ -1,0 +1,13 @@
+{
+  "eval_id": 4,
+  "eval_name": "light-ideation-fast-mode",
+  "prompt": "Attendance at our monthly all-hands has been sliding for a while — we're down to about half the company showing up. Got any ideas?",
+  "assertions": [
+    "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+    "At least one option questions the premise — whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+    "Does not treat declining attendance as purely a content-quality problem",
+    "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+    "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+    "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes"
+  ]
+}

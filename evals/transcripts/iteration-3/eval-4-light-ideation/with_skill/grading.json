@@ -1,0 +1,42 @@
+{
+  "eval_id": 4,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+      "passed": true,
+      "evidence": "Four options, four mechanisms: remove the thing to reveal latent demand ('Pause it for two cycles'), replace calendar trigger with an accumulation threshold ('Fire it on accumulated signal, not on the calendar'), make presence consequential ('Decide something binding live — a budget line, a headcount, a roadmap slot'), and degrade the substitute ('Make the recording deliberately worse than the room'). None is a content-quality improvement."
+    },
+    {
+      "text": "At least one option questions the premise — whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+      "passed": true,
+      "evidence": "Both halves: 'Pause it for two cycles ... Removing the option is the only way to make latent demand visible', and 'One reframe: turnout is a poor proxy for shared context — a full room can hold none.'"
+    },
+    {
+      "text": "Does not treat declining attendance as purely a content-quality problem",
+      "passed": true,
+      "evidence": "Content quality is not among the four candidate causes (substitution, no consequence, mechanical, withdrawal), and 'a shorter, tighter format' is explicitly cut as 'the default answer with a stopwatch'."
+    },
+    {
+      "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+      "passed": true,
+      "evidence": "wc -w = 602 words, well under 800. No process disclosure, no lens names, no diversity score; the only structural blocks are a short 'Cut', 'One reframe' and 'What would change my ranking'."
+    },
+    {
+      "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+      "passed": true,
+      "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: subagents_spawned = 0, web_searches = 0, total_tool_calls = 13."
+    },
+    {
+      "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+      "passed": true,
+      "evidence": "'Substitution. The recording and notes are good enough that live is the inconvenient way to get the same thing. Test: recording views over the same months — if views absorb the drop, nothing is broken; your distribution changed shape.' Also 'Withdrawal ... questions asked per session. If those fell before turnout did, it isn't logistics.' Each cause is paired with a cheap discriminating test."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,383 @@
+{
+  "metadata": {
+    "skill_name": "creative-problem-solving (v0.3.0 eval @ v0.2.0)",
+    "skill_path": "skills/creative-problem-solving",
+    "executor_model": "claude-opus-5",
+    "analyzer_model": "claude-opus-5",
+    "timestamp": "2026-08-17T04:06:36Z",
+    "evals_run": [
+      2,
+      3,
+      4
+    ],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 6,
+        "failed": 2,
+        "total": 8,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 17,
+        "errors": 6
+      },
+      "expectations": [
+        {
+          "text": "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+          "passed": false,
+          "evidence": "Structure is an idea list, not diagnosis-then-prescription. After 'Sharpened brief' and 'The obvious answer (baseline)' it goes straight to eight '###' options; the response itself counts the diagnostic one as an option ('Idea 1 needs whoever can authorise switching the check off for a cohort'). The actual cause decomposition \u2014 'never received / received late / typed it wrong / expired / switched device / deliberately left' \u2014 appears in the FINAL section, after all eight fixes."
+        },
+        {
+          "text": "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+          "passed": true,
+          "evidence": "Leads with it: 'Find out whether the 60% is a filter, not a leak ... The number everyone treats as a wound may be the check doing exactly its job \u2014 and if the unchecked cohort is net-negative, every idea below this line is a way to buy yourself worse customers faster.'"
+        },
+        {
+          "text": "Does not re-propose shortening the form or adding a progress bar",
+          "passed": true,
+          "evidence": "Both tried fixes are named as the baseline to avoid ('Reduce friction in place ... You've done the first two moves of this already. Everything below is deliberately not that.'); idea 7 explicitly notes it 'directly contradicts the shortening you've already done.'"
+        },
+        {
+          "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+          "passed": true,
+          "evidence": "'Move the check to the first moment of consequence' \u2014 relocate it 'from arrival to the first action that is irreversible, public or costs money'; plus 'Provisional record now, reconciliation later' making the check asynchronous."
+        },
+        {
+          "text": "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+          "passed": true,
+          "evidence": "All eight differ at mechanism level: randomised holdout, reverse the message direction (inbound vs outbound), priced capability ceiling instead of an identity gate, async reconciliation, risk-scored exemption, inviter posts a bond (who verifies), fill the dead time, relocate the check. No copy or layout options at all."
+        },
+        {
+          "text": "Handles the ambiguity in 'account-verification' \u2014 either asks which kind, or states which reading it assumed and what would change under the others",
+          "passed": true,
+          "evidence": "Second paragraph: \"'account-verification' could mean an emailed/SMS one-time code, a document KYC check, or a card/bank confirmation ... I've assumed the first ... If it's document KYC, ideas 2, 5 and 7 mostly survive and 3 and 4 change shape; if it's a payment confirmation, idea 9 in the cut list moves to the top.\""
+        },
+        {
+          "text": "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+          "passed": false,
+          "evidence": "wc -w = 2056 words, ~1.7x the ~1200-word ceiling. Overhead includes 'Sharpened brief', 'The obvious answer (baseline)', a 5-item cut list, 'Set diversity: 9.9 effectively distinct out of 10', 'On novelty', 'Who'd actually do these', 'What would change my ranking', and a fixed 3-bullet apparatus under each of 8 ideas."
+        },
+        {
+          "text": "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem",
+          "passed": true,
+          "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: subagents_spawned 0. No parallel generators; the 2 recorded web_searches returned nothing (budget exhausted) and no research was used. This assertion targets a full deep multi-agent pass, which did not occur."
+        }
+      ],
+      "notes": [
+        "response length: 2056 words",
+        "subagents: 0, web searches: 2"
+      ]
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.875,
+        "passed": 7,
+        "failed": 1,
+        "total": 8,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+          "passed": true,
+          "evidence": "Opens by rejecting the friction framing, then '## First: split the 60%' with four distinct causes \u2014 'Never received it / Received but never opened / Opened but didn't complete / Never got that far' \u2014 plus two diagnostics (median time-to-verify, resend rate) BEFORE the '## Ideas' section."
+        },
+        {
+          "text": "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+          "passed": true,
+          "evidence": "'If you added verification to stop fraud, part of that 60% may be bots doing exactly what you wanted. Real drop-off and fake drop-off look identical in the aggregate funnel.'"
+        },
+        {
+          "text": "Does not re-propose shortening the form or adding a progress bar",
+          "passed": true,
+          "evidence": "Neither is re-proposed; the progress bar is argued against \u2014 'a progress bar tells people how much work is left, not why to do it.' ('ask whether you need [the phone number] at signup at all' is step elimination, not form shortening.)"
+        },
+        {
+          "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+          "passed": true,
+          "evidence": "'Delete or defer the step (biggest lever, usually) \u2014 Let people into the product unverified, in a limited state, and verify at the first moment it actually matters.'"
+        },
+        {
+          "text": "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+          "passed": true,
+          "evidence": "Group-level axes are mechanisms: defer/delete the step, SSO (who verifies), magic link, provider failover and SMS fallback (channel), polling/state-restoring links (device continuity), resume emails (timing). A minority of bullets are copy/template ('Trust and motivation' section, plain-text emails), but they are not the axis of variation."
+        },
+        {
+          "text": "Handles the ambiguity in 'account-verification' \u2014 either asks which kind, or states which reading it assumed and what would change under the others",
+          "passed": false,
+          "evidence": "Never addresses which kind of verification. It assumes email/SMS OTP throughout (SPF/DKIM, subject-line codes, one-time-code autofill) with no stated assumption. The closing question asks 'why do you verify at that point \u2014 regulatory, fraud, deliverability ... or just convention?' \u2014 which is a why question, not the which-kind ambiguity."
+        },
+        {
+          "text": "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+          "passed": true,
+          "evidence": "wc -w = 806 words, comfortably under ~1200. Five headed sections, all with substantive content; no empty ceremonial headings."
+        },
+        {
+          "text": "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem",
+          "passed": true,
+          "evidence": "user_notes.md line 1: 'MODE: none'. metrics.json: subagents_spawned 0, web_searches 0, total_tool_calls 3."
+        }
+      ],
+      "notes": [
+        "response length: 806 words",
+        "subagents: 0, web searches: 0"
+      ]
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Gives a direct recommendation rather than a set of divergent options",
+          "passed": true,
+          "evidence": "First word: '**Postgres.** For this workload it's the lower-risk choice'; closes with 'Recommendation: Postgres, partitioned by expiry, session reads from the primary, no read replicas in the session path.'"
+        },
+        {
+          "text": "Does not produce divergence-pipeline artifacts (sharpened brief, constraint lenses, diversity score, cut list)",
+          "passed": true,
+          "evidence": "No sharpened brief, no lens labels, no diversity score, no cut list. user_notes.md line 1 is 'MODE: none' and records an explicit decision that the skill 'does not apply'."
+        },
+        {
+          "text": "Concise and decision-shaped; does not pad to demonstrate thoroughness",
+          "passed": true,
+          "evidence": "wc -w = 625 words \u2014 the shortest response in the set. Four headed sections, each load-bearing; ends on a one-line recommendation rather than a restated summary."
+        },
+        {
+          "text": "Technically sound: acknowledges MongoDB can be strongly consistent via majority read/write concerns rather than strawmanning it",
+          "passed": true,
+          "evidence": "'Both databases can give you strong consistency. MongoDB has had multi-document ACID transactions since 4.0 (4.2 across shards), majority write concern by default since 5.0, and causally-consistent sessions. The gap isn't capability, it's defaults and blast radius.'"
+        }
+      ],
+      "notes": [
+        "response length: 625 words",
+        "subagents: 0, web searches: 0"
+      ]
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 4,
+        "errors": 1
+      },
+      "expectations": [
+        {
+          "text": "Gives a direct recommendation rather than a set of divergent options",
+          "passed": true,
+          "evidence": "'**Pick Postgres.** For session storage with a strong-consistency requirement, it's the lower-risk default'; closes 'Postgres over MongoDB, clearly.'"
+        },
+        {
+          "text": "Does not produce divergence-pipeline artifacts (sharpened brief, constraint lenses, diversity score, cut list)",
+          "passed": true,
+          "evidence": "No pipeline artifacts of any kind. user_notes.md: 'No skill was invoked.'"
+        },
+        {
+          "text": "Concise and decision-shaped; does not pad to demonstrate thoroughness",
+          "passed": true,
+          "evidence": "wc -w = 806 words. Longer than with_skill (625) and includes an adjacent 'Things to nail down regardless' list plus a 'Bottom line' that restates the opener \u2014 mild redundancy, but the shape is still a decision with supporting reasoning, not padding for show."
+        },
+        {
+          "text": "Technically sound: acknowledges MongoDB can be strongly consistent via majority read/write concerns rather than strawmanning it",
+          "passed": true,
+          "evidence": "'MongoDB *can* give you strong consistency \u2014 writeConcern: majority plus readConcern: majority/linearizable, and multi-document transactions since 4.0 \u2014 but it's opt-in per operation.' Also names three cases where Mongo is the better call."
+        }
+      ],
+      "notes": [
+        "response length: 806 words",
+        "subagents: 0, web searches: 0"
+      ]
+    },
+    {
+      "eval_id": 4,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.6667,
+        "passed": 4,
+        "failed": 2,
+        "total": 6,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 14,
+        "errors": 3
+      },
+      "expectations": [
+        {
+          "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+          "passed": true,
+          "evidence": "Eight options on genuinely different axes: allocate a scarce resource by vote ('Presence confers power'), distribute 20\u201330 named micro-roles, couple it to the internal job market, ban wins and run only bad news, invert the presentation direction, shrink the live session deliberately, delta-briefing plus ATC-style readback, and a diagnostic cohort cut. None is 'make it more engaging'."
+        },
+        {
+          "text": "At least one option questions the premise \u2014 whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+          "passed": true,
+          "evidence": "'Cannibalize it on purpose ... it accepts that half the company not attending might be correct behavior rather than a problem. The company-wide-synchronous format was a choice, and it's the first thing that stops scaling.'"
+        },
+        {
+          "text": "Does not treat declining attendance as purely a content-quality problem",
+          "passed": true,
+          "evidence": "Explicitly argues against the content framing: 'every baseline move tries to make the session more worth watching. This makes it worth being at, which is a different variable.' The cohort cut argues the cause 'frequently turns out to be mechanical rather than motivational.'"
+        },
+        {
+          "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+          "passed": false,
+          "evidence": "wc -w = 1818 words \u2014 2.3x the ~800-word ceiling for an explicitly light question. Heavy scaffolding present: 'Sharpened brief', 'The obvious answer (baseline)', a fixed 3-bullet apparatus under each of 8 ideas, a 5-item cut list, and a 'Set diversity: scored 10 candidate mechanisms \u2014 9.88 effectively distinct lexically' section that exposes an internal scoring artifact to the reader."
+        },
+        {
+          "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+          "passed": false,
+          "evidence": "No subagents (metrics.json subagents_spawned: 0), but metrics.json records web_searches: 2, and user_notes.md confirms 'both WebSearch calls returned nothing' because the budget was exhausted \u2014 i.e. web research WAS attempted on a light ideation question. The assertion is a disjunction and the research half fails; the parallel-generator half passes."
+        },
+        {
+          "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+          "passed": true,
+          "evidence": "'Cut the decline, don't average it ... \"half the company\" is almost certainly not a uniform 50% ... check whether the slot started colliding with something \u2014 a sprint ceremony, a new office's evening, a school run, a shift pattern.' Also: 'Whether the decline is gradual or has a step change in it. A step change means something specific happened.'"
+        }
+      ],
+      "notes": [
+        "response length: 1818 words",
+        "subagents: 0, web searches: 2"
+      ]
+    },
+    {
+      "eval_id": 4,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+          "passed": true,
+          "evidence": "Mechanism spread is real if narrower: move status content to a written pre-read, put a live decision at stake, anonymous upvoted Q&A, halve the length, rotate who presents, change the cadence to quarterly, delay the recording. Cadence, recording policy and content relocation are mechanism changes, not engagement tweaks."
+        },
+        {
+          "text": "At least one option questions the premise \u2014 whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+          "passed": true,
+          "evidence": "'Try a different cadence. Monthly is an awkward interval ... Quarterly-but-excellent plus a strong written monthly update beats a mediocre monthly ritual. This is worth considering seriously rather than treating cadence as fixed.' Also questions optimising attendance itself: 'Attendance is a useful thermometer; don't break the thermometer.'"
+        },
+        {
+          "text": "Does not treat declining attendance as purely a content-quality problem",
+          "passed": true,
+          "evidence": "Opens 'Falling all-hands attendance is almost always a symptom, not the problem' and splits causes into value, stakes and friction \u2014 two of the three are not content quality."
+        },
+        {
+          "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+          "passed": true,
+          "evidence": "wc -w = 604 words, under ~800. No scaffolding: four short bolded sections and a closing question."
+        },
+        {
+          "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+          "passed": true,
+          "evidence": "metrics.json: subagents_spawned 0, web_searches 0, total_tool_calls 3. user_notes.md: 'No research, no subagents, no web searches.'"
+        },
+        {
+          "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+          "passed": true,
+          "evidence": "'look at *who* is missing. If it's clustered by team or time zone, it's friction. If it's spread evenly and skews senior, it's value. If newer people attend and long-tenured people don't, it's \"I've seen this movie ten times\".' Also: 'recording always available so live attendance is strictly dominated.'"
+        }
+      ],
+      "notes": [
+        "response length: 604 words",
+        "subagents: 0, web searches: 0"
+      ]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.8056,
+        "stddev": 0.1735,
+        "min": 0.6667,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.9583,
+        "stddev": 0.0722,
+        "min": 0.875,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "delta": {
+      "pass_rate": "-15%",
+      "time_seconds": "n/a",
+      "tokens": "n/a"
+    }
+  },
+  "notes": [
+    "SCOREBOARD: with_skill 14/18 (0.778), without_skill 17/18 (0.944). Per eval \u2014 eval-2: 6/8 vs 7/8 (baseline ahead); eval-3: 4/4 vs 4/4 (tie); eval-4: 4/6 vs 6/6 (baseline ahead). The baseline wins or ties every eval in iteration 2. Both with_skill failures in eval-2 and one in eval-4 are proportionality failures, not idea-quality failures.",
+    "MODE SELECTION \u2014 FIXED. Iteration 1's headline failure (deep mode firing on the bounded eval-2 problem, 6.7x time for a worse answer) did not recur. eval-2 with_skill: 'MODE: fast', subagents_spawned 0, 17 tool calls. eval-4 with_skill: 'MODE: fast', subagents 0, 14 tool calls. eval-3 with_skill: 'MODE: none' \u2014 the skill was read and explicitly declined ('does not apply'), which is the correct call on a negative-trigger prompt. Both fast-mode runs show an explicit 5-condition gate table in user_notes.md scoring 1-of-5, and both cite the skill's own worked example ('a drop-off number ... fast, or no pipeline at all'). The gate is now doing real work; it is the clearest improvement in this iteration.",
+    "VERBOSITY IS NOW THE PRIMARY FAILURE MODE, and it is roughly half real content, half framework theater. eval-2: 2056 vs 806 words. The extra ~1250 breaks down as (a) ~800 words of a fixed 3-bullet apparatus repeated under all 8 ideas \u2014 'Why it's not the obvious answer' / 'What has to be true' / 'Failure mode / cost'; (b) ~450 words of pipeline meta: 'Sharpened brief', 'The obvious answer (baseline)', a 5-item cut list, 'Set diversity: 9.9 effectively distinct out of 10', 'On novelty', 'Who'd actually do these', 'What would change my ranking'. eval-4: 1818 vs 604 words, same decomposition.",
+    "VERBOSITY VERDICT \u2014 what a reader actually gains. REAL: the 'What has to be true' and 'Failure mode' bullets are load-bearing and absent from both baselines \u2014 e.g. 'Attackers will find the ceiling and farm just under it'; 'a compromised inside account becomes a factory for vouched fakes, so the bond has to have teeth, and having teeth is exactly what makes people not want to vouch'; 'legal or fraud may refuse the holdout outright, and the answer takes a quarter to arrive.' A reader genuinely benefits from these. THEATER: the 'Why it's not the obvious answer' bullet (8 instances, ~200 words per eval) is the skill arguing with its own baseline \u2014 useful to a grader, useless to the person with the problem. 'Sharpened brief' is a jargon restatement of the prompt in banned-word-avoidant prose ('Let a stranger reach the thing they came for while you retain enough accountability to bear the cost of them being fake') that no PM needs. And 'Set diversity: 9.9 effectively distinct out of 10 scored' / '9.88 effectively distinct lexically' leaks an internal scoring artifact into the user-facing answer \u2014 then immediately discounts itself ('That's a lexical measure and an upper bound ... I'd honestly call it seven distinct directions'). Cutting the 'why it's not baseline' bullets, the sharpened brief and the diversity score would remove ~450-500 words per response with zero loss to the reader, and would have brought eval-2 within a few hundred words of its ceiling.",
+    "NON-DISCRIMINATING ASSERTIONS (passed for BOTH configs, no signal): all four of eval-3 \u2014 direct recommendation, no pipeline artifacts, concise, MongoDB not strawmanned. eval-2: the measurement-artifact assertion, both-tried-fixes avoidance, questioning verification placement, mechanism-level options, and the MODE CHECK. eval-4: mechanism differentiation, premise-questioning, not-purely-content, non-obvious diagnosis, MODE CHECK. That is 13 of 18 assertions with zero discriminating power. The v2 rewrite fixed the process-compliance inflation problem, but the remaining set is now mostly measuring things a competent baseline does anyway. Only 4 assertions discriminated, and 3 of the 4 went to the baseline.",
+    "WHERE with_skill WAS GENUINELY BETTER. (1) eval-2 ambiguity handling \u2014 the only assertion with_skill won: it names the three readings of 'account-verification' and says which ideas flip ('If it's document KYC, ideas 2, 5 and 7 mostly survive and 3 and 4 change shape'). The baseline silently assumes email/SMS OTP for its entire answer, which is a real defect if the user meant KYC. (2) Idea distance. eval-2's priced capability ceiling, inviter-posts-a-bond, and async reconciliation have no counterpart in the baseline's list. eval-4's 'Presence confers power' (allocate a real budget line by vote of those present), 'Only bad news and unsettled things', and the ATC-readback close are materially further from consensus than the baseline's shrink-it / rotate-the-stage / anonymous-Q&A list. (3) eval-4's convergence reporting: 'Four independent passes landed on the same place ... If you only do one thing, do that one' and 'Every lens produced a redesign. None produced a diagnosis' are honest process findings that change the recommendation, and the baseline has nothing equivalent.",
+    "WHERE with_skill WAS WORSE. (1) Diagnosis ordering, eval-2: the baseline opens with a four-way split of the 60% and two cheap diagnostics; with_skill buries the equivalent taxonomy ('never received / received late / typed it wrong / expired / switched device / deliberately left') in the LAST section, after all eight fixes, and then concedes 'If it's mostly the first two, idea 2 is the whole answer and the rest is over-engineering' \u2014 a self-refutation of the preceding 1800 words. (2) Actionability: the baseline ships a sequenced 'This week' plan of cheap items; with_skill's options need a quarter-long holdout, a written-down fraud-loss number with an owner, or a risk model with an appeals process. (3) Unverified claims: with_skill shipped four load-bearing borrowed mechanisms it could not check (hospital placeholder records, blood-bank quarantine, hotel card pre-auth, European payment-regulation fraud-rate exemption) with inline 'couldn't verify this session' caveats, plus one in eval-4 (incident-command briefing, ATC readback). Both baselines shipped zero unverified external claims. (4) eval-4 MODE CHECK: metrics.json shows web_searches 2 on a light ideation question \u2014 a technical fail, and low-cost since the searches returned nothing, but the skill has no fast-mode fallback when verification is impossible.",
+    "ITERATION 1 REGRESSION CHECK \u2014 the measurement-artifact insight IS now caught, and caught better. In iteration 1 the eval-2 baseline tied with_skill 6/6 partly by noticing the 60% might be an artifact while the skill missed it. In iteration 2, with_skill leads with it as its FIRST option: 'Find out whether the 60% is a filter, not a leak ... The number everyone treats as a wound may be the check doing exactly its job \u2014 and if the unchecked cohort is net-negative, every idea below this line is a way to buy yourself worse customers faster', with a randomised holdout as the concrete test. The baseline's version is one sentence ('part of that 60% may be bots'). So the specific iteration-1 gap is closed and with_skill is now stronger on that dimension \u2014 but it did not convert into a scoreboard win, because with_skill lost two proportionality assertions the baseline passed.",
+    "EXECUTING-AGENT COMPLAINTS (from user_notes.md) \u2014 substantive ones. (1) STRUCTURAL BUG, reported independently by both fast-mode runs: 'Phase 3 step 4 is not mode-gated but its tooling implicitly is. Verification is stated as an absolute rule, yet the only verification mechanism described (search) lives in deep mode's Phase 0. Fast mode is therefore told to verify with no budgeted means of doing so.' Both runs then shipped unverified analogies with inline caveats rather than cutting them, and both flagged the choice for human review. This needs an explicit fast-mode rule: cut or flag, and say which. (2) Instruction conflict: \"'Ask one question' vs. 'don't ask permission twice' vs. 'generate before showing anything' pull against each other\" \u2014 the documented fallback only resolves the cannot-ask case; in live chat it is unclear whether you ask before generating (anchoring risk) or alongside. (3) Template gap: 'Phase 3 step 7 (who executes this) has no slot in the Phase 4 template' \u2014 the eval-2 run improvised a closing paragraph. (4) Dead flag: 'scripts/diversity.py --baseline is documented as near-useless whenever Phase 0 runs (the banned-word list guarantees maximal distance), which is always. It reads like a flag that should be removed or auto-disabled rather than caveated.' Both runs skipped it. (5) Self-reported length concern, eval-4: 'Eight ideas is at the top of the 4-8 range ... a reviewer may reasonably think six would have been tighter' \u2014 the agent saw the proportionality problem and shipped anyway, which suggests the 4-8 range should be mode-dependent (e.g. 4-5 in fast mode).",
+    "ENVIRONMENT CAVEAT for interpreting these runs: both with_skill fast-mode runs hit 'session has used its web search budget (200 of 200)' and web_fetch timeouts (6 and 3 errors_encountered respectively). Neither baseline needed any research, so this did not affect comparability of the answers \u2014 but it did force the verification failure described above, and the same runs under a fresh search budget might have cut or confirmed the borrowed mechanisms instead of shipping caveats.",
+    "ASSERTION-WORDING INCONSISTENCY worth fixing in v3: eval-2's MODE CHECK is a conjunction ('a full deep multi-agent pass with parallel generators and web research') while eval-4's is a disjunction ('did NOT spawn parallel generator subagents or run web research'). Identical behaviour (0 subagents, 2 no-op web searches) therefore passes eval-2 and fails eval-4. Pick one form. Also consider adding a discriminating assertion on ACTIONABILITY (can the reader do something on Monday) and on UNVERIFIED CLAIMS SHIPPED, since those are where the two configs actually diverge and no current assertion measures either."
+  ]
+}

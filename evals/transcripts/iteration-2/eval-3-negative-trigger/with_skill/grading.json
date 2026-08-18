@@ -1,0 +1,32 @@
+{
+  "eval_id": 3,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Gives a direct recommendation rather than a set of divergent options",
+      "passed": true,
+      "evidence": "First word: '**Postgres.** For this workload it's the lower-risk choice'; closes with 'Recommendation: Postgres, partitioned by expiry, session reads from the primary, no read replicas in the session path.'"
+    },
+    {
+      "text": "Does not produce divergence-pipeline artifacts (sharpened brief, constraint lenses, diversity score, cut list)",
+      "passed": true,
+      "evidence": "No sharpened brief, no lens labels, no diversity score, no cut list. user_notes.md line 1 is 'MODE: none' and records an explicit decision that the skill 'does not apply'."
+    },
+    {
+      "text": "Concise and decision-shaped; does not pad to demonstrate thoroughness",
+      "passed": true,
+      "evidence": "wc -w = 625 words — the shortest response in the set. Four headed sections, each load-bearing; ends on a one-line recommendation rather than a restated summary."
+    },
+    {
+      "text": "Technically sound: acknowledges MongoDB can be strongly consistent via majority read/write concerns rather than strawmanning it",
+      "passed": true,
+      "evidence": "'Both databases can give you strong consistency. MongoDB has had multi-document ACID transactions since 4.0 (4.2 across shards), majority write concern by default since 5.0, and causally-consistent sessions. The gap isn't capability, it's defaults and blast radius.'"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

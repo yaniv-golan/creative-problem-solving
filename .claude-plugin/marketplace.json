@@ -1,0 +1,35 @@
+{
+  "name": "creative-problem-solving-marketplace",
+  "owner": {
+    "name": "Yaniv Golan",
+    "email": "yaniv@golan.name"
+  },
+  "metadata": {
+    "description": "Generates genuinely non-obvious options for an open-ended problem by running successive constrained passes that each refuse the previous one's move, rather than one brainstorm.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "creative-problem-solving",
+      "source": "./creative-problem-solving",
+      "description": "Generates genuinely non-obvious options for an open-ended problem by running successive constrained passes that each refuse the previous one's move, rather than one brainstorm.",
+      "author": {
+        "name": "Yaniv Golan",
+        "email": "yaniv@golan.name"
+      },
+      "category": "productivity",
+      "tags": [
+        "creativity",
+        "ideation",
+        "brainstorming",
+        "problem-solving",
+        "divergent-thinking",
+        "strategy",
+        "triz",
+        "first-principles",
+        "biomimicry",
+        "lateral-thinking"
+      ]
+    }
+  ]
+}

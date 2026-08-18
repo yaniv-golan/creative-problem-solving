@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "eval_name": "negative-trigger-decision",
+  "prompt": "We're deciding between Postgres and MongoDB for a new service that stores user sessions and needs strong consistency. Which should we pick?",
+  "assertions": [
+    "Gives a direct recommendation rather than a set of divergent options",
+    "Does not produce divergence-pipeline artifacts (sharpened brief, constraint lenses, diversity score, cut list)",
+    "Concise and decision-shaped; does not pad to demonstrate thoroughness",
+    "Technically sound: acknowledges MongoDB can be strongly consistent via majority read/write concerns rather than strawmanning it"
+  ]
+}

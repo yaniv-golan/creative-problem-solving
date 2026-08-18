@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.x'
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      # The tag is the only thing that triggers this workflow, so a tag that disagrees with
+      # the committed version would ship an archive stamped differently from the repo it was
+      # built from. Fail before building rather than after publishing.
+      - name: Tag matches the committed version
+        run: |
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+          FILE_VERSION="$(cat VERSION)"
+          if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
+            echo "::error::tag v${TAG_VERSION} does not match VERSION (${FILE_VERSION})."
+            echo "Run: python3 tools/bump-version.py . ${TAG_VERSION}"
+            exit 1
+          fi
+
+      - name: Build generic zip
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          python3 tools/build-zip.py --version "$VERSION"
+
+      - name: Extract release notes from CHANGELOG.md
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
+          echo "$NOTES" > release-notes.md
+          # Blank notes mean CHANGELOG.md has no section for this tag — the release would
+          # publish empty and nobody would notice until it was live. Test for a non-space
+          # character rather than file size: `echo ""` still writes one newline byte, so
+          # `[ -s ]` would pass on exactly the case this is meant to catch.
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "::error::no '## [${VERSION}]' section found in CHANGELOG.md — refusing to publish empty release notes."
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
+        with:
+          body_path: release-notes.md
+          fail_on_unmatched_files: true
+          files: |
+            dist/creative-problem-solving.zip

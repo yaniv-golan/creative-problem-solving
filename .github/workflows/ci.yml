@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Third-party actions are pinned to a commit SHA, not a moving tag. SECURITY.md scopes
+# "workflows that would cause an installer to fetch code from somewhere other than this
+# repository" as in-scope, and a mutable tag is exactly that hole. Dependabot understands
+# the `@<sha> # <tag>` form and keeps both halves current.
+jobs:
+  test:
+    name: diversity.py tests (repo tooling)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.x'
+
+      # diversity.py is retired from the skill and no longer installs on user
+      # machines, so the 3.8-floor matrix is gone with it. The no-numpy path is
+      # still exercised: numpy remains an optional accelerator for maintainers.
+      - name: Run tests without numpy
+        working-directory: tools
+        run: python3 test_diversity.py
+
+      - name: Run tests with numpy
+        working-directory: tools
+        run: |
+          python3 -m pip install --quiet numpy
+          python3 test_diversity.py
+
+  integrity:
+    name: Repo integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.x'
+
+      # Versions agree everywhere, the .agents/ mirror has not drifted,
+      # SKILL.md is under the platform line limit, referenced files exist.
+      - name: Check repo integrity
+        run: python3 tools/check-repo.py
+
+      - name: Build the distributable zip
+        run: python3 tools/build-zip.py
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: creative-problem-solving-zip
+          path: dist/creative-problem-solving.zip
+          if-no-files-found: error
+
+  scenario-lint:
+    name: Behavioural scenario lint
+    runs-on: ubuntu-latest
+    # The token-free half of tests/. `lint` needs no Docker and no Claude token, so unlike
+    # the live `run` lane it is safe on the PR gate — a forked PR can pass it. It catches an
+    # assertion placed on a lane where it would silently evaluate to nothing, which is the
+    # failure mode that makes a scenario look green while asserting nothing at all.
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+
+      # A floor, not an exact pin: a scenario that adopts a flag added in a later release
+      # should resolve it, while an accidental older resolve fails loudly.
+      - name: Install cowork-harness
+        run: npm install --global cowork-harness@^1.23.0
+
+      - name: Lint scenarios
+        run: cowork-harness lint tests/scenarios/*.yaml

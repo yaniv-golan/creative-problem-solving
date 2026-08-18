@@ -1,0 +1,17 @@
+# Shared setup for every scenario in ../scenarios/.
+#
+# PIN THE MODEL. Omitting this silently runs the harness default, which is NOT the model
+# this skill targets — and that mistake produced a whole round of misleading results: a
+# "deep mode never dispatches" finding measured entirely on claude-sonnet-5. Eval iterations
+# 3-5 report 6, 8 and 9 sub-agents on opus, but that figure is agent-self-reported in
+# metrics.json, so it is a plausible expectation and NOT verified behaviour. A skill whose
+# behaviour is model-dependent must state which model its tests are a claim about.
+model: claude-opus-5
+#
+# Mounts this repo's plugin the way a real install does: the harness copies the
+# git-TRACKED files fresh into the sandbox each run, which is the same rule a
+# marketplace install follows. So an untracked new file is invisible here — `git add`
+# it before it can affect a run.
+plugins:
+  local_plugins: [../../creative-problem-solving]
+  enabled: [creative-problem-solving@local]

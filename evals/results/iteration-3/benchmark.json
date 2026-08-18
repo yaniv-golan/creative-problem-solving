@@ -1,0 +1,303 @@
+{
+  "metadata": {
+    "skill_name": "creative-problem-solving v0.3.0",
+    "skill_path": "skills/creative-problem-solving",
+    "executor_model": "claude-opus-5",
+    "analyzer_model": "claude-opus-5",
+    "timestamp": "2026-08-17T04:31:41Z",
+    "evals_run": [
+      2,
+      4
+    ],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 14,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+          "passed": true,
+          "evidence": "Opens with 'Four candidate causes' (never got it / got it and couldn't finish / got it and chose not to / shouldn't be counted) plus 'The cheapest test that splits all four' before any option is offered."
+        },
+        {
+          "text": "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+          "passed": true,
+          "evidence": "'Some of them shouldn't be counted. Bots, duplicate signups, people who already have an account.' Also 'it's likely the 60% is several different failures stacked' and 'a suspicion abandon is invisible in your analytics because it looks identical to disinterest.'"
+        },
+        {
+          "text": "Does not re-propose shortening the form or adding a progress bar",
+          "passed": true,
+          "evidence": "Explicitly excluded in the cut list: 'Shorter code, longer expiry, bigger button \u2014 same family as what you already tried. No screen-level change fixes a message that didn't arrive.'"
+        },
+        {
+          "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+          "passed": true,
+          "evidence": "'Bind the requirement to the action, not the account: Nothing needs proving at signup. Attach it to the first action that's costly to reverse.' Also 'Temporary identifier, reconciled afterwards' removes the gate entirely."
+        },
+        {
+          "text": "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+          "passed": true,
+          "evidence": "Five options map to five distinct mechanisms: occupy the idle wait (attention/timing), pre-commit sender identity (trust signalling), decouple identity resolution from service delivery (who/when verifies), move the gate to the risky action (whether/when to verify), treat abandonment as a resumable pause (recovery channel). No copy or layout item leads."
+        },
+        {
+          "text": "Handles the ambiguity in 'account-verification' \u2014 either asks which kind, or states which reading it assumed and what would change under the others",
+          "passed": true,
+          "evidence": "Line 3: 'I'm assuming this is an emailed link or a one-time code. If it's document KYC \u2014 ID upload, selfie \u2014 60% is near industry-normal and the leverage moves to capture quality and retry handling instead.'"
+        },
+        {
+          "text": "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+          "passed": true,
+          "evidence": "wc -w = 990 words, under the 1200 bar. Every heading carries content; the two structural blocks ('Cut, and why', 'What would change my ranking') are populated with substantive items."
+        },
+        {
+          "text": "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem",
+          "passed": true,
+          "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: subagents_spawned = 0, web_searches = 0, total_tool_calls = 14."
+        }
+      ],
+      "notes": [
+        "990 words",
+        "MODE: fast",
+        "subagents 0, searches 0"
+      ]
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.875,
+        "passed": 7,
+        "failed": 1,
+        "total": 8,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+          "passed": true,
+          "evidence": "'First: split the 60%' precedes the idea list, with four buckets (never received / received but never opened / opened but didn't complete / never got that far) plus two diagnostics (median time-to-verify, resend rate)."
+        },
+        {
+          "text": "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+          "passed": true,
+          "evidence": "'If you added verification to stop fraud, part of that 60% may be bots doing exactly what you wanted. Real drop-off and fake drop-off look identical in the aggregate funnel.'"
+        },
+        {
+          "text": "Does not re-propose shortening the form or adding a progress bar",
+          "passed": true,
+          "evidence": "Explicitly argues against the progress bar: 'a progress bar tells people how much work is left, not why to do it.' Nearest miss is 'If you're collecting a phone number purely as a second factor, ask whether you need it at signup at all' \u2014 framed as removing a requirement, not shortening the form."
+        },
+        {
+          "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+          "passed": true,
+          "evidence": "'Delete or defer the step (biggest lever, usually) \u2014 Let people into the product unverified, in a limited state, and verify at the first moment it actually matters.' Named again as 'The real bet' in the sequencing."
+        },
+        {
+          "text": "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+          "passed": true,
+          "evidence": "Group headings are mechanism-level (defer the step / fix delivery / kill the context switch / recovery / trust), and SSO, magic link, provider failover and deferral are genuine mechanism changes. Diluted, though: roughly 8 of ~20 items are copy or UI-level ('code in the subject line', 'nearly plain-text, one button, minimal images', 'human-ish address, not no-reply@', paste handling, typo detection)."
+        },
+        {
+          "text": "Handles the ambiguity in 'account-verification' \u2014 either asks which kind, or states which reading it assumed and what would change under the others",
+          "passed": false,
+          "evidence": "Silently assumes email/SMS OTP throughout ('Email/SMS delivery rate, bounce rate, spam-folder rate') and never names the assumption. Document KYC / ID upload / selfie is never considered, under which most of the delivery and context-switch advice is inapplicable. The closing question \u2014 'why do you verify at that point \u2014 regulatory, fraud, deliverability, or just convention?' \u2014 asks about purpose, not about which kind of verification."
+        },
+        {
+          "text": "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+          "passed": true,
+          "evidence": "wc -w = 806 words. All five headings carry populated content; no empty scaffolding."
+        },
+        {
+          "text": "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem",
+          "passed": true,
+          "evidence": "user_notes.md line 1: 'MODE: none'. metrics.json: total_tool_calls = 3, subagents_spawned = 0, web_searches = 0."
+        }
+      ],
+      "notes": [
+        "806 words",
+        "MODE: none",
+        "subagents 0, searches 0"
+      ]
+    },
+    {
+      "eval_id": 4,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 13,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+          "passed": true,
+          "evidence": "Four options, four mechanisms: remove the thing to reveal latent demand ('Pause it for two cycles'), replace calendar trigger with an accumulation threshold ('Fire it on accumulated signal, not on the calendar'), make presence consequential ('Decide something binding live \u2014 a budget line, a headcount, a roadmap slot'), and degrade the substitute ('Make the recording deliberately worse than the room'). None is a content-quality improvement."
+        },
+        {
+          "text": "At least one option questions the premise \u2014 whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+          "passed": true,
+          "evidence": "Both halves: 'Pause it for two cycles ... Removing the option is the only way to make latent demand visible', and 'One reframe: turnout is a poor proxy for shared context \u2014 a full room can hold none.'"
+        },
+        {
+          "text": "Does not treat declining attendance as purely a content-quality problem",
+          "passed": true,
+          "evidence": "Content quality is not among the four candidate causes (substitution, no consequence, mechanical, withdrawal), and 'a shorter, tighter format' is explicitly cut as 'the default answer with a stopwatch'."
+        },
+        {
+          "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+          "passed": true,
+          "evidence": "wc -w = 602 words, well under 800. No process disclosure, no lens names, no diversity score; the only structural blocks are a short 'Cut', 'One reframe' and 'What would change my ranking'."
+        },
+        {
+          "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+          "passed": true,
+          "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: subagents_spawned = 0, web_searches = 0, total_tool_calls = 13."
+        },
+        {
+          "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+          "passed": true,
+          "evidence": "'Substitution. The recording and notes are good enough that live is the inconvenient way to get the same thing. Test: recording views over the same months \u2014 if views absorb the drop, nothing is broken; your distribution changed shape.' Also 'Withdrawal ... questions asked per session. If those fell before turnout did, it isn't logistics.' Each cause is paired with a cheap discriminating test."
+        }
+      ],
+      "notes": [
+        "602 words",
+        "MODE: fast",
+        "subagents 0, searches 0"
+      ]
+    },
+    {
+      "eval_id": 4,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+          "passed": true,
+          "evidence": "Genuine mechanism differences present: 'Try a different cadence ... Quarterly-but-excellent plus a strong written monthly update', 'Put something at stake. A live decision', 'Delay the recording ... if the recording is posted instantly, live attendance has no advantage'. Weaker than with_skill: roughly half the list ('Shrink it', 'Rotate the stage', 'Unfiltered Q&A', 'Move the news out') is format or content improvement."
+        },
+        {
+          "text": "At least one option questions the premise \u2014 whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+          "passed": true,
+          "evidence": "'Monthly is an awkward interval ... Quarterly-but-excellent plus a strong written monthly update beats a mediocre monthly ritual. This is worth considering seriously rather than treating cadence as fixed.' Plus 'Attendance is a useful thermometer; don't break the thermometer' \u2014 treating turnout as signal rather than target."
+        },
+        {
+          "text": "Does not treat declining attendance as purely a content-quality problem",
+          "passed": true,
+          "evidence": "Opens with three separated causes \u2014 low information value, low stakes / no consequence, friction \u2014 and explicitly notes 'recording always available so live attendance is strictly dominated'."
+        },
+        {
+          "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+          "passed": true,
+          "evidence": "wc -w = 604 words, essentially identical to the with_skill run (602). Four light headings, no process apparatus."
+        },
+        {
+          "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+          "passed": true,
+          "evidence": "user_notes.md line 1: 'MODE: none'. metrics.json: total_tool_calls = 3, subagents_spawned = 0, web_searches = 0."
+        },
+        {
+          "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+          "passed": true,
+          "evidence": "'Cheapest way to tell them apart: look at who is missing. If it's clustered by team or time zone, it's friction. If it's spread evenly and skews senior, it's value. If newer people attend and long-tenured people don't, it's \"I've seen this movie ten times\".' Also names the substitution effect (instant recording strictly dominates live)."
+        }
+      ],
+      "notes": [
+        "604 words",
+        "MODE: none",
+        "subagents 0, searches 0"
+      ]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.9375,
+        "stddev": 0.0884,
+        "min": 0.875,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "delta": {
+      "pass_rate": 0.0625,
+      "time_seconds": 0.0,
+      "tokens": 0.0
+    }
+  },
+  "notes": [
+    "SCOREBOARD. with_skill 14/14 assertions (eval2 8/8, eval4 6/6). without_skill 13/14 (eval2 7/8, eval4 6/6). But only 1 of 14 assertion-pairs actually discriminated: eval2 #6 (ambiguity in 'account-verification') went to the skill. Eval 4 discriminated on nothing at all.",
+    "LENGTH FIXES WORKED, AND SHORTER IS NOT WORSE. Eval 4 fell from 1818 words (iteration 2) to 602 (baseline 604) and still scored 6/6; eval 2 fell from 2056 to 990. What was cut was apparatus, not content \u2014 no lens names, no cluster analysis, no diversity score, no process narration appears in either deliverable. The eval-4 with_skill answer at 602 words is if anything sharper than the 604-word baseline (pause-to-reveal-latent-demand, threshold-firing on accumulated signal, 'make the recording deliberately worse than the room' vs the baseline's 'Shrink it' and 'Rotate the stage'). Length is also not tracking quality in the obvious direction: on eval 2 the with_skill answer is 184 words LONGER than the baseline (990 vs 806) and still won the one discriminating assertion.",
+    "ONE REAL LOSS FROM THE LENGTH FIX. Eval 2's user_notes admits the budget forced a cut: 'First draft was 1025 words with 6 ideas ... \"inherit the proof\" (passkey/SSO/vouch) was dropped to the cut list', described in the same note as 'arguably the most immediately actionable of the six'. The baseline offers SSO as a live recommendation ('Offer Google/Apple/Microsoft SSO. Those accounts arrive pre-verified'). So on that specific item the shorter skill output is worse, and the loss was caused by the budget, not by judgement about the idea.",
+    "DIAGNOSIS-FIRST FIRED CORRECTLY ON 2 AND 4 BUT PRODUCED NO LIFT. Both with_skill runs open with candidate causes before ideas \u2014 but so do both baselines, unprompted. Eval 2 baseline's four-way split (never received / received but never opened / opened but didn't complete / never got that far) is near-identical to the skill's four candidate causes, and eval 4 baseline separates 'low information value / low stakes / friction' with a who-is-missing test. Assertions 1 and 2 on eval 2 and assertions 3 and 6 on eval 4 all passed for both configs. Diagnosis-first is codifying what a competent plain answer already does; its value is insurance against a bad run, not marginal quality.",
+    "DIVERSITY.PY IS CEREMONY IN FAST MODE. It scored 9.91/10 (eval 2) and 9.90/10 with 'no pairs above 0.22' (eval 4) and, per the notes, 'caught nothing'; the real deduplication was the operator's own mechanism-level merge. That matches the user's complaint. Recommendation: drop it from fast mode entirely, and in deep mode either rename its output ('lexical overlap only \u2014 this is not a mechanism-diversity score') or replace it with a mechanism-level check.",
+    "THE DIAGNOSIS BLOCK VS THE 600-WORD BUDGET IS A GENUINE CONFLICT AND THE USER IS RIGHT. Eval 4's notes: the diagnosis block cost '~170 words \u2014 nearly 30% of the budget \u2014 leaving room for roughly four ideas against a template that says 4-8'. Given that diagnosis-first discriminated on nothing in this iteration (both baselines did it unprompted), spending 30% of a light-question budget on it is a bad trade. Either charge the diagnosis block against the budget explicitly and lower the idea count to 3-4 for light questions, or cap it at ~80 words / three causes with one test each.",
+    "BIOMIMICRY COLLIDES WITH THE FAST-MODE NO-SEARCH RULE \u2014 MARK IT DEEP-ONLY. The lens requires an organism plus a verifiable mechanism, while Phase 3 step 4 forbids presenting an unverified outside claim in fast mode. Net effect on eval 4 was a de-cited principle: 'threshold-triggered firing, stripped of the quorum-sensing citation'. That is a lens contributing nothing a plain inversion pass wouldn't have produced. Same pattern in eval 2, where the emergency-intake grounding for 'temporary identifier' had to be stated 'as a shape rather than a sourced fact'.",
+    "ONE OTHER PROCESS COMPLAINT WORTH ACTING ON. Eval 4's notes report that fast mode's 'separate labelled passes' leak vocabulary \u2014 'the Phase 2 negation round did more real work than passes 4-5 did ... fast mode might do better with three lenses plus two negation rounds than five lenses plus one'. Cheap to test.",
+    "MODE SELECTION IS NOW SOLID. Both with_skill runs picked the right mode and the metrics confirm it: eval 2 fast (0 subagents, 0 searches, 14 calls), eval 4 fast (0 subagents, 0 searches, 13 calls). Both MODE CHECK assertions passed. The iteration-1 failure \u2014 deep mode firing on a bounded problem \u2014 did not recur, and eval 2's notes show the gate being applied explicitly ('One condition -> fast'), correctly refusing to let 'the user is stuck' alone trigger deep.",
+    "EVAL 4 NO LONGER EARNS ITS PLACE AS AN EVAL. Identical scores (6/6 vs 6/6), near-identical lengths (602 vs 604), same mode behaviour, same diagnosis-first structure. The skill produces a better answer on inspection \u2014 weirder, more mechanism-diverse options \u2014 but no assertion in the set can detect it. Either add an assertion that bites (e.g. 'at least one option would be uncomfortable to propose to leadership', or 'no option is a format/duration/presenter change') or retire it. Eval 2 is close to the same problem: 7 of 8 assertions are non-discriminating and the entire margin rests on ambiguity disclosure."
+  ]
+}

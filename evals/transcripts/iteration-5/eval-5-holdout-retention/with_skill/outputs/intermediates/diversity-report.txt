@@ -1,0 +1,19 @@
+
+Ideas scored: 53
+Effectively distinct directions: 50.66  (96% of the set)   [exact]
+Mean pairwise similarity: 0.036
+
+  well spread on the surface — still read for ideas that differ in wording but not in mechanism
+
+Near-duplicates (similarity >= 0.22):
+  0.27  Debt auction board: make each fragile area hav…
+        ~  Judgement has a balance sheet: make each fragi…
+  0.22  Decision autopsy registry: capture every irrev…
+        ~  Decision autopsy ledger: record every irrevers…
+  0.22  Successor-named decision rights: require two s…
+        ~  Two-body decision rule: make the unit of conse…
+
+Note: this measures lexical diversity, not novelty or value. Two ideas that 
+share no vocabulary but the same mechanism will score as distinct — so treat 
+the duplicate list as reliable and the headline number as an upper bound.
+

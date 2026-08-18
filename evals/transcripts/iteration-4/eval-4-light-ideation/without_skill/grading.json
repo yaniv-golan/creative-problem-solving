@@ -1,0 +1,57 @@
+{
+  "eval_id": 4,
+  "config": "without_skill",
+  "expectations": [
+    {
+      "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+      "passed": true,
+      "evidence": "Genuine mechanism differences present: 'Try a different cadence ... Quarterly-but-excellent plus a strong written monthly update', 'Put something at stake. A live decision', 'Delay the recording ... if the recording is posted instantly, live attendance has no advantage', 'Rotate the stage. Let ICs and teams present their own work'."
+    },
+    {
+      "text": "At least one option questions the premise — whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+      "passed": true,
+      "evidence": "'Monthly is an awkward interval ... Quarterly-but-excellent plus a strong written monthly update beats a mediocre monthly ritual. This is worth considering seriously rather than treating cadence as fixed.' Also 'Attendance is a useful thermometer; don't break the thermometer.'"
+    },
+    {
+      "text": "Does not treat declining attendance as purely a content-quality problem",
+      "passed": true,
+      "evidence": "Opens with three separated causes — low information value, low stakes / no consequence, friction — and explicitly notes 'recording always available so live attendance is strictly dominated'."
+    },
+    {
+      "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+      "passed": true,
+      "evidence": "wc -w = 604 words, 185 fewer than the with_skill run (789). Four light headings, no process apparatus."
+    },
+    {
+      "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+      "passed": true,
+      "evidence": "NON-DISCRIMINATING. user_notes.md line 1: 'MODE: none'. metrics.json: total_tool_calls = 3, subagents_spawned = 0, web_searches = 0."
+    },
+    {
+      "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+      "passed": true,
+      "evidence": "'Cheapest way to tell them apart: look at who is missing. If it's clustered by team or time zone, it's friction. If it's spread evenly and skews senior, it's value. If newer people attend and long-tenured people don't, it's \"I've seen this movie ten times\" — also value, but the fix is different.'"
+    },
+    {
+      "text": "The diagnosis block is a signpost rather than a section: roughly 3 lines or under ~120 words, not a third of the response",
+      "passed": false,
+      "evidence": "BORDERLINE FAIL. It is structurally a section, not a signpost: a bolded heading ('**Quick diagnosis — three very different causes**') over three numbered causes plus a 'who is missing' discriminator paragraph — 120 words over 7 lines, and 20% of the 604-word response. It sits exactly at the '~120 words' bound rather than under it, and fails the 'roughly 3 lines' and 'signpost rather than a section' tests. Called against the baseline for consistency with the same call on eval 2's baseline (174 words)."
+    },
+    {
+      "text": "Does not quote a diversity score or any other internal process metric to the reader",
+      "passed": true,
+      "evidence": "NON-DISCRIMINATING / vacuous. No pipeline was run, so no process metric could be quoted."
+    },
+    {
+      "text": "Does not present a biological/organism analogy with a specific citation (biomimicry is a deep-mode-only lens); any borrowed mechanism appears as a stated principle",
+      "passed": true,
+      "evidence": "NON-DISCRIMINATING / vacuous. No analogy of any kind appears; the response is written entirely in org-behaviour terms. A baseline has no biomimicry lens to leak."
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 1,
+    "total": 9,
+    "pass_rate": 0.8889
+  }
+}

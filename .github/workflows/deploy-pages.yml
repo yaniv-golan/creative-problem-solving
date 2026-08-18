@@ -1,0 +1,68 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  # Pages can fail for reasons that have nothing to do with the commit — the site not yet
+  # having a source configured, a transient API error. Re-running a *failed* run is the wrong
+  # fix: its previous attempt's `github-pages` artifact still exists, and deploy-pages resolves
+  # that name across the whole run, so attempt 2 dies on "multiple artifacts named
+  # github-pages". This gives a clean run without an empty commit.
+  workflow_dispatch:
+
+# `contents: read` is not optional here. Declaring a permissions block sets every scope not
+# listed to none, so omitting it leaves actions/checkout with a token that cannot read this
+# repository. GitHub's own Pages starter workflow grants all three for the same reason.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Build site
+        run: |
+          mkdir -p _site/static
+          cp static/install-claude-desktop.html _site/static/
+          cat > _site/index.html <<'HTML'
+          <!DOCTYPE html>
+          <meta charset="utf-8">
+          <title>Creative Problem Solving</title>
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <style>
+          body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9f5f1;color:#3d3929;margin:0;padding:3rem 1.5rem;line-height:1.6}
+          main{max-width:34rem;margin:0 auto}h1{font-size:1.5rem;margin:0 0 .5rem}
+          p{color:#6b5e4f}a{color:#d97757;font-weight:600;text-decoration:none}a:hover{text-decoration:underline}
+          ul{padding-left:1.1rem}li{margin:.4rem 0}
+          </style>
+          <main>
+          <h1>Creative Problem Solving</h1>
+          <p>An agent skill that generates non-obvious options for open-ended problems.</p>
+          <ul>
+            <li><a href="./static/install-claude-desktop.html">Install in Claude Desktop</a> (also Claude Cowork)</li>
+            <li><a href="https://github.com/yaniv-golan/creative-problem-solving#installation">Install for Claude Code, Cursor, Codex, ChatGPT, OpenClaw and others</a></li>
+            <li><a href="https://github.com/yaniv-golan/creative-problem-solving#evals">Read the eval results, including the rounds it lost</a></li>
+            <li><a href="https://github.com/yaniv-golan/creative-problem-solving">Source on GitHub</a></li>
+          </ul>
+          </main>
+          HTML
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          name: github-pages
+
+      - id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5
+        with:
+          artifact_name: github-pages

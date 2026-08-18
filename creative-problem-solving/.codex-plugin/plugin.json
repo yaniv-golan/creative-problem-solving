@@ -1,0 +1,30 @@
+{
+  "name": "creative-problem-solving",
+  "version": "0.1.0",
+  "description": "Generates genuinely non-obvious options for an open-ended problem by running successive constrained passes that each refuse the previous one's move, rather than one brainstorm.",
+  "homepage": "https://github.com/yaniv-golan/creative-problem-solving",
+  "repository": "https://github.com/yaniv-golan/creative-problem-solving",
+  "license": "MIT",
+  "keywords": [
+    "creativity",
+    "ideation",
+    "brainstorming",
+    "problem-solving",
+    "divergent-thinking",
+    "strategy",
+    "triz",
+    "first-principles",
+    "biomimicry",
+    "lateral-thinking"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Creative Problem Solving",
+    "shortDescription": "Generates genuinely non-obvious options for an open-ended problem by running successive constrained passes that each refuse the previous one's move, rather than one brainstorm.",
+    "developerName": "Yaniv Golan",
+    "category": "productivity",
+    "brandColor": "#6C5CE7",
+    "defaultPrompt": "Help me find non-obvious options for a problem I'm stuck on",
+    "websiteURL": "https://github.com/yaniv-golan/creative-problem-solving"
+  }
+}

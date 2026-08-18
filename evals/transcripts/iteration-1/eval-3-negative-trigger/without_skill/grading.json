@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "config": "without_skill",
+  "expectations": [
+    {
+      "text": "Does NOT run the four-phase creative problem-solving pipeline",
+      "passed": true,
+      "evidence": "No skill was loaded; response.md is a straight technical recommendation with no phase structure, candidate pool or lens vocabulary. Non-discriminating by construction."
+    },
+    {
+      "text": "Gives a direct recommendation rather than a set of divergent options",
+      "passed": true,
+      "evidence": "First line: '**Postgres** - for this workload it's the lower-risk choice, and it isn't close.' Ends with 'Bottom line: Postgres, partitioned by expiry, validation reads on the primary, short-lived access tokens in front of it.'"
+    },
+    {
+      "text": "Response is concise and does not include a sharpened brief, lenses, or a diversity score",
+      "passed": true,
+      "evidence": "~850 words - longer than the with_skill answer but still a single committed recommendation with no brief, lenses or diversity score. Extra length is operational detail (autovacuum/fillfactor, pgbouncer, partition-drop expiry), not divergence."
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_tokens": 39154,
+    "duration_ms": 73863,
+    "total_duration_seconds": 73.9
+  },
+  "execution_metrics": {
+    "total_tool_calls": 3,
+    "errors_encountered": 0
+  }
+}

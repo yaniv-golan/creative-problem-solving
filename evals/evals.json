@@ -1,0 +1,104 @@
+{
+  "skill_name": "creative-problem-solving",
+  "version": 7,
+  "notes": "v2 assertions are OUTCOME-based: each is checkable from the response alone, without knowing whether the skill ran. v1 assertions like 'shows evidence of independent parallel generation' tested process compliance and passed trivially for with_skill while being impossible for a baseline \u2014 they inflated the margin without measuring answer quality. Mode selection is graded explicitly, since iteration 1 showed deep mode firing on a bounded problem and losing. v3 adds assertions targeting the specific v0.4.0 fixes, since only 4 of 24 pairs discriminated in iteration 3. v4 adds eval 5 \u2014 a held-out problem in a domain none of the tuning touched, to test whether four iterations of fixes generalise or just fit evals 2/4. Iteration 5 also runs a blind A/B comparison, since assertions saturated at 100%. v5 (pre-release): eval 2's MODE CHECK was a conjunction \u2014 'did NOT run a full deep multi-agent pass with parallel generators AND web research' \u2014 which became unsatisfiable-as-false, i.e. auto-passing, once parallel generators were removed. iteration-2/notes.json flagged this conjunction bug and it was never fixed. Now a single condition on research. v6: eval 1 is a strategic prompt about an architecture practice under AI pressure \u2014 a professional-services field where the genuinely different answers differ in how money is made rather than in scale, so mechanism-diversity is the thing being measured. It is phrased as a situation with a stated constraint and an admission that the obvious fixes were tried, mirroring eval 5, because a design-brief phrasing provoked a clarifying question in ~90% of runs in BOTH arms and no wording fixed it. The closing 'don't ask me questions, state your assumptions' instruction is what removed it: 0 gates in 6/6 runs across both arms. NOTE the cost of that instruction \u2014 assertion 13 (states which reading of the ambiguous prompt it took) is now handed to both arms by the prompt and can no longer discriminate. Treat it as a floor, not a margin. v7: eval 4's MODE CHECK was the same conjunction bug fixed for eval 2 in v5 \u2014 it asserted no parallel generator subagents AND no research, and the subagent half became unsatisfiable-as-false once dispatch was removed, so it auto-passed. Now research only. eval 5's first assertion was inverted against the skill's own Phase 0 step 3b: it required the answer NOT to propose compensation because the user ruled money out, but step 3b exists precisely because a plain answer beat the skill by REFUSING that premise. Grading obedience to a premise the skill is instructed to test would mark the intended behaviour as a miss. Now it grades whether the constraint was tested.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "operating-model-deep",
+      "prompt": "Our architecture practice is 60 people doing mixed commercial and institutional work. Fees are compressing, clients now expect AI-assisted delivery speed, and we've already tried raising utilisation and hiring cheaper juniors. I don't think our current model survives four more years \u2014 what else could we be? This is all the information available, so don't ask me any questions; where something is missing, make a reasonable assumption and state it in your response.",
+      "expected_output": "A set of structurally different things the practice could become \u2014 differing in how it makes money or holds a claim on the value it creates, not in headcount or sector mix. Mechanisms stated causally. Assumptions stated explicitly, since the brief asks for them. Honest about what is unproven and who would have to run each.",
+      "correct_mode": "deep",
+      "files": [],
+      "assertions": [
+        "Proposes at least 4 distinct models",
+        "At least 4 models differ in KIND not DEGREE \u2014 they use different mechanisms for making money or holding a claim on the value created, rather than varying headcount, project size, sector focus, or geography",
+        "Every model states a causal mechanism (how it actually works / where the revenue comes from), not only a benefit or positioning claim",
+        "Names the conventional or obvious answer explicitly somewhere, so the reader can judge distance from it",
+        "States a load-bearing assumption, precondition, or falsifiable claim for each model",
+        "Identifies who would execute each model, or what the practice would have to change to run it",
+        "Includes at least one model an established practice would find genuinely uncomfortable, not a set of safe consensus positions",
+        "Does not assert novelty as established fact; any novelty claim is framed as checkable or bounded by where the author looked",
+        "No two presented models are restatements of each other under different names",
+        "Any named firm, statistic, or historical example is real and accurately characterised (flag any that are fabricated or misattributed)",
+        "Presents only live options: no model that disqualifies itself in its own description ('that's a different business', 'you'd now be a software company') is presented as one of the numbered options rather than as a shortlist entry",
+        "If the response promises a ranking or refers to 'my ranking', it actually gives one",
+        "States which reading of the ambiguous prompt it took \u2014 a new way of delivering the work vs a new shape for the firm \u2014 or explicitly flags the ambiguity",
+        "Reports mechanism-level convergence as a claim about the problem ('every route out ends in X') rather than as a pass count ('four of five passes said X') \u2014 the latter is process exposure the report template bans",
+        "Does not quote a diversity score or any other internal process metric to the reader"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "bounded-product-problem",
+      "prompt": "Our onboarding flow has a 60% drop-off at the account-verification step. We've already tried shortening the form and adding a progress bar. I'm out of ideas \u2014 what else could we do?",
+      "expected_output": "A proportionate answer that diagnoses before prescribing, avoids the two tried fixes, and questions whether verification belongs at that point. This is a BOUNDED problem: deep mode is the wrong call and cost 6.7x time for a worse answer in iteration 1.",
+      "correct_mode": "fast",
+      "files": [],
+      "assertions": [
+        "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+        "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+        "Does not re-propose shortening the form or adding a progress bar",
+        "At least one option questions whether verification needs to happen at that point in the flow at all",
+        "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+        "Handles the ambiguity in 'account-verification' \u2014 either asks which kind, or states which reading it assumed and what would change under the others",
+        "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+        "MODE CHECK: did NOT run web research on this bounded problem (deep mode is research-gated as of 0.1.0; fast mode is the correct mode here)",
+        "The diagnosis block is a signpost rather than a section: roughly 3 lines or under ~120 words, not a third of the response",
+        "Does not quote a diversity score or any other internal process metric to the reader"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "negative-trigger-decision",
+      "prompt": "We're deciding between Postgres and MongoDB for a new service that stores user sessions and needs strong consistency. Which should we pick?",
+      "expected_output": "A decision with a defensible correct answer. The divergence engine should not run at all.",
+      "correct_mode": "none",
+      "files": [],
+      "assertions": [
+        "Gives a direct recommendation rather than a set of divergent options",
+        "Does not produce divergence-pipeline artifacts (sharpened brief, constraint lenses, diversity score, cut list)",
+        "Concise and decision-shaped; does not pad to demonstrate thoroughness",
+        "Technically sound: acknowledges MongoDB can be strongly consistent via majority read/write concerns rather than strawmanning it"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "light-ideation-fast-mode",
+      "prompt": "Attendance at our monthly all-hands has been sliding for a while \u2014 we're down to about half the company showing up. Got any ideas?",
+      "expected_output": "A genuinely light ideation pass. Options should still differ in mechanism and at least one should question the premise, but the whole thing should be cheap. Deep mode here is over-engineering.",
+      "correct_mode": "fast",
+      "files": [],
+      "assertions": [
+        "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+        "At least one option questions the premise \u2014 whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+        "Does not treat declining attendance as purely a content-quality problem",
+        "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+        "MODE CHECK: did NOT run web research on this light problem (deep mode is research-gated as of 0.1.0; fast mode is the correct mode here)",
+        "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+        "The diagnosis block is a signpost rather than a section: roughly 3 lines or under ~120 words, not a third of the response",
+        "Does not quote a diversity score or any other internal process metric to the reader",
+        "Does not present a biological/organism analogy with a specific citation (biomimicry is a deep-mode-only lens); any borrowed mechanism appears as a stated principle"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "holdout-retention",
+      "prompt": "We keep losing senior engineers to bigger companies at around the 18-month mark. Comp is already competitive \u2014 we benchmark and we match. It's not the money. What can we actually do about this?",
+      "expected_output": "A held-out test. Never used for tuning. The user has pre-empted the obvious answer (comp), which should push the pipeline past it. Mode is genuinely arguable: 2-3 of 5 deep conditions plausibly hold. Options should differ in mechanism, not be a list of retention tactics.",
+      "correct_mode": "either \u2014 grade the reasoning, not the choice",
+      "files": [],
+      "assertions": [
+        "Tests the ruled-out constraint rather than obeying it \u2014 probes whether 'it's not the money' actually holds (e.g. by comparing multi-year total comp, not year-one offers) before setting money aside. Proposing a compensation mechanism is acceptable IF that test supports it; what fails is accepting the premise untested",
+        "Offers at least one explanation for the 18-month timing specifically, rather than treating this as generic attrition",
+        "Options differ in mechanism (what changes about the job, the structure, or who decides) rather than being a list of perks and culture initiatives",
+        "At least one option questions the framing \u2014 whether losing senior engineers at 18 months is necessarily the problem to solve, or whether the real issue sits upstream",
+        "States what has to be true for the main recommendations, or what evidence would confirm the diagnosis",
+        "Names who inside the company would actually have to do each thing",
+        "Does not present unverified claims about named companies or studies as established fact",
+        "Proportionate and structurally disciplined: no ceremonial headings, no internal process metrics quoted, no self-disqualifying option presented as a live one",
+        "Gives an actual recommendation of where to start, not just a menu"
+      ]
+    }
+  ]
+}

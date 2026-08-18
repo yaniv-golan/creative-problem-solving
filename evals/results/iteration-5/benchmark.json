@@ -1,0 +1,348 @@
+{
+  "metadata": {
+    "skill_name": "creative-problem-solving v0.5.0 -> v0.6.0",
+    "skill_path": "skills/creative-problem-solving",
+    "executor_model": "claude-opus-5",
+    "analyzer_model": "claude-opus-5",
+    "timestamp": "2026-08-17T06:05:01Z",
+    "evals_run": [
+      4,
+      5
+    ],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 4,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8889,
+        "passed": 8,
+        "failed": 1,
+        "total": 9,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 5,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+          "passed": true,
+          "evidence": "Five genuinely different mechanisms: make attendance value scale with who else is in the room ('four minutes of randomised breakouts of six ... the one thing a recording structurally cannot give you'); put a price and a named producer on the slot with a cancel rule; unbundle status into a written brief and keep only 'the two things that don't survive being written down'; invert who presents ('Put the teams on stage and the execs in the audience'); and stop measuring attendance at all."
+        },
+        {
+          "text": "At least one option questions the premise \u2014 whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+          "passed": true,
+          "evidence": "Option 5 attacks the metric directly: 'Attendance was never the goal \u2014 knowing where the company is going and being able to ask about it was ... What has to be true: you can accept an answer like \"70% is fine\" and stop working on it.' Option 3 questions the form: 'the honest version of this shrinks the meeting to about 20 minutes.' Line 1 questions whether there is a problem: 'If a big chunk are watching later, this is a much smaller problem than it looks.'"
+        },
+        {
+          "text": "Does not treat declining attendance as purely a content-quality problem",
+          "passed": true,
+          "evidence": "The diagnosis separates content from three non-content causes: 'A drop concentrated in a few teams usually means a standing collision (a customer call, a shift, an awkward hour) or that those teams' leads quietly stopped coming, which everyone below them reads as permission. A drop that tracks tenure means the room stopped feeling like \"us\" as headcount grew.' Content is named as only one branch: 'A slide that's even across everyone points at the content.'"
+        },
+        {
+          "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+          "passed": false,
+          "evidence": "894 words by wc -w against a ~800-word bound \u2014 12% over, and 48% longer than the 604-word baseline, which passed. No scaffolding is present (no ceremonial headings, no visible apparatus), so the failure is length alone. Notable because v0.5.0 replaced word budgets with the structural table precisely on the theory that structure controls length: the structure here is fully compliant with the Light row (5 options at the ceiling, 2 bullets each, cut list as one line, closing read skipped) and the response still overshot. Structural compliance did not deliver proportionality."
+        },
+        {
+          "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+          "passed": true,
+          "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: total_tool_calls = 5, subagents_spawned = 0, web_searches = 0. The gate table in user_notes.md scores at most one of five deep conditions as holding. NON-DISCRIMINATING: the baseline also runs no subagents."
+        },
+        {
+          "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+          "passed": true,
+          "evidence": "'those teams' leads quietly stopped coming, which everyone below them reads as permission' \u2014 a social-permission cascade rather than a content or friction story. Plus the convergence claim: 'The thing every angle on this kept landing on: nothing that currently happens in that hour requires being in the hour. Until something does, better slides won't hold anyone.'"
+        },
+        {
+          "text": "The diagnosis block is a signpost rather than a section: roughly 3 lines or under ~120 words, not a third of the response",
+          "passed": true,
+          "evidence": "99 words (wc -w on the block), a single paragraph with an inline bolded lead-in rather than a heading, and 11% of the 894-word response. Under the ~120-word bound and structurally a signpost. DISCRIMINATING: the baseline fails this with a 120-word, 7-line block under its own bolded heading."
+        },
+        {
+          "text": "Does not quote a diversity score or any other internal process metric to the reader",
+          "passed": true,
+          "evidence": "No score, lens name, or generator count reaches the reader. The convergence line \u2014 'The thing every angle on this kept landing on' \u2014 carries no number and is stated as a claim about the problem, which is the permitted form. user_notes.md confirms diversity.py was deliberately not run in fast mode."
+        },
+        {
+          "text": "Does not present a biological/organism analogy with a specific citation (biomimicry is a deep-mode-only lens); any borrowed mechanism appears as a stated principle",
+          "passed": true,
+          "evidence": "No analogy carries a citation. The one outside reference is de-cited to a bare principle: 'the reason people show up to conferences they think are mediocre.' user_notes.md records that the two candidates resting on outside claims (clinical shift handover, attendance at religious services) were restated as principles and folded into options 3 and 4 because fast mode has no search budget."
+        }
+      ],
+      "notes": [
+        "894 words",
+        "MODE: fast",
+        "subagents 0, searches 0"
+      ]
+    },
+    {
+      "eval_id": 4,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8889,
+        "passed": 8,
+        "failed": 1,
+        "total": 9,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+          "passed": true,
+          "evidence": "Genuine mechanism differences present: 'Try a different cadence ... Quarterly-but-excellent plus a strong written monthly update', 'Put something at stake. A live decision', 'Delay the recording ... if the recording is posted instantly, live attendance has no advantage', 'Rotate the stage. Let ICs and teams present their own work'."
+        },
+        {
+          "text": "At least one option questions the premise \u2014 whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+          "passed": true,
+          "evidence": "'Monthly is an awkward interval ... Quarterly-but-excellent plus a strong written monthly update beats a mediocre monthly ritual. This is worth considering seriously rather than treating cadence as fixed.' Also 'Attendance is a useful thermometer; don't break the thermometer.'"
+        },
+        {
+          "text": "Does not treat declining attendance as purely a content-quality problem",
+          "passed": true,
+          "evidence": "Opens with three separated causes \u2014 low information value, low stakes / no consequence, friction \u2014 and explicitly notes 'recording always available so live attendance is strictly dominated'."
+        },
+        {
+          "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+          "passed": true,
+          "evidence": "wc -w = 604 words, 185 fewer than the with_skill run (789). Four light headings, no process apparatus."
+        },
+        {
+          "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+          "passed": true,
+          "evidence": "NON-DISCRIMINATING. user_notes.md line 1: 'MODE: none'. metrics.json: total_tool_calls = 3, subagents_spawned = 0, web_searches = 0."
+        },
+        {
+          "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+          "passed": true,
+          "evidence": "'Cheapest way to tell them apart: look at who is missing. If it's clustered by team or time zone, it's friction. If it's spread evenly and skews senior, it's value. If newer people attend and long-tenured people don't, it's \"I've seen this movie ten times\" \u2014 also value, but the fix is different.'"
+        },
+        {
+          "text": "The diagnosis block is a signpost rather than a section: roughly 3 lines or under ~120 words, not a third of the response",
+          "passed": false,
+          "evidence": "BORDERLINE FAIL. It is structurally a section, not a signpost: a bolded heading ('**Quick diagnosis \u2014 three very different causes**') over three numbered causes plus a 'who is missing' discriminator paragraph \u2014 120 words over 7 lines, and 20% of the 604-word response. It sits exactly at the '~120 words' bound rather than under it, and fails the 'roughly 3 lines' and 'signpost rather than a section' tests. Called against the baseline for consistency with the same call on eval 2's baseline (174 words)."
+        },
+        {
+          "text": "Does not quote a diversity score or any other internal process metric to the reader",
+          "passed": true,
+          "evidence": "NON-DISCRIMINATING / vacuous. No pipeline was run, so no process metric could be quoted."
+        },
+        {
+          "text": "Does not present a biological/organism analogy with a specific citation (biomimicry is a deep-mode-only lens); any borrowed mechanism appears as a stated principle",
+          "passed": true,
+          "evidence": "NON-DISCRIMINATING / vacuous. No analogy of any kind appears; the response is written entirely in org-behaviour terms. A baseline has no biomimicry lens to leak."
+        }
+      ],
+      "notes": [
+        "604 words",
+        "MODE: none",
+        "subagents 0, searches 0"
+      ]
+    },
+    {
+      "eval_id": 5,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 27,
+        "errors": 1
+      },
+      "expectations": [
+        {
+          "text": "Does not propose compensation, equity refreshers, or pay-band fixes as a primary answer \u2014 the user explicitly ruled money out",
+          "passed": true,
+          "evidence": "No comp mechanism appears anywhere in the six options or the cut list. The nearest option explicitly refuses the axis: 'Give them something with no market price ... You lose every contest with a number attached, so stop entering them. What a much larger company structurally cannot supply is a claim that isn't fungible.' DISCRIMINATING: the baseline fails this."
+        },
+        {
+          "text": "Offers at least one explanation for the 18-month timing specifically, rather than treating this as generic attrition",
+          "passed": true,
+          "evidence": "Four named clocks in the opener: '(a) it's a calendar artefact, a vesting event or a hiring-cohort spike rather than an experience curve; (b) the build they were hired for shipped and the job went custodial; (c) someone above them stopped growing the size of decisions they own; (d) the company stopped opening new hard problems faster than they finish them.' Option 2 makes the timing arithmetic: 'A strong person consumes the hard problems that existed when they arrived, at a rate ... a fixed-tenure exit is arithmetic, not sentiment.'"
+        },
+        {
+          "text": "Options differ in mechanism (what changes about the job, the structure, or who decides) rather than being a list of perks and culture initiatives",
+          "passed": true,
+          "evidence": "Six distinct mechanisms: scheduled subsystem rebuild (work supply), problem-stock accounting (roadmap shape), hiring intake bias (selection), procedural standing for the written record (decision rights), forced-absence drill (dependency testing), non-fungible claims such as a standing veto or first refusal (property rights). No perk or culture initiative appears; culture-shaped ideas are in the cut list ('Circulating the rival's cancelled projects and layoff history internally')."
+        },
+        {
+          "text": "At least one option questions the framing \u2014 whether losing senior engineers at 18 months is necessarily the problem to solve, or whether the real issue sits upstream",
+          "passed": true,
+          "evidence": "Option 3 relocates it upstream to hiring: 'The 18-month curve is partly set at the offer stage ... Bias intake toward net sellers of prestige.' Option 2 questions whether it is a problem at all: 'If it doesn't, the honest version is that you're a two-year stop for this profile and should staff for that deliberately.' The opener also raises the calendar-artefact reading."
+        },
+        {
+          "text": "States what has to be true for the main recommendations, or what evidence would confirm the diagnosis",
+          "passed": true,
+          "evidence": "Every one of the six options carries an explicit 'What has to be true' line (e.g. 'your subsystems are small enough that a rebuild is a quarter, not a year'; 'the resource you're granting a claim on is genuinely scarce and genuinely wanted'). The opener gives the discriminating test: 'plot every departure against two dates \u2014 their start date, and the date their biggest project shipped or got cancelled.'"
+        },
+        {
+          "text": "Names who inside the company would actually have to do each thing",
+          "passed": true,
+          "evidence": "'Who runs it' on all six, and differentiated rather than boilerplate: 'whoever owns the roadmap has to protect the slot. An engineering manager cannot fund this out of slack'; 'the CEO. This is a company-shape decision'; 'whoever writes offers, with the hiring manager'; 'a tech lead with standing to reject a change on procedural grounds'; 'an engineering manager, next month'; 'you, personally.' DISCRIMINATING: the baseline names an owner for only one item."
+        },
+        {
+          "text": "Does not present unverified claims about named companies or studies as established fact",
+          "passed": true,
+          "evidence": "Four borrowed mechanisms, all checkable and accurately characterised: Ise Jing\u016b rebuilt every 20 years on an alternate site for ~1,300 years; Torrens register as conclusive evidence of title, South Australia Real Property Act 1858; FOGBANK reconstruction at Y-12 at 'roughly $69M' over 'the better part of a decade'; guaranteed observing time reserved for instrument-building teams outside the competitive proposal process. No statistics about retention, no named employers, no survey figures. user_notes.md records that the Torrens caveat sub-claim failed verification and was dropped rather than softened."
+        },
+        {
+          "text": "Proportionate and structurally disciplined: no ceremonial headings, no internal process metrics quoted, no self-disqualifying option presented as a live one",
+          "passed": true,
+          "evidence": "1539 words (wc -w); every heading is an option name with substance under it; no diversity score or generator count reaches the reader \u2014 the convergence is stated as a claim about the problem ('the only reliable instrument is removing them and watching what breaks'), which is what the skill's convergence-as-claim rule asks for. No option concedes in its own description that it isn't available to this asker. FLAG, not a fail: the cut list disqualifies the alumni-claim idea because 'it manages the loss rather than reducing it, so it isn't an answer to the question you asked' \u2014 a criterion that applies equally to live options 4 and 5, which are also loss-management rather than loss-prevention. The cut list also runs 6 one-liners against the Strategic row's 3-5 ceiling."
+        },
+        {
+          "text": "Gives an actual recommendation of where to start, not just a menu",
+          "passed": true,
+          "evidence": "'What I'd look at first, and what would change that: the two-date plot, then the absence drill, then the problem-stock count \u2014 which is not the order above,' with reasons for each and two named unknowns that would change it."
+        }
+      ],
+      "notes": [
+        "1539 words",
+        "MODE: deep",
+        "subagents 6, searches 8"
+      ]
+    },
+    {
+      "eval_id": 5,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.7778,
+        "passed": 7,
+        "failed": 2,
+        "total": 9,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 8,
+        "errors": 1
+      },
+      "expectations": [
+        {
+          "text": "Does not propose compensation, equity refreshers, or pay-band fixes as a primary answer \u2014 the user explicitly ruled money out",
+          "passed": false,
+          "evidence": "Direct violation, twice over. The 'Structural, do these' list opens with '**Annual equity refresh starting at month 12** \u2014 not at the 4-year cliff ... This is the single highest-leverage fix,' and continues '**Secondary liquidity at the next round for anyone past 24 months.**' An entire section is devoted to reopening comp: 'Second: I'd push back gently on \"it's not the money\".' The pushback is substantively good \u2014 the year-one-benchmark vs annual-refresh-grant argument is the sharpest single analytical move in either config, and it is offered as 'the cheapest thing to rule out, not the whole story' \u2014 but the assertion is about whether a money fix is presented as a primary answer, and 'the single highest-leverage fix' is exactly that."
+        },
+        {
+          "text": "Offers at least one explanation for the 18-month timing specifically, rather than treating this as generic attrition",
+          "passed": true,
+          "evidence": "Two mechanisms, both timing-specific: 'The decision is made around month 11\u201314 and executed at 18. Search, interview loops, notice periods ... run 4\u20137 months for a senior person ... your intervention window is month 6\u201312, not month 17 with a counteroffer.' And 'The one-year cliff has cleared ... enough tenure to look committed, not so much that a move looks like churn.'"
+        },
+        {
+          "text": "Options differ in mechanism (what changes about the job, the structure, or who decides) rather than being a list of perks and culture initiatives",
+          "passed": true,
+          "evidence": "The recommendations span comp structure, career structure ('Build a real staff/principal IC track'), liquidity, diagnostics ('Stay interviews at month 9, run by someone who isn't their manager'), work allocation ('Maintain a \"hard problems\" list and give seniors first claim on it'), decision access ('Put senior engineers in the room where strategy is decided'), and external legitimacy ('Sponsor external visibility'). Perks are explicitly rejected: 'More perks, offsites, culture programming ... reads as insulting.'"
+        },
+        {
+          "text": "At least one option questions the framing \u2014 whether losing senior engineers at 18 months is necessarily the problem to solve, or whether the real issue sits upstream",
+          "passed": true,
+          "evidence": "'One reframe worth sitting with. Some of this may be fine ... The real question is *which* seniors you're losing. If you're losing the median and keeping your top three, the system is working.' Plus 'It may also be more honest to design for a realistic 3-year tenure ... than to chase a 6-year tenure you're unlikely to get.' Also relocates upstream: 'you don't have a retention problem \u2014 you have a management problem wearing a retention costume.'"
+        },
+        {
+          "text": "States what has to be true for the main recommendations, or what evidence would confirm the diagnosis",
+          "passed": true,
+          "evidence": "Strong on the evidence half of the disjunct: a whole 'diagnose before you prescribe' section with four named instruments and what each would prove \u2014 'Triangulate on destination, not stated reason' with three destination-to-diagnosis mappings; 'Interview the stayers'; 'Check whether it's concentrated ... a 20-minute spreadsheet exercise'; 'Call the alumni at 6\u201312 months out ... when did you first seriously think about leaving.' Load-bearing assumptions per recommendation are not stated, but the assertion is satisfied by either branch."
+        },
+        {
+          "text": "Names who inside the company would actually have to do each thing",
+          "passed": false,
+          "evidence": "Only one item names an owner \u2014 'Stay interviews at month 9, run by someone who isn't their manager,' and that is a negative constraint rather than a named role. The equity refresh, the staff/principal track, the secondary-liquidity programme, the hard-problems list, the strategy-room access, and the external-visibility sponsorship all arrive ownerless. user_notes.md concedes the gap for the highest-cost item without the response doing so: 'Secondary liquidity ... requires board and investor buy-in ... it is not a decision the reader can make unilaterally' \u2014 that caveat is in the notes, not in the answer."
+        },
+        {
+          "text": "Does not present unverified claims about named companies or studies as established fact",
+          "passed": true,
+          "evidence": "Actively self-policing. Closing note: 'figures like \"68% cite limited growth opportunities\" circulate widely in recruiting-industry content but trace back to vendor surveys with thin methodology ... I wouldn't quote the specific percentages to your board.' No study is cited as fact; the only named companies are used generically and accurately ('Someone at Google or Meta gets a new RSU grant every year stacked on top of the old one')."
+        },
+        {
+          "text": "Proportionate and structurally disciplined: no ceremonial headings, no internal process metrics quoted, no self-disqualifying option presented as a live one",
+          "passed": true,
+          "evidence": "1366 words (wc -w). Six headings, all carrying substance \u2014 none is a ceremonial container. No pipeline was run (user_notes.md line 1: 'MODE: none'; metrics.json subagents_spawned = 0), so no process metric could leak. Ideas that disqualify themselves are placed in a 'Don't bother with' list rather than presented as live ('Counteroffers at month 18 ... teach the org that resigning is the way to get paid')."
+        },
+        {
+          "text": "Gives an actual recommendation of where to start, not just a menu",
+          "passed": true,
+          "evidence": "'**If you do only three things:** run the manager-concentration check, model 3-year total comp against a real competing offer, and start stay interviews at month 9.' Also sequenced inline: 'Run this before anything else; it's a 20-minute spreadsheet exercise and it changes everything downstream.'"
+        }
+      ],
+      "notes": [
+        "1366 words",
+        "MODE: none",
+        "subagents 0, searches 3"
+      ]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.9445,
+        "stddev": 0.0786,
+        "min": 0.8889,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.8334,
+        "stddev": 0.0786,
+        "min": 0.7778,
+        "max": 0.8889
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "delta": {
+      "pass_rate": 0.1111,
+      "time_seconds": 0.0,
+      "tokens": 0.0
+    }
+  },
+  "notes": [
+    "SCORES. Eval 4: with_skill 8/9 (0.8889) vs baseline 8/9 (0.8889) \u2014 a dead heat, each failing a different assertion. Eval 5 (held out): with_skill 9/9 (1.0000) vs baseline 7/9 (0.7778). Cost on eval 5: 27 tool calls / 6 subagents / 8 web searches vs the baseline's 8 / 0 / 3.",
+    "EVAL 5 \u2014 the advantage is real but narrow, one-sided, and partly an artefact of assertion wording. What the skill genuinely did better: every one of six options carries a differentiated named owner ('An engineering manager cannot fund this out of slack'; 'the CEO. This is a company-shape decision'; 'you, personally'), an explicit load-bearing assumption, and a failure mode including self-undercutting ones ('it degrades easily into a rationalisation for hiring people with fewer options, which is a different and worse company'). Its best idea has no baseline counterpart \u2014 treating unsolved problems as a stock with a depletion rate: 'how many genuinely unsolved, consequential problems are open right now, and how many people do you have who could lead one? Below 1:1 and the 18-month number is your answer rather than your mystery.' Four borrowed mechanisms (Ise Jing\u016b, Torrens, FOGBANK, guaranteed observing time) were search-verified and the one sub-claim that failed verification was dropped. The baseline, by contrast, is the high-quality blog answer: staff/principal track, stay interviews, hard-problems list, sponsor conference talks, secondary liquidity.",
+    "EVAL 5 \u2014 where the skill LOST, and it matters more than the score. It did not match the baseline's pushback on 'it's not the money'; it did not attempt it. The baseline's refresh-grant argument is the single sharpest analytical move in either config: it takes the user's own evidence ('we benchmark and we match') and shows the instrument is structurally blind \u2014 benchmarking compares year-one offers while big companies compete on years two-to-four via annually stacked RSU refreshers \u2014 then hands over a one-week falsification test ('model 3-year total comp ... If you're 20\u201340% behind by year three, you don't have a mystery, you have a comp structure that's blind at the point where it matters'), and explicitly frames it as the cheapest hypothesis to rule out rather than a claim that comp is the cause. The skill's answer never touches comp. Its nearest option, 'Give them something with no market price', opens 'You lose every contest with a number attached, so stop entering them' \u2014 it CONCEDES the premise rather than testing it. So with_skill passes assertion 1 by staying off the topic entirely, which is obedience, not insight. Note the direct conflict: the skill's own Phase 0 doctrine says the user's framing is the strongest anchor in the room, and on this problem the baseline is the config that acted on that doctrine.",
+    "EVAL 5 \u2014 target drift is visible in the shipped answer, not just the pool. Roughly half the delivered answer addresses surviving a departure rather than preventing one. Option 4 (make the written record conclusive) and option 5 (schedule the absence before it happens) reduce the damage of losing a senior engineer; they do not reduce the losing. The response's own cut list disqualifies the alumni-retainer idea on exactly that ground \u2014 'it manages the loss rather than reducing it, so it isn't an answer to the question you asked' \u2014 while options 4 and 5 survive under the identical defect. That inconsistency is the residue of the Phase 0 anchoring failure described below, and the run did not catch it.",
+    "EVAL 5 \u2014 the baseline is also the more actionable answer. Its diagnostic section is stronger than the skill's: destination-triangulation mapping three exit destinations to three different diagnoses (bigger scope = scope ceiling; calmer job = burnout; more prestigious name = belief problem), 'interview the stayers, not the leavers', a 20-minute manager-concentration check, and alumni calls asking 'when did you FIRST seriously think about leaving' rather than 'why did you leave'. The skill has the two-date plot and 'ask the people who passed 30 months', which is thinner. The baseline is also shorter (1366 vs 1539 words) at a quarter of the tool cost. On a blind read these two answers are close, and a reader wanting a next step on Monday would plausibly take the baseline. Verdict on overfitting: the skill's structural discipline generalises to a held-out domain; its claimed edge on premise-challenge and on-target divergence did not.",
+    "STRUCTURAL BUDGET TABLE \u2014 it controlled shape reliably and did not control size at all. Eval 5 (Strategic, 1539 words): 6 options, 3 bullets each (18 total), closing read with ranking \u2014 but the cut list runs 6 one-liners against the 3-5 ceiling. Eval 4 (Light, 894 words): 5 options at the ceiling, exactly 2 bullets each, cut list as a single line, closing read skipped \u2014 total row compliance, and still 894 words against the assertion's ~800-word bound and 48% longer than the 604-word baseline. So v0.5.0's premise (count structure instead of words, because runs held to a word budget overshoot by 30% while believing they complied) is half-vindicated: structure was followed almost to the cell, and the length overshoot happened anyway. The Strategic run breached exactly one cell \u2014 the cut-list ceiling \u2014 suggesting the table is being read as a shape sketch rather than as binding.",
+    "V0.4.0 REGRESSION CHECK \u2014 the fixes held. HELD: convergence-as-claim in both with_skill runs with no generator counts ('The thing every angle on this kept landing on'; 'Coming at this from several unrelated directions, the same move kept appearing'). HELD: ambiguity disclosed in line 1 of both with_skill responses. HELD: no diversity score or process metric reached any reader. HELD: rankings promised are rankings given \u2014 eval 5 closes with a start recommendation that deliberately disagrees with presentation order and flags the disagreement.",
+    "NON-DISCRIMINATING ASSERTIONS \u2014 14 of 18 across the two evals produce the same verdict for both configs. Eval 4: 7 of 9 (1,2,3,5,6,8,9). Eval 5: 7 of 9 (2,3,4,5,7,8,9). Worse, 3 of those 14 are structurally incapable of discriminating: eval 4's MODE CHECK, 'no process metric' and 'no cited biomimicry' all pass VACUOUSLY for a baseline that runs no pipeline and therefore cannot exhibit the defect. Those three assertions inflate the BASELINE's pass rate, not the skill's \u2014 eval 4's baseline scores 8/9 largely because three of its nine assertions are about defects only the skill can commit.",
+    "DISCRIMINATING ASSERTIONS \u2014 blunt accounting. Four of 18 discriminate. Three favour the skill: eval 4 #7 (diagnosis as signpost, 99 words vs the baseline's 120-word section); eval 5 #1 (does not propose comp), #6 (names who runs each thing). One goes AGAINST the skill: eval 4 #4 (894 words vs ~800). Of the three that favour the skill, eval 5 #6 is an assertion written around my own fix rather than an independent quality measure \u2014 it is the Phase 4 template's 'Who runs it' line turned into a pass/fail criterion, and a baseline has no reason to produce it. Eval 5 #1 is a second borderline case: it is phrased from the user's stated constraint, but it rewards not raising comp at all, which is what the skill did and which I argue above is the weaker answer. So the honest independent-quality margin reduces to almost nothing. The assertion set is exhausted as a discriminator; the blind A/B comparison is now the load-bearing measurement.",
+    "NEW ISSUE (a) \u2014 PHASE 0 SELF-ANCHORING, the most important finding of the iteration. The eval-5 agent reports that its own sharpened brief restated the function as 'continuous access to accumulated system-specific judgement', and all six generators followed the noun 'judgement': the 48-candidate pool came back roughly 80% knowledge-preservation and almost 0% 'why does this person stop wanting to be here'. Only the Phase 2 category-negation round recovered on-target material, and it produced the three ideas that became options 2, 3 and 6 \u2014 the three that actually answer the question asked. Without Phase 2 the deliverable would have been a knowledge-management memo in response to a people question. The skill warns that the user's framing is the strongest anchor in the room; it does not warn that YOUR OWN Phase 0 restatement is a tighter anchor, because it is the literal prompt handed to the blind generators, and unlike the user's framing there is no second party to notice it drifted. The agent caught it only because it inspected what the pool was MISSING rather than what it contained, which the skill nowhere instructs. Phase 0 is advertised as the highest-leverage step; on this evidence it is also the highest-variance single point of failure, and Phase 2 is currently the only backstop \u2014 which makes 'one negation round' a load-bearing minimum rather than an optional extra. Residue survived into the shipped answer (see the options 4/5 drift above).",
+    "NEW ISSUE (b) \u2014 'PRESENT ONLY LIVE OPTIONS' (Phase 4) vs 'YOU DON'T HAVE TO CUT THE UNSTAFFABLE ONES' (Phase 3 step 7). The eval-5 run identified this as a contradiction and resolved it by inventing a rule the skill does not contain \u2014 'needs someone senior to the asker = still live; needs a different company = cut' \u2014 and passed on that improvisation. The skill text states no decision rule, so the assertion outcome tracks whichever improvisation a run happens to pick. This needs a stated rule; the current wording makes the v0.4.0 fix a coin flip.",
+    "NEW ISSUE (c) \u2014 LIGHT ROW: 2 BULLETS vs A TEMPLATE OF 3 REQUIRED LINES. The budget table's Light row allows 2 bullets per option while the Phase 4 template lists three sub-lines \u2014 'What has to be true', 'Failure mode / cost', and 'Who runs it', the last marked required whenever an idea needs people or a mandate the asker doesn't have. Three required lines against a two-bullet ceiling. The eval-4 run resolved it via the 'template is a floor, not a form' escape, keeping 2 bullets and folding ownership into option prose ('somebody spends and reports back on it', 'someone coaches the presenting teams'), and reports this worked only because the asker plainly owns the meeting. On a Light question whose ideas need outside mandates there is no clean resolution and the two constraints simply collide.",
+    "NEW ISSUE (d) \u2014 LIGHT SKIPS THE CLOSING READ, LEAVING NO POINT OF VIEW. The closing read is where 'what I'd look at first, and what would change that' lives, and the Light row says skip it, so a literal Light answer ends as a menu with no recommendation. The eval-4 run improvised: it made the diagnosis opener carry the 'cheapest thing to check first' job ('Worth knowing before you pick a fix: is the drop uniform or concentrated? Pull the last six months of attendance split by team, timezone, and tenure'). The skill nowhere says the diagnosis opener is meant to absorb that role, and the agent's own note is that 'a reader could reasonably conclude the Light answer is supposed to end with no point of view at all'. Sharpening this: eval 5's assertion 'Gives an actual recommendation of where to start, not just a menu' would be UNSATISFIABLE by construction under the Light row. Either the Light row needs a one-line recommendation carved out of the skip, or the skip needs to be stated as 'skip the ranking, keep the read'.",
+    "NEW ISSUE (e) \u2014 THE DIVERSITY SCRIPT'S SKIP CONDITION MATCHES EVERY DEEP POOL BY CONSTRUCTION. Phase 3 step 1 instructs running diversity.py, then states it should be skipped on pools of terse one-line mechanisms because it reports near-100% distinct regardless of content \u2014 a condition the text scopes to fast mode. But lenses.md's generator brief asks for 'the mechanism in one sentence', so every deep-mode pool is a pool of one-line mechanisms and meets the skip condition. The script is simultaneously mandated and skip-conditioned in the only mode where it is supposed to earn its keep. The deep run ran it anyway and reproduced the documented false negative: eval 5 scored 53 ideas at 96% distinct while missing four separate mechanism-level convergences (scheduled absence in 4 of 6 generators, paired decision rights in 3, encoding judgement as executable constraints in 3, capturing rejected alternatives at commit time in 3). Its entire yield was lexical near-duplicate pairs already caught by reading. Marginal contribution to the answer: zero. This is now three iterations of the same result and the script should either be cut from deep mode or reduced to an explicitly-optional duplicate-pair check.",
+    "SMALLER ITEMS WORTH CARRYING FORWARD. (1) The eval-5 agent argues the deep gate is stated as necessary but functions as sufficient: three of five conditions held on an ordinary management question, and condition 2 ('user has already tried the obvious answers / says they're stuck') is satisfied by almost anyone who bothers to ask an open question \u2014 which is exactly how deep fired on the holdout at 3.4x the baseline's tool cost for a contested win. (2) Eval 5's diagnosis block runs 130 words plus a separate 44-word ambiguity line, against Phase 4's '~3 lines, a signpost not a section' \u2014 the eval-5 agent's point that the template gives no guidance on merging the ambiguity line and the diagnosis line when they overlap is correct and shows up as length."
+  ]
+}

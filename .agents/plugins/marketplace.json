@@ -1,0 +1,22 @@
+{
+  "name": "creative-problem-solving-marketplace",
+  "interface": {
+    "displayName": "Creative Problem Solving"
+  },
+  "plugins": [
+    {
+      "name": "creative-problem-solving",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/yaniv-golan/creative-problem-solving.git",
+        "path": "./creative-problem-solving",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "productivity"
+    }
+  ]
+}

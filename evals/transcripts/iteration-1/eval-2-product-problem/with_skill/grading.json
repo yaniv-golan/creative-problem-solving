@@ -1,0 +1,51 @@
+{
+  "eval_id": 2,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Runs the lighter/fast mode rather than a full multi-agent deep run, or explicitly justifies going deep",
+      "passed": true,
+      "evidence": "Ran deep ('I ran this as a deep pass: web research... then six independent generators... 48 candidates in, 8 out'), so the first branch fails; but the second branch is satisfied in user_notes.md: 'Mode chosen: DEEP. The skill's rule is \"fast for a quick side question, deep for a real strategic problem, anything the user will act on.\" A 60% loss at a named funnel step, with two remedies already tried and budget clearly attached, is unambiguously the second.' Passing on the escape hatch only - the justification lives in reviewer notes, not the user-facing answer, and the eval's expected_output says fast mode was the intended behaviour."
+    },
+    {
+      "text": "Reframes the problem as a function rather than accepting 'fix the verification step' at face value",
+      "passed": true,
+      "evidence": "'Sharpened brief: A stranger has decided they want in. You need enough confidence about who they are to accept the risk of admitting them; they need to reach the thing they came for. Today all of that confidence is purchased up front, before they've received anything.' Form ('verification step') stripped; the words verify/verification/form/funnel were banned for generators per phase-artifacts.md."
+    },
+    {
+      "text": "Explicitly avoids re-proposing the two things the user already tried",
+      "passed": true,
+      "evidence": "Opens by disqualifying both: 'Shortening the form and adding a progress bar are both persuasion fixes - they assume the person wants to continue and is being worn down. The KYC research says the single largest abandonment cause is \"I don't have the document with me right now,\" which persuasion cannot touch.' Neither reappears in the eight options, and 'cut fields' is listed in the set-aside baseline."
+    },
+    {
+      "text": "Produces options that differ in mechanism, not just in UI wording or visual design",
+      "passed": true,
+      "evidence": "Eight mechanically distinct options: collateralised third-party vouching; correct-denial screening (signal from rejection not production); reverse authentication (house recites non-public facts first); temporal deferral keyed to inferred physical context; passive-accrual barrier dissolution; outbound payment-rail assurance; task-intrinsic data harvested as corroboration; exposure pricing instead of certainty maximisation. No option is a copy or visual-design change."
+    },
+    {
+      "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+      "passed": true,
+      "evidence": "Multiple. 'Ask at an hour they can answer' - 'deliberately decline to ask, holding the exact state and reopening it when they're somewhere they can comply... Deferred registration moves the ask later in the sequence; this moves it later in the day.' 'The barrier dissolves from your side' asks nothing at all. 'Manage the exposure, not the certainty' questions whether the certainty is needed: 'The 60% is currently a population-wide behavioural tax paid to avoid a per-capita cost you have never actually quantified.'"
+    },
+    {
+      "text": "Does not pad the answer with framework section headings that contain no mechanism",
+      "passed": true,
+      "evidence": "Every heading carries a mechanism; the process sections (Cut and why, Set diversity, On prior art, What would change my ranking) each carry content rather than scaffolding. The one line of process leakage is 'Set diversity: 6.72 effectively distinct directions out of 8 (84%)', which is opaque to the reader but is a single sentence, not a padded section."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_tokens": 110325,
+    "duration_ms": 692221,
+    "total_duration_seconds": 692.2
+  },
+  "execution_metrics": {
+    "total_tool_calls": 26,
+    "errors_encountered": 1
+  }
+}

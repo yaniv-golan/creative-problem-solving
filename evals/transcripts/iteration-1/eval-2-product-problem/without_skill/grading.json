@@ -1,0 +1,51 @@
+{
+  "eval_id": 2,
+  "config": "without_skill",
+  "expectations": [
+    {
+      "text": "Runs the lighter/fast mode rather than a full multi-agent deep run, or explicitly justifies going deep",
+      "passed": true,
+      "evidence": "No multi-agent run at all. metrics.json: 3 tool calls, 41,456 tokens, 102.9s. This assertion auto-passes for any baseline and therefore cannot discriminate."
+    },
+    {
+      "text": "Reframes the problem as a function rather than accepting 'fix the verification step' at face value",
+      "passed": true,
+      "evidence": "Does not accept the step at face value. 'Shortening the form and adding a progress bar are both friction fixes. They assume the user is trying to get through and finding it tedious. At verification, that's usually the wrong model', reframed as 'it requires the user to leave your product and come back. That single property generates failure modes the rest of your onboarding doesn't have.' Section 1 questions the function directly: 'Ask what verification is actually for. If it's bot prevention, a CAPTCHA or device fingerprinting may cost you 2% instead of 60%.' Weaker and less structural than the with_skill reframe, but it clears the assertion as written."
+    },
+    {
+      "text": "Explicitly avoids re-proposing the two things the user already tried",
+      "passed": true,
+      "evidence": "Opens by dismissing both as friction fixes and explaining why they didn't move the number; neither shortening the form nor a progress bar appears anywhere in the six-part idea bank."
+    },
+    {
+      "text": "Produces options that differ in mechanism, not just in UI wording or visual design",
+      "passed": true,
+      "evidence": "Options span genuinely different mechanisms: gating policy (progressive verification, time-boxing), delivery channel (OTP vs magic link, autofill, SMS fallback, passkeys), infrastructure (SPF/DKIM/DMARC, sender reputation, p95 latency, expiry windows, session persistence), and recovery (staged resend, state preservation). Some items are copy/UI ('Say why', 'Sender identity', dark-mode rendering) but the set is not just wording."
+    },
+    {
+      "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+      "passed": true,
+      "evidence": "Section 1 heading is literally 'Stop requiring verification here at all': 'The highest-leverage move is usually not making the step better - it's moving or removing it... Progressive verification. Let people in unverified. Gate only the actions that genuinely need a verified identity... Verify on the way out, not the way in.' Reinforced in the two-week plan: 'Have the conversation about whether this gate needs to exist at signup at all. That's the change with the biggest ceiling.'"
+    },
+    {
+      "text": "Does not pad the answer with framework section headings that contain no mechanism",
+      "passed": true,
+      "evidence": "No empty scaffolding. Every section resolves to concrete instructions (a five-bucket instrumentation table with detection method, a dated two-week plan, named config items). It also catches a measurement artifact the with_skill run missed entirely: 'Verified later, counted as lost... It's not unusual to find 10-15 points of the \"loss\" is a reporting artifact.'"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_tokens": 41456,
+    "duration_ms": 102902,
+    "total_duration_seconds": 102.9
+  },
+  "execution_metrics": {
+    "total_tool_calls": 3,
+    "errors_encountered": 0
+  }
+}

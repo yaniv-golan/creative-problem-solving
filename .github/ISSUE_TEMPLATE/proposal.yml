@@ -1,0 +1,60 @@
+name: Proposal — change the pipeline
+description: Add or change a lens, a phase, a rule, or a report constraint.
+labels: ["proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The bar here is deliberately awkward: this skill exists because most
+        creativity-framework prompting turns out not to work, and adding structure is
+        the easiest way to make output *longer* without making it *better*.
+
+        Before writing, please skim
+        [`references/evidence.md`](https://github.com/yaniv-golan/creative-problem-solving/blob/main/creative-problem-solving/skills/creative-problem-solving/references/evidence.md)
+        and [`DESIGN-NOTES.md`](https://github.com/yaniv-golan/creative-problem-solving/blob/main/creative-problem-solving/skills/creative-problem-solving/DESIGN-NOTES.md).
+        Several shortcuts have already been tried, and the notes record what they cost.
+
+  - type: textarea
+    id: change
+    attributes:
+      label: What you want to change
+      description: The specific edit — which phase, which rule, which lens.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: What makes you think it works
+      description: >
+        A run where the current pipeline fails and yours doesn't, a published result,
+        or an eval you're willing to add. "It seems like it would help" is honest but
+        not yet a case.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: separates
+    attributes:
+      label: Does this make the modal answer harder to reach, or decorate a single sweep?
+      description: >
+        The organising principle of the skill. Structure that makes the obvious answer
+        harder to reach for helps; structure that decorates a single sweep produces longer
+        output that scores better and isn't better.
+      options:
+        - Makes the modal answer harder to reach
+        - Decorates a single sweep
+        - Neither — it changes pruning, reporting or tooling
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: cost
+    attributes:
+      label: What it costs
+      description: >
+        Added tokens, added wall-clock, added SKILL.md lines (the file has a 500-line
+        ceiling), or a rule a contributor now has to remember.
+    validations:
+      required: true

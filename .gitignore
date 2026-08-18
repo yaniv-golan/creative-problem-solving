@@ -1,0 +1,26 @@
+# Build output
+dist/
+_site/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editors and OS
+.DS_Store
+.idea/
+*.swp
+
+# Secrets. tests/ and CONTRIBUTING.md both tell maintainers to put a Claude auth token in
+# a .env here for `cowork-harness --dotenv .env`, so this line is load-bearing.
+.env
+.env.*
+!.env.example
+
+# Local agent state
+.claude/settings.local.json
+
+# Maintainer scratch — working notes, tooling gotchas, anything not for publication
+docs/internal/

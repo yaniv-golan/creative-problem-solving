@@ -1,0 +1,42 @@
+{
+  "eval_id": 4,
+  "config": "without_skill",
+  "expectations": [
+    {
+      "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+      "passed": true,
+      "evidence": "Genuine mechanism differences present: 'Try a different cadence ... Quarterly-but-excellent plus a strong written monthly update', 'Put something at stake. A live decision', 'Delay the recording ... if the recording is posted instantly, live attendance has no advantage'. Weaker than with_skill: roughly half the list ('Shrink it', 'Rotate the stage', 'Unfiltered Q&A', 'Move the news out') is format or content improvement."
+    },
+    {
+      "text": "At least one option questions the premise — whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+      "passed": true,
+      "evidence": "'Monthly is an awkward interval ... Quarterly-but-excellent plus a strong written monthly update beats a mediocre monthly ritual. This is worth considering seriously rather than treating cadence as fixed.' Plus 'Attendance is a useful thermometer; don't break the thermometer' — treating turnout as signal rather than target."
+    },
+    {
+      "text": "Does not treat declining attendance as purely a content-quality problem",
+      "passed": true,
+      "evidence": "Opens with three separated causes — low information value, low stakes / no consequence, friction — and explicitly notes 'recording always available so live attendance is strictly dominated'."
+    },
+    {
+      "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+      "passed": true,
+      "evidence": "wc -w = 604 words, essentially identical to the with_skill run (602). Four light headings, no process apparatus."
+    },
+    {
+      "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+      "passed": true,
+      "evidence": "user_notes.md line 1: 'MODE: none'. metrics.json: total_tool_calls = 3, subagents_spawned = 0, web_searches = 0."
+    },
+    {
+      "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+      "passed": true,
+      "evidence": "'Cheapest way to tell them apart: look at who is missing. If it's clustered by team or time zone, it's friction. If it's spread evenly and skews senior, it's value. If newer people attend and long-tenured people don't, it's \"I've seen this movie ten times\".' Also names the substitution effect (instant recording strictly dominates live)."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

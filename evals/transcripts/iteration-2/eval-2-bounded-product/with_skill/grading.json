@@ -1,0 +1,52 @@
+{
+  "eval_id": 2,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+      "passed": false,
+      "evidence": "Structure is an idea list, not diagnosis-then-prescription. After 'Sharpened brief' and 'The obvious answer (baseline)' it goes straight to eight '###' options; the response itself counts the diagnostic one as an option ('Idea 1 needs whoever can authorise switching the check off for a cohort'). The actual cause decomposition — 'never received / received late / typed it wrong / expired / switched device / deliberately left' — appears in the FINAL section, after all eight fixes."
+    },
+    {
+      "text": "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+      "passed": true,
+      "evidence": "Leads with it: 'Find out whether the 60% is a filter, not a leak ... The number everyone treats as a wound may be the check doing exactly its job — and if the unchecked cohort is net-negative, every idea below this line is a way to buy yourself worse customers faster.'"
+    },
+    {
+      "text": "Does not re-propose shortening the form or adding a progress bar",
+      "passed": true,
+      "evidence": "Both tried fixes are named as the baseline to avoid ('Reduce friction in place ... You've done the first two moves of this already. Everything below is deliberately not that.'); idea 7 explicitly notes it 'directly contradicts the shortening you've already done.'"
+    },
+    {
+      "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+      "passed": true,
+      "evidence": "'Move the check to the first moment of consequence' — relocate it 'from arrival to the first action that is irreversible, public or costs money'; plus 'Provisional record now, reconciliation later' making the check asynchronous."
+    },
+    {
+      "text": "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+      "passed": true,
+      "evidence": "All eight differ at mechanism level: randomised holdout, reverse the message direction (inbound vs outbound), priced capability ceiling instead of an identity gate, async reconciliation, risk-scored exemption, inviter posts a bond (who verifies), fill the dead time, relocate the check. No copy or layout options at all."
+    },
+    {
+      "text": "Handles the ambiguity in 'account-verification' — either asks which kind, or states which reading it assumed and what would change under the others",
+      "passed": true,
+      "evidence": "Second paragraph: \"'account-verification' could mean an emailed/SMS one-time code, a document KYC check, or a card/bank confirmation ... I've assumed the first ... If it's document KYC, ideas 2, 5 and 7 mostly survive and 3 and 4 change shape; if it's a payment confirmation, idea 9 in the cut list moves to the top.\""
+    },
+    {
+      "text": "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+      "passed": false,
+      "evidence": "wc -w = 2056 words, ~1.7x the ~1200-word ceiling. Overhead includes 'Sharpened brief', 'The obvious answer (baseline)', a 5-item cut list, 'Set diversity: 9.9 effectively distinct out of 10', 'On novelty', 'Who'd actually do these', 'What would change my ranking', and a fixed 3-bullet apparatus under each of 8 ideas."
+    },
+    {
+      "text": "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem",
+      "passed": true,
+      "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: subagents_spawned 0. No parallel generators; the 2 recorded web_searches returned nothing (budget exhausted) and no research was used. This assertion targets a full deep multi-agent pass, which did not occur."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 2,
+    "total": 8,
+    "pass_rate": 0.75
+  }
+}
