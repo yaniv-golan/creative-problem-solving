@@ -1,0 +1,57 @@
+{
+  "eval_id": 4,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+      "passed": true,
+      "evidence": "Five genuinely different mechanisms: make attendance value scale with who else is in the room ('four minutes of randomised breakouts of six ... the one thing a recording structurally cannot give you'); put a price and a named producer on the slot with a cancel rule; unbundle status into a written brief and keep only 'the two things that don't survive being written down'; invert who presents ('Put the teams on stage and the execs in the audience'); and stop measuring attendance at all."
+    },
+    {
+      "text": "At least one option questions the premise — whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+      "passed": true,
+      "evidence": "Option 5 attacks the metric directly: 'Attendance was never the goal — knowing where the company is going and being able to ask about it was ... What has to be true: you can accept an answer like \"70% is fine\" and stop working on it.' Option 3 questions the form: 'the honest version of this shrinks the meeting to about 20 minutes.' Line 1 questions whether there is a problem: 'If a big chunk are watching later, this is a much smaller problem than it looks.'"
+    },
+    {
+      "text": "Does not treat declining attendance as purely a content-quality problem",
+      "passed": true,
+      "evidence": "The diagnosis separates content from three non-content causes: 'A drop concentrated in a few teams usually means a standing collision (a customer call, a shift, an awkward hour) or that those teams' leads quietly stopped coming, which everyone below them reads as permission. A drop that tracks tenure means the room stopped feeling like \"us\" as headcount grew.' Content is named as only one branch: 'A slide that's even across everyone points at the content.'"
+    },
+    {
+      "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+      "passed": false,
+      "evidence": "894 words by wc -w against a ~800-word bound — 12% over, and 48% longer than the 604-word baseline, which passed. No scaffolding is present (no ceremonial headings, no visible apparatus), so the failure is length alone. Notable because v0.5.0 replaced word budgets with the structural table precisely on the theory that structure controls length: the structure here is fully compliant with the Light row (5 options at the ceiling, 2 bullets each, cut list as one line, closing read skipped) and the response still overshot. Structural compliance did not deliver proportionality."
+    },
+    {
+      "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+      "passed": true,
+      "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: total_tool_calls = 5, subagents_spawned = 0, web_searches = 0. The gate table in user_notes.md scores at most one of five deep conditions as holding. NON-DISCRIMINATING: the baseline also runs no subagents."
+    },
+    {
+      "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+      "passed": true,
+      "evidence": "'those teams' leads quietly stopped coming, which everyone below them reads as permission' — a social-permission cascade rather than a content or friction story. Plus the convergence claim: 'The thing every angle on this kept landing on: nothing that currently happens in that hour requires being in the hour. Until something does, better slides won't hold anyone.'"
+    },
+    {
+      "text": "The diagnosis block is a signpost rather than a section: roughly 3 lines or under ~120 words, not a third of the response",
+      "passed": true,
+      "evidence": "99 words (wc -w on the block), a single paragraph with an inline bolded lead-in rather than a heading, and 11% of the 894-word response. Under the ~120-word bound and structurally a signpost. DISCRIMINATING: the baseline fails this with a 120-word, 7-line block under its own bolded heading."
+    },
+    {
+      "text": "Does not quote a diversity score or any other internal process metric to the reader",
+      "passed": true,
+      "evidence": "No score, lens name, or generator count reaches the reader. The convergence line — 'The thing every angle on this kept landing on' — carries no number and is stated as a claim about the problem, which is the permitted form. user_notes.md confirms diversity.py was deliberately not run in fast mode."
+    },
+    {
+      "text": "Does not present a biological/organism analogy with a specific citation (biomimicry is a deep-mode-only lens); any borrowed mechanism appears as a stated principle",
+      "passed": true,
+      "evidence": "No analogy carries a citation. The one outside reference is de-cited to a bare principle: 'the reason people show up to conferences they think are mediocre.' user_notes.md records that the two candidates resting on outside claims (clinical shift handover, attendance at religious services) were restated as principles and folded into options 3 and 4 because fast mode has no search budget."
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 1,
+    "total": 9,
+    "pass_rate": 0.8889
+  }
+}

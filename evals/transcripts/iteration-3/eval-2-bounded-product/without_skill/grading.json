@@ -1,0 +1,52 @@
+{
+  "eval_id": 2,
+  "config": "without_skill",
+  "expectations": [
+    {
+      "text": "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+      "passed": true,
+      "evidence": "'First: split the 60%' precedes the idea list, with four buckets (never received / received but never opened / opened but didn't complete / never got that far) plus two diagnostics (median time-to-verify, resend rate)."
+    },
+    {
+      "text": "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+      "passed": true,
+      "evidence": "'If you added verification to stop fraud, part of that 60% may be bots doing exactly what you wanted. Real drop-off and fake drop-off look identical in the aggregate funnel.'"
+    },
+    {
+      "text": "Does not re-propose shortening the form or adding a progress bar",
+      "passed": true,
+      "evidence": "Explicitly argues against the progress bar: 'a progress bar tells people how much work is left, not why to do it.' Nearest miss is 'If you're collecting a phone number purely as a second factor, ask whether you need it at signup at all' — framed as removing a requirement, not shortening the form."
+    },
+    {
+      "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+      "passed": true,
+      "evidence": "'Delete or defer the step (biggest lever, usually) — Let people into the product unverified, in a limited state, and verify at the first moment it actually matters.' Named again as 'The real bet' in the sequencing."
+    },
+    {
+      "text": "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+      "passed": true,
+      "evidence": "Group headings are mechanism-level (defer the step / fix delivery / kill the context switch / recovery / trust), and SSO, magic link, provider failover and deferral are genuine mechanism changes. Diluted, though: roughly 8 of ~20 items are copy or UI-level ('code in the subject line', 'nearly plain-text, one button, minimal images', 'human-ish address, not no-reply@', paste handling, typo detection)."
+    },
+    {
+      "text": "Handles the ambiguity in 'account-verification' — either asks which kind, or states which reading it assumed and what would change under the others",
+      "passed": false,
+      "evidence": "Silently assumes email/SMS OTP throughout ('Email/SMS delivery rate, bounce rate, spam-folder rate') and never names the assumption. Document KYC / ID upload / selfie is never considered, under which most of the delivery and context-switch advice is inapplicable. The closing question — 'why do you verify at that point — regulatory, fraud, deliverability, or just convention?' — asks about purpose, not about which kind of verification."
+    },
+    {
+      "text": "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+      "passed": true,
+      "evidence": "wc -w = 806 words. All five headings carry populated content; no empty scaffolding."
+    },
+    {
+      "text": "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem",
+      "passed": true,
+      "evidence": "user_notes.md line 1: 'MODE: none'. metrics.json: total_tool_calls = 3, subagents_spawned = 0, web_searches = 0."
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 1,
+    "total": 8,
+    "pass_rate": 0.875
+  }
+}

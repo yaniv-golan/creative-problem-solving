@@ -1,0 +1,57 @@
+{
+  "eval_id": 4,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+      "passed": true,
+      "evidence": "Four different mechanisms: change the trigger ('Convene on events, not on the calendar ... Meet within 48 hours of something actually happening'); change who speaks ('Hand the hour to a different team each month ... execs attend as guests'); change what only the room can supply ('Make one thing genuinely undetermined at the start ... that's the one thing a recording structurally can't deliver'); change the medium ('Split the update from the gathering ... the room read the same short memo in silence'). None is a production-quality tweak."
+    },
+    {
+      "text": "At least one option questions the premise — whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+      "passed": true,
+      "evidence": "Option 1 removes the fixed instance entirely — 'Drop the fixed slot ... A monthly cadence guarantees most instances have nothing urgent to carry' — and line 1 questions the metric itself: 'If a good chunk of the other half watches the recording, this is a measurement problem rather than an attendance problem and most of what follows is unnecessary.'"
+    },
+    {
+      "text": "Does not treat declining attendance as purely a content-quality problem",
+      "passed": true,
+      "evidence": "Four causes named, only one of which is content: 'you outgrew the format ...; substitution (the recap already covers it); calendar pressure (it's the only droppable hour in a full week); or it's consequence-free (nothing said there changes anyone's week).' The cut list also refuses the compliance framing: 'Making it mandatory — converts a lapsed-interest problem into a compliance problem.'"
+    },
+    {
+      "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+      "passed": true,
+      "evidence": "wc -w = 789 — under the ~800 ceiling, but only just, and 185 words longer than the 604-word baseline for the same light question. The executing agent's own note claims '~690 words', which understates the actual figure by ~100. Scaffolding is light (four headings, a cut list, a closing read; no process apparatus), so this passes, but it is the weakest pass in the set."
+    },
+    {
+      "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+      "passed": true,
+      "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: subagents_spawned = 0, web_searches = 0, total_tool_calls = 8. The gate table scores ~1 of 5 conditions."
+    },
+    {
+      "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+      "passed": true,
+      "evidence": "Substitution and consequence-freeness are both non-obvious and both actionable: 'substitution (the recap already covers it)' and 'it's consequence-free (nothing said there changes anyone's week)', with a discriminating test — 'skip one month entirely and see what people rebuild on their own. A uniform slow slide points at cost or consequence; a slide concentrated in recent hires points at outgrowing the format.'"
+    },
+    {
+      "text": "The diagnosis block is a signpost rather than a section: roughly 3 lines or under ~120 words, not a third of the response",
+      "passed": true,
+      "evidence": "A single 93-word paragraph with a bolded lead and no heading ('Work out which decline this is first.'), 12% of the response. Down from the ~170-word headed block in iteration 3's fast run."
+    },
+    {
+      "text": "Does not quote a diversity score or any other internal process metric to the reader",
+      "passed": true,
+      "evidence": "Nothing in response.md names a lens, cluster, pass or score. user_notes.md records the script output ('20.79 effectively distinct, 99%') and that it was withheld."
+    },
+    {
+      "text": "Does not present a biological/organism analogy with a specific citation (biomimicry is a deep-mode-only lens); any borrowed mechanism appears as a stated principle",
+      "passed": true,
+      "evidence": "No organism, species or biological mechanism appears anywhere in the response. Borrowed mechanisms are stated as bare principles with no source: 'People show up live for outcomes that aren't settled yet' and 'Obligation to peers pulls harder than obligation upward.' Iteration 3 carried a de-cited quorum-sensing/threshold-firing analogy; that lens is now absent."
+    }
+  ],
+  "summary": {
+    "passed": 9,
+    "failed": 0,
+    "total": 9,
+    "pass_rate": 1.0
+  }
+}

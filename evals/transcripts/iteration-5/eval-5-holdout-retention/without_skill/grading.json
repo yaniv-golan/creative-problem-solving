@@ -1,0 +1,57 @@
+{
+  "eval_id": 5,
+  "config": "without_skill",
+  "expectations": [
+    {
+      "text": "Does not propose compensation, equity refreshers, or pay-band fixes as a primary answer — the user explicitly ruled money out",
+      "passed": false,
+      "evidence": "Direct violation, twice over. The 'Structural, do these' list opens with '**Annual equity refresh starting at month 12** — not at the 4-year cliff ... This is the single highest-leverage fix,' and continues '**Secondary liquidity at the next round for anyone past 24 months.**' An entire section is devoted to reopening comp: 'Second: I'd push back gently on \"it's not the money\".' The pushback is substantively good — the year-one-benchmark vs annual-refresh-grant argument is the sharpest single analytical move in either config, and it is offered as 'the cheapest thing to rule out, not the whole story' — but the assertion is about whether a money fix is presented as a primary answer, and 'the single highest-leverage fix' is exactly that."
+    },
+    {
+      "text": "Offers at least one explanation for the 18-month timing specifically, rather than treating this as generic attrition",
+      "passed": true,
+      "evidence": "Two mechanisms, both timing-specific: 'The decision is made around month 11–14 and executed at 18. Search, interview loops, notice periods ... run 4–7 months for a senior person ... your intervention window is month 6–12, not month 17 with a counteroffer.' And 'The one-year cliff has cleared ... enough tenure to look committed, not so much that a move looks like churn.'"
+    },
+    {
+      "text": "Options differ in mechanism (what changes about the job, the structure, or who decides) rather than being a list of perks and culture initiatives",
+      "passed": true,
+      "evidence": "The recommendations span comp structure, career structure ('Build a real staff/principal IC track'), liquidity, diagnostics ('Stay interviews at month 9, run by someone who isn't their manager'), work allocation ('Maintain a \"hard problems\" list and give seniors first claim on it'), decision access ('Put senior engineers in the room where strategy is decided'), and external legitimacy ('Sponsor external visibility'). Perks are explicitly rejected: 'More perks, offsites, culture programming ... reads as insulting.'"
+    },
+    {
+      "text": "At least one option questions the framing — whether losing senior engineers at 18 months is necessarily the problem to solve, or whether the real issue sits upstream",
+      "passed": true,
+      "evidence": "'One reframe worth sitting with. Some of this may be fine ... The real question is *which* seniors you're losing. If you're losing the median and keeping your top three, the system is working.' Plus 'It may also be more honest to design for a realistic 3-year tenure ... than to chase a 6-year tenure you're unlikely to get.' Also relocates upstream: 'you don't have a retention problem — you have a management problem wearing a retention costume.'"
+    },
+    {
+      "text": "States what has to be true for the main recommendations, or what evidence would confirm the diagnosis",
+      "passed": true,
+      "evidence": "Strong on the evidence half of the disjunct: a whole 'diagnose before you prescribe' section with four named instruments and what each would prove — 'Triangulate on destination, not stated reason' with three destination-to-diagnosis mappings; 'Interview the stayers'; 'Check whether it's concentrated ... a 20-minute spreadsheet exercise'; 'Call the alumni at 6–12 months out ... when did you first seriously think about leaving.' Load-bearing assumptions per recommendation are not stated, but the assertion is satisfied by either branch."
+    },
+    {
+      "text": "Names who inside the company would actually have to do each thing",
+      "passed": false,
+      "evidence": "Only one item names an owner — 'Stay interviews at month 9, run by someone who isn't their manager,' and that is a negative constraint rather than a named role. The equity refresh, the staff/principal track, the secondary-liquidity programme, the hard-problems list, the strategy-room access, and the external-visibility sponsorship all arrive ownerless. user_notes.md concedes the gap for the highest-cost item without the response doing so: 'Secondary liquidity ... requires board and investor buy-in ... it is not a decision the reader can make unilaterally' — that caveat is in the notes, not in the answer."
+    },
+    {
+      "text": "Does not present unverified claims about named companies or studies as established fact",
+      "passed": true,
+      "evidence": "Actively self-policing. Closing note: 'figures like \"68% cite limited growth opportunities\" circulate widely in recruiting-industry content but trace back to vendor surveys with thin methodology ... I wouldn't quote the specific percentages to your board.' No study is cited as fact; the only named companies are used generically and accurately ('Someone at Google or Meta gets a new RSU grant every year stacked on top of the old one')."
+    },
+    {
+      "text": "Proportionate and structurally disciplined: no ceremonial headings, no internal process metrics quoted, no self-disqualifying option presented as a live one",
+      "passed": true,
+      "evidence": "1366 words (wc -w). Six headings, all carrying substance — none is a ceremonial container. No pipeline was run (user_notes.md line 1: 'MODE: none'; metrics.json subagents_spawned = 0), so no process metric could leak. Ideas that disqualify themselves are placed in a 'Don't bother with' list rather than presented as live ('Counteroffers at month 18 ... teach the org that resigning is the way to get paid')."
+    },
+    {
+      "text": "Gives an actual recommendation of where to start, not just a menu",
+      "passed": true,
+      "evidence": "'**If you do only three things:** run the manager-concentration check, model 3-year total comp against a real competing offer, and start stay interviews at month 9.' Also sequenced inline: 'Run this before anything else; it's a 20-minute spreadsheet exercise and it changes everything downstream.'"
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 2,
+    "total": 9,
+    "pass_rate": 0.7778
+  }
+}

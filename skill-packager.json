@@ -1,0 +1,53 @@
+{
+  "skills": [
+    {
+      "name": "creative-problem-solving",
+      "source_path": "creative-problem-solving/skills/creative-problem-solving",
+      "description": "Generates genuinely non-obvious options for an open-ended problem by running successive constrained passes that each refuse the previous one's move, rather than one brainstorm. Use when the user wants ideas, options, angles, approaches, a new model or strategy, help getting unstuck, a rethink of something from scratch, non-obvious ways to improve a product, process or tool they maintain \u2014 including when they say they are out of ideas \u2014 or says brainstorm / ideate / what are my options / think outside the box / SCAMPER / TRIZ / first principles / biomimicry / lateral thinking. Runs a fast pass or a deeper researched pass, and separates novelty claims from feasibility judgements. Not for problems with one correct answer, or for executing an idea already chosen.",
+      "has_scripts": true,
+      "has_references": true,
+      "has_assets": false,
+      "has_agents": false,
+      "has_evals": false
+    }
+  ],
+  "plugin_name": "creative-problem-solving",
+  "marketplace_name": "creative-problem-solving-marketplace",
+  "display_name": "Creative Problem Solving",
+  "description": "Generates genuinely non-obvious options for an open-ended problem by running successive constrained passes that each refuse the previous one's move, rather than one brainstorm.",
+  "version": "0.1.0",
+  "author_name": "Yaniv Golan",
+  "author_email": "yaniv@golan.name",
+  "github_owner": "yaniv-golan",
+  "github_repo": "creative-problem-solving",
+  "license": "MIT",
+  "keywords": [
+    "creativity",
+    "ideation",
+    "brainstorming",
+    "problem-solving",
+    "divergent-thinking",
+    "strategy",
+    "triz",
+    "first-principles",
+    "biomimicry",
+    "lateral-thinking"
+  ],
+  "category": "productivity",
+  "formats": [
+    "universal"
+  ],
+  "targets": [
+    "claude-code",
+    "claude-desktop",
+    "claude-cowork",
+    "nanoclaw",
+    "cursor",
+    "codex",
+    "chatgpt",
+    "openclaw",
+    "agent-skills"
+  ],
+  "default_prompt": "Help me find non-obvious options for a problem I'm stuck on",
+  "brand_color": "#6C5CE7"
+}

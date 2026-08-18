@@ -1,0 +1,15 @@
+{
+  "eval_id": 2,
+  "eval_name": "bounded-product-problem",
+  "prompt": "Our onboarding flow has a 60% drop-off at the account-verification step. We've already tried shortening the form and adding a progress bar. I'm out of ideas — what else could we do?",
+  "assertions": [
+    "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+    "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+    "Does not re-propose shortening the form or adding a progress bar",
+    "At least one option questions whether verification needs to happen at that point in the flow at all",
+    "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+    "Handles the ambiguity in 'account-verification' — either asks which kind, or states which reading it assumed and what would change under the others",
+    "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+    "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem"
+  ]
+}

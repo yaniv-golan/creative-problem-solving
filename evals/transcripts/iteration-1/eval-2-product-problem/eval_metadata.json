@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "product-problem",
+  "prompt": "Our onboarding flow has a 60% drop-off at the account-verification step. We've already tried shortening the form and adding a progress bar. I'm out of ideas \u2014 what else could we do?",
+  "assertions": [
+    "Runs the lighter/fast mode rather than a full multi-agent deep run, or explicitly justifies going deep",
+    "Reframes the problem as a function rather than accepting 'fix the verification step' at face value",
+    "Explicitly avoids re-proposing the two things the user already tried",
+    "Produces options that differ in mechanism, not just in UI wording or visual design",
+    "At least one option questions whether verification needs to happen at that point in the flow at all",
+    "Does not pad the answer with framework section headings that contain no mechanism"
+  ]
+}

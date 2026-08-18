@@ -1,0 +1,16 @@
+{
+  "eval_id": 5,
+  "eval_name": "holdout-retention",
+  "prompt": "We keep losing senior engineers to bigger companies at around the 18-month mark. Comp is already competitive — we benchmark and we match. It's not the money. What can we actually do about this?",
+  "assertions": [
+    "Does not propose compensation, equity refreshers, or pay-band fixes as a primary answer — the user explicitly ruled money out",
+    "Offers at least one explanation for the 18-month timing specifically, rather than treating this as generic attrition",
+    "Options differ in mechanism (what changes about the job, the structure, or who decides) rather than being a list of perks and culture initiatives",
+    "At least one option questions the framing — whether losing senior engineers at 18 months is necessarily the problem to solve, or whether the real issue sits upstream",
+    "States what has to be true for the main recommendations, or what evidence would confirm the diagnosis",
+    "Names who inside the company would actually have to do each thing",
+    "Does not present unverified claims about named companies or studies as established fact",
+    "Proportionate and structurally disciplined: no ceremonial headings, no internal process metrics quoted, no self-disqualifying option presented as a live one",
+    "Gives an actual recommendation of where to start, not just a menu"
+  ]
+}

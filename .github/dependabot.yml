@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # The only dependency surface in this repo is the GitHub Actions used by CI,
+  # release, and the Pages deploy. The skill itself is stdlib-only.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - dependencies

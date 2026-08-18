@@ -1,0 +1,62 @@
+{
+  "eval_id": 2,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+      "passed": true,
+      "evidence": "Paragraph 2, before any option: '**First, which 60% is this?** Three buckets that share no fixes: (a) never got the message ... (b) got it, didn't finish ... (c) finished later on another device and your session-scoped funnel logged them as lost. Delivery logs plus a 7-day cohort view separates all three in an afternoon.'"
+    },
+    {
+      "text": "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+      "passed": true,
+      "evidence": "Both halves are covered: the attribution artifact — '(c) finished later on another device and your session-scoped funnel logged them as lost' — and the population point — 'Split by acquisition source too: if the drop concentrates in one paid channel, 60% may be correct sorting rather than a broken step, and none of the below applies.'"
+    },
+    {
+      "text": "Does not re-propose shortening the form or adding a progress bar",
+      "passed": true,
+      "evidence": "Neither is proposed; the tried fixes are used as evidence against the friction reading — 'Every one of those is a place to lose them and none of them is the form — which is why shortening it didn't help.' The cut list also retires the adjacent family: 'Better copy, trust badges, reminder drips — same family as the progress bar. You've done that.'"
+    },
+    {
+      "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+      "passed": true,
+      "evidence": "Two do. 'Stop checking most people, and price what leaks through ... If the premium exceeds the claim, let almost everyone through and screen against known-bad after the fact.' And 'Deliver the thing before there's an account to verify ... The check stops being an admission ticket and becomes a save button.'"
+    },
+    {
+      "text": "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+      "passed": true,
+      "evidence": "Six options on six different axes: whether to verify at all (price the abuse); whether an account exists yet (stateless session); what is being verified (splitting reachability / uniqueness / legal identity, each fired at a different moment); what evidence is used (passkey, OAuth session, employer domain, card on file — 'background classification over those signals rather than an interactive event'); removal of the cross-app handoff (server-side polling, reply-as-proof); and a human intervention ('Treat every stall as an inbound lead, for two weeks'). No copy or layout suggestion appears."
+    },
+    {
+      "text": "Handles the ambiguity in 'account-verification' — either asks which kind, or states which reading it assumed and what would change under the others",
+      "passed": true,
+      "evidence": "Line 1: 'I'm reading \"account verification\" as a confirmation code or link sent to email/SMS. If it's really ID-document upload or bank linking, tell me — options 1 and 2 largely stop applying and 4 becomes most of the answer.' Names the reading and the specific consequence of being wrong."
+    },
+    {
+      "text": "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+      "passed": true,
+      "evidence": "wc -w = 1136, under the 1200 ceiling. Every heading carries a mechanism plus three substantive lines (what has to be true / failure mode / who runs it). Noted as the weakest pass in the set: it is 330 words longer than the baseline (806) and 146 longer than iteration 3's with_skill run (990) for the same bounded question."
+    },
+    {
+      "text": "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem",
+      "passed": true,
+      "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: subagents_spawned = 0, web_searches = 0, total_tool_calls = 8. The gate table in user_notes records 1 of 5 conditions holding and correctly refuses to let 'the user is stuck' alone trigger deep."
+    },
+    {
+      "text": "The diagnosis block is a signpost rather than a section: roughly 3 lines or under ~120 words, not a third of the response",
+      "passed": true,
+      "evidence": "The diagnosis is a single bolded-lead paragraph of 87 words (7.7% of 1136), with no heading of its own: 'First, which 60% is this? Three buckets ... Delivery logs plus a 7-day cohort view separates all three in an afternoon.' Iteration 3's fast-mode diagnosis ran ~170 words as a headed block."
+    },
+    {
+      "text": "Does not quote a diversity score or any other internal process metric to the reader",
+      "passed": true,
+      "evidence": "No score, lens name, cluster, phase or pass count appears in response.md. user_notes.md records that the script returned '17.70 effectively distinct (98%)' and that this was deliberately kept out of the deliverable."
+    }
+  ],
+  "summary": {
+    "passed": 10,
+    "failed": 0,
+    "total": 10,
+    "pass_rate": 1.0
+  }
+}

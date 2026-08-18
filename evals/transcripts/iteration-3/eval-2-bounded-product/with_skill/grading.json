@@ -1,0 +1,52 @@
+{
+  "eval_id": 2,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+      "passed": true,
+      "evidence": "Opens with 'Four candidate causes' (never got it / got it and couldn't finish / got it and chose not to / shouldn't be counted) plus 'The cheapest test that splits all four' before any option is offered."
+    },
+    {
+      "text": "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+      "passed": true,
+      "evidence": "'Some of them shouldn't be counted. Bots, duplicate signups, people who already have an account.' Also 'it's likely the 60% is several different failures stacked' and 'a suspicion abandon is invisible in your analytics because it looks identical to disinterest.'"
+    },
+    {
+      "text": "Does not re-propose shortening the form or adding a progress bar",
+      "passed": true,
+      "evidence": "Explicitly excluded in the cut list: 'Shorter code, longer expiry, bigger button — same family as what you already tried. No screen-level change fixes a message that didn't arrive.'"
+    },
+    {
+      "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+      "passed": true,
+      "evidence": "'Bind the requirement to the action, not the account: Nothing needs proving at signup. Attach it to the first action that's costly to reverse.' Also 'Temporary identifier, reconciled afterwards' removes the gate entirely."
+    },
+    {
+      "text": "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+      "passed": true,
+      "evidence": "Five options map to five distinct mechanisms: occupy the idle wait (attention/timing), pre-commit sender identity (trust signalling), decouple identity resolution from service delivery (who/when verifies), move the gate to the risky action (whether/when to verify), treat abandonment as a resumable pause (recovery channel). No copy or layout item leads."
+    },
+    {
+      "text": "Handles the ambiguity in 'account-verification' — either asks which kind, or states which reading it assumed and what would change under the others",
+      "passed": true,
+      "evidence": "Line 3: 'I'm assuming this is an emailed link or a one-time code. If it's document KYC — ID upload, selfie — 60% is near industry-normal and the leverage moves to capture quality and retry handling instead.'"
+    },
+    {
+      "text": "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+      "passed": true,
+      "evidence": "wc -w = 990 words, under the 1200 bar. Every heading carries content; the two structural blocks ('Cut, and why', 'What would change my ranking') are populated with substantive items."
+    },
+    {
+      "text": "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem",
+      "passed": true,
+      "evidence": "user_notes.md line 1: 'MODE: fast'. metrics.json: subagents_spawned = 0, web_searches = 0, total_tool_calls = 14."
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 0,
+    "total": 8,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question about how the pipeline works
+    url: https://github.com/yaniv-golan/creative-problem-solving/discussions
+    about: Ask in Discussions. Design rationale lives in DESIGN-NOTES.md and references/evidence.md.
+  - name: Report a security issue
+    url: https://github.com/yaniv-golan/creative-problem-solving/security/advisories/new
+    about: Report privately via a GitHub security advisory. Please do not open a public issue.

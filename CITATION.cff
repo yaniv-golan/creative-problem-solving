@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: "Creative Problem Solving: a divergence engine for open-ended problems"
+message: "If you reference this work, please cite it as below."
+type: software
+authors:
+  - family-names: Golan
+    given-names: Yaniv
+    email: yaniv@golan.name
+repository-code: "https://github.com/yaniv-golan/creative-problem-solving"
+url: "https://github.com/yaniv-golan/creative-problem-solving"
+abstract: >-
+  An agent skill that generates non-obvious options for open-ended problems by running
+  successive constrained passes, each refusing the move the last one made, rather than a
+  single brainstorm. Built on the finding that branded creativity frameworks do not
+  outperform a plain prompt with language models, while denial of the previous move,
+  distribution sampling and self-category negation do. Publishes its eval definitions,
+  graded results, full run transcripts, pre-registered experiment designs, and the rounds
+  where the skill lost.
+license: MIT
+version: 0.1.0
+date-released: "2026-08-18"
+keywords:
+  - agent-skills
+  - creativity
+  - ideation
+  - divergent-thinking
+  - large-language-models
+  - prompt-engineering

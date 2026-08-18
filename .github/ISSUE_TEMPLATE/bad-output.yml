@@ -1,0 +1,94 @@
+name: The skill produced a bad answer
+description: The pipeline ran but the output was wrong, bloated, generic, or over-engineered.
+labels: ["output-quality"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most useful kind of report for this project. Several rules in
+        `SKILL.md` exist because a specific run went wrong — the eval history in
+        `DESIGN-NOTES.md` records which. A concrete failing case is what turns into a fix.
+
+        Please paste the real prompt and the real answer. Redact freely; a redacted
+        transcript is far more useful than a description of one.
+
+  - type: input
+    id: version
+    attributes:
+      label: Skill version
+      description: From `VERSION`, or the `metadata.version` line in `SKILL.md`.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: host
+    attributes:
+      label: Where it ran
+      options:
+        - Claude Code
+        - Claude Desktop
+        - Claude Cowork
+        - Claude.ai (web)
+        - Codex CLI
+        - Cursor
+        - ChatGPT
+        - Manus
+        - OpenClaw / NanoClaw
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Which mode did it run?
+      description: The skill should say so in its first line or two.
+      options:
+        - Fast
+        - Deep
+        - It did not say
+        - It should not have run at all
+    validations:
+      required: true
+
+  - type: textarea
+    id: prompt
+    attributes:
+      label: The prompt you gave it
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: What it produced
+      description: Paste the answer, or the part of it that went wrong.
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What a good answer would have looked like
+      description: >
+        Be specific about the difference. "Too long" is hard to act on;
+        "four of the six options were the same mechanism reworded" is a fix.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: known-shapes
+    attributes:
+      label: Does it match a failure the skill already tries to prevent?
+      description: Optional, but it tells us whether an existing rule stopped working or a new one is needed.
+      options:
+        - label: Deep mode fired on a problem that did not need it
+        - label: Ran at all on a question with one defensible right answer
+        - label: Showed its own process (lens names, sharpened brief, cluster analysis)
+        - label: Options differed in degree, not in kind
+        - label: Accepted a constraint the user ruled out without testing it
+        - label: Asserted an outside fact (an organism, a company, a study) that is wrong
+        - label: Listed options and never said which one it would pick

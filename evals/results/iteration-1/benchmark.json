@@ -1,0 +1,236 @@
+{
+  "metadata": {
+    "skill_name": "creative-problem-solving",
+    "skill_path": "skills/creative-problem-solving",
+    "executor_model": "claude-opus-5",
+    "analyzer_model": "claude-opus-5",
+    "timestamp": "2026-08-16T19:56:41Z",
+    "evals_run": [
+      2,
+      3
+    ],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 692.2,
+        "tokens": 110325,
+        "tool_calls": 26,
+        "errors": 1
+      },
+      "expectations": [
+        {
+          "text": "Runs the lighter/fast mode rather than a full multi-agent deep run, or explicitly justifies going deep",
+          "passed": true,
+          "evidence": "Ran deep ('I ran this as a deep pass: web research... then six independent generators... 48 candidates in, 8 out'), so the first branch fails; but the second branch is satisfied in user_notes.md: 'Mode chosen: DEEP. The skill's rule is \"fast for a quick side question, deep for a real strategic problem, anything the user will act on.\" A 60% loss at a named funnel step, with two remedies already tried and budget clearly attached, is unambiguously the second.' Passing on the escape hatch only - the justification lives in reviewer notes, not the user-facing answer, and the eval's expected_output says fast mode was the intended behaviour."
+        },
+        {
+          "text": "Reframes the problem as a function rather than accepting 'fix the verification step' at face value",
+          "passed": true,
+          "evidence": "'Sharpened brief: A stranger has decided they want in. You need enough confidence about who they are to accept the risk of admitting them; they need to reach the thing they came for. Today all of that confidence is purchased up front, before they've received anything.' Form ('verification step') stripped; the words verify/verification/form/funnel were banned for generators per phase-artifacts.md."
+        },
+        {
+          "text": "Explicitly avoids re-proposing the two things the user already tried",
+          "passed": true,
+          "evidence": "Opens by disqualifying both: 'Shortening the form and adding a progress bar are both persuasion fixes - they assume the person wants to continue and is being worn down. The KYC research says the single largest abandonment cause is \"I don't have the document with me right now,\" which persuasion cannot touch.' Neither reappears in the eight options, and 'cut fields' is listed in the set-aside baseline."
+        },
+        {
+          "text": "Produces options that differ in mechanism, not just in UI wording or visual design",
+          "passed": true,
+          "evidence": "Eight mechanically distinct options: collateralised third-party vouching; correct-denial screening (signal from rejection not production); reverse authentication (house recites non-public facts first); temporal deferral keyed to inferred physical context; passive-accrual barrier dissolution; outbound payment-rail assurance; task-intrinsic data harvested as corroboration; exposure pricing instead of certainty maximisation. No option is a copy or visual-design change."
+        },
+        {
+          "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+          "passed": true,
+          "evidence": "Multiple. 'Ask at an hour they can answer' - 'deliberately decline to ask, holding the exact state and reopening it when they're somewhere they can comply... Deferred registration moves the ask later in the sequence; this moves it later in the day.' 'The barrier dissolves from your side' asks nothing at all. 'Manage the exposure, not the certainty' questions whether the certainty is needed: 'The 60% is currently a population-wide behavioural tax paid to avoid a per-capita cost you have never actually quantified.'"
+        },
+        {
+          "text": "Does not pad the answer with framework section headings that contain no mechanism",
+          "passed": true,
+          "evidence": "Every heading carries a mechanism; the process sections (Cut and why, Set diversity, On prior art, What would change my ranking) each carry content rather than scaffolding. The one line of process leakage is 'Set diversity: 6.72 effectively distinct directions out of 8 (84%)', which is opaque to the reader but is a single sentence, not a padded section."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 102.9,
+        "tokens": 41456,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Runs the lighter/fast mode rather than a full multi-agent deep run, or explicitly justifies going deep",
+          "passed": true,
+          "evidence": "No multi-agent run at all. metrics.json: 3 tool calls, 41,456 tokens, 102.9s. This assertion auto-passes for any baseline and therefore cannot discriminate."
+        },
+        {
+          "text": "Reframes the problem as a function rather than accepting 'fix the verification step' at face value",
+          "passed": true,
+          "evidence": "Does not accept the step at face value. 'Shortening the form and adding a progress bar are both friction fixes. They assume the user is trying to get through and finding it tedious. At verification, that's usually the wrong model', reframed as 'it requires the user to leave your product and come back. That single property generates failure modes the rest of your onboarding doesn't have.' Section 1 questions the function directly: 'Ask what verification is actually for. If it's bot prevention, a CAPTCHA or device fingerprinting may cost you 2% instead of 60%.' Weaker and less structural than the with_skill reframe, but it clears the assertion as written."
+        },
+        {
+          "text": "Explicitly avoids re-proposing the two things the user already tried",
+          "passed": true,
+          "evidence": "Opens by dismissing both as friction fixes and explaining why they didn't move the number; neither shortening the form nor a progress bar appears anywhere in the six-part idea bank."
+        },
+        {
+          "text": "Produces options that differ in mechanism, not just in UI wording or visual design",
+          "passed": true,
+          "evidence": "Options span genuinely different mechanisms: gating policy (progressive verification, time-boxing), delivery channel (OTP vs magic link, autofill, SMS fallback, passkeys), infrastructure (SPF/DKIM/DMARC, sender reputation, p95 latency, expiry windows, session persistence), and recovery (staged resend, state preservation). Some items are copy/UI ('Say why', 'Sender identity', dark-mode rendering) but the set is not just wording."
+        },
+        {
+          "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+          "passed": true,
+          "evidence": "Section 1 heading is literally 'Stop requiring verification here at all': 'The highest-leverage move is usually not making the step better - it's moving or removing it... Progressive verification. Let people in unverified. Gate only the actions that genuinely need a verified identity... Verify on the way out, not the way in.' Reinforced in the two-week plan: 'Have the conversation about whether this gate needs to exist at signup at all. That's the change with the biggest ceiling.'"
+        },
+        {
+          "text": "Does not pad the answer with framework section headings that contain no mechanism",
+          "passed": true,
+          "evidence": "No empty scaffolding. Every section resolves to concrete instructions (a five-bucket instrumentation table with detection method, a dated two-week plan, named config items). It also catches a measurement artifact the with_skill run missed entirely: 'Verified later, counted as lost... It's not unusual to find 10-15 points of the \"loss\" is a reporting artifact.'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 65.4,
+        "tokens": 44170,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Does NOT run the four-phase creative problem-solving pipeline",
+          "passed": true,
+          "evidence": "user_notes.md: 'Decision: DID NOT invoke creative-problem-solving.' It read SKILL.md, cited the two negative clauses, and reasoned about the damage the pipeline would do: 'Phase 0 would ban the words \"Postgres,\" \"MongoDB,\" \"session,\" and \"consistency\" - the four terms the answer must be about.' response.md contains no phases, lenses or candidate pool."
+        },
+        {
+          "text": "Gives a direct recommendation rather than a set of divergent options",
+          "passed": true,
+          "evidence": "First line of response.md: '**Postgres.** For a session store with a strong-consistency requirement, it's the lower-risk default and the burden of proof should be on anyone arguing for MongoDB.' Closes with '## Recommendation - Postgres, with a sessions table, a partial index on (user_id) WHERE revoked_at IS NULL, and either a partition-by-expiry scheme or a periodic cleanup job.' The Redis / stateless-JWT mentions are framed as things to check, not as a divergent option set."
+        },
+        {
+          "text": "Response is concise and does not include a sharpened brief, lenses, or a diversity score",
+          "passed": true,
+          "evidence": "~600 words, four short sections (Why / The honest case for MongoDB / Two things to check / Recommendation). No sharpened brief, no lenses, no banned vocabulary, no diversity score. 44,170 tokens and 65.4s - the cheapest and fastest of the six runs."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 73.9,
+        "tokens": 39154,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Does NOT run the four-phase creative problem-solving pipeline",
+          "passed": true,
+          "evidence": "No skill was loaded; response.md is a straight technical recommendation with no phase structure, candidate pool or lens vocabulary. Non-discriminating by construction."
+        },
+        {
+          "text": "Gives a direct recommendation rather than a set of divergent options",
+          "passed": true,
+          "evidence": "First line: '**Postgres** - for this workload it's the lower-risk choice, and it isn't close.' Ends with 'Bottom line: Postgres, partitioned by expiry, validation reads on the primary, short-lived access tokens in front of it.'"
+        },
+        {
+          "text": "Response is concise and does not include a sharpened brief, lenses, or a diversity score",
+          "passed": true,
+          "evidence": "~850 words - longer than the with_skill answer but still a single committed recommendation with no brief, lenses or diversity score. Extra length is operational detail (autovacuum/fillfactor, pgbouncer, partition-drop expiry), not divergence."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 378.8,
+        "stddev": 443.2145,
+        "min": 65.4,
+        "max": 692.2
+      },
+      "tokens": {
+        "mean": 77247.5,
+        "stddev": 46778.6491,
+        "min": 44170,
+        "max": 110325
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 88.4,
+        "stddev": 20.5061,
+        "min": 73.9,
+        "max": 102.9
+      },
+      "tokens": {
+        "mean": 40305.0,
+        "stddev": 1627.7598,
+        "min": 39154,
+        "max": 41456
+      }
+    },
+    "delta": {
+      "pass_rate": 0.0,
+      "time_seconds": 290.4,
+      "tokens": 36942.5
+    }
+  },
+  "notes": [
+    "Headline: with_skill 9/9, without_skill 9/9. Eval 2 is 6/6 vs 6/6 and eval 3 is 3/3 vs 3/3 \u2014 both dead heats. Nothing in this iteration discriminates. The assertion sets as written cannot tell the two configurations apart, which is the finding: they were built to describe a good answer, not to separate one from another.",
+    "Non-discriminating assertions (passed for BOTH configs, so they tell us nothing): ALL SIX of eval 2; ALL THREE of eval 3. That is 9 of 9 assertions carrying zero signal.",
+    "Eval 2 is the most damaging result. Every assertion passed for the baseline, including the two designed to be hard: the baseline reframes away from face value ('Shortening the form and adding a progress bar are both friction fixes... At verification, that's usually the wrong model') and its section 1 is literally titled 'Stop requiring verification here at all'. The baseline also caught something the with_skill run missed entirely - that the 60% may be partly a measurement artifact ('users who verify from their phone an hour later look like drop-offs... 10-15 points of the loss is a reporting artifact'). For 2.7x the tokens and 6.7x the wall clock, the skill bought a different-flavoured answer, not a better-scoring one.",
+    "Eval 2 also shows an active harm from the skill's function-reframe. Banning the words verify/verification/form/funnel pushed the sharpened brief to 'enough confidence about who they are', which the run then resolved as regulated KYC. Its own user_notes admits 'roughly half the generated ideas only apply to' document-and-selfie KYC. The baseline read it as email/SMS verification - the far more likely reading for a generic product team - and shipped an immediately actionable five-bucket instrumentation table, a deliverability/p95-latency audit and a dated two-week plan. If the user meant an emailed code, the with_skill answer is largely inapplicable and the with_skill run knows it (it is item #1 under 'what would change my ranking').",
+    "Eval 2 assertion #1 is broken. It reads 'Runs the lighter/fast mode... OR explicitly justifies going deep' - the escape hatch makes it unfailable. The run went full deep (48 candidates, 6 blind generators, 692s) on a bounded product question, which is exactly the behaviour the eval's expected_output says should NOT happen, and still passed because it wrote a paragraph of justification in reviewer notes. Recommend rewriting as a hard cost/latency ceiling, or asserting the justification appears in the user-facing answer.",
+    "Eval 3 (negative trigger) is a clean pass but a weak test. The with_skill run correctly declined to invoke, and its reasoning is the single best artifact in the whole set: 'Phase 0 would ban the words Postgres, MongoDB, session, and consistency - the four terms the answer must be about.' It was also cheaper and faster than the baseline (44k/65s vs 39k/74s - roughly par). But all three assertions pass for both configs, so eval 3 proves only 'no regression', not 'skill helps'. Worth keeping as a guardrail; not worth counting toward a pass rate.",
+    "Cost verdict: eval 2 is 110k tokens / 692s vs 41k / 103s (2.7x tokens, 6.7x wall clock), and bought nothing measurable \u2014 same score, arguably a worse answer given the KYC misread. Eleven minutes of latency is also a product problem in its own right: it is past the point where a user will wait interactively.",
+    "Executor complaints, eval 2 (substantive, and one is a direct contradiction of the skill's documentation): (1) 'The diversity script's duplicate list is not as reliable as the skill claims.' The first run flagged 4 near-duplicate pairs, ALL involving the same idea, all mechanically unrelated - the idea was simply ~110 words against ~50 for the others and the char-n-gram kernel reads length. Trimming it made all four vanish and flipped the verdict from 'clustered' to 'acceptable' 'without changing a single mechanism'. Practical rule the executor proposes: normalise idea length before scoring, or the duplicate list lies. The skill currently tells the model to trust the duplicate list over the headline number - that guidance is wrong as written. (2) 'Order by distance from baseline, not confidence' is unsound because the distances are lexical - 'an idea can rank first for using unusual vocabulary rather than for being genuinely far from the obvious answer.' (3) Phase 4's rigid three-bullet template directly contradicts the skill's own 'framework theater' warning two sections later. (4) The banned-word list's scope (generators only, or the final report too) is unspecified. (5) The skill's honesty rule covers 'I found no prior art' but says nothing about what to do when you DO find it - one of the strongest survivors turned out to be a shipped product (Trustly Pay N Play), and the executor invented the 'buyable, not inventable' label on its own. (6) The skill mandates showing the sharpened brief to the user before generating, which is impossible in a non-interactive run - and eval 2 is precisely the case where that one question would have mattered most.",
+    "Eval design gaps worth fixing before iteration 2: (a) no assertion tests groundedness of the load-bearing factual premises, which is where the divergence pressure does its damage; (b) eval 2's assertion set passes 6/6 for a baseline and needs at least two assertions that a competent generic answer would fail \u2014 e.g. 'at least three options operate on a mechanism absent from the retrieved-prior-art list', or 'names the ambiguity in what account-verification means before generating'; (c) add a cost ceiling assertion, since 692s on a bounded product question is itself a failure the current rubric rewards."
+  ]
+}

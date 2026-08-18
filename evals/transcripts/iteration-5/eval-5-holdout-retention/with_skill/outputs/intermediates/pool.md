@@ -1,0 +1,53 @@
+- Decision autopsy registry: capture every irreversible technical choice at the moment of commitment as a recorded argument between the decider and someone required to attack it, so the reasoning under uncertainty is stored rather than the outcome.
+- Deliberate absence drills: make the people carrying the most system-specific judgement unreachable on a schedule and log the resulting failures as defects against documentation rather than against the substitutes.
+- Judgement under load only: schedule transfer to coincide with real incidents, because the model a holder is running is only legible when the system is misbehaving.
+- Two names or it does not ship: block any change to a load-bearing subsystem unless two people have independently modelled its blast radius in writing.
+- Unfinished object attachment: keep each person mid-construction on one long-horizon thing whose completion state only they can perceive, so leaving means abandoning an artefact at a visible distance from done.
+- Counter-offer written in advance: require everyone to write down early what a departure-triggering outside offer would look like, held and re-read jointly, so the later decision is made against their own prior criteria.
+- Successor names the predecessor: make the inheritor publicly sign the decisions they now stand behind and remove the originator's name on transfer, so authorship is a transferable asset rather than a possession.
+- Hostage interfaces: draw system boundaries so each person's deep area is inseparably coupled to another's, making any single exit produce an immediately visible break the organisation must pre-fund.
+- Bus-factor sabotage drill: run scheduled multi-week blackouts where the holder is contractually unreachable in their domain, so the group hits the failure modes while the source is still recoverable.
+- Judgement as executable constraint: convert every "you cannot change this because X" belief into a failing test, lint rule, schema constraint or deployment guard whose error message states the original reasoning.
+- Destroy-it-first red team: commission the key holders to write the definitive internal document on how to make the system unmaintainable and drive out everyone who understands it.
+- Successor-named decision rights: require two signatures on every consequential decision, the second from someone deliberately less experienced holding real veto power.
+- The departure is scheduled: set a public internal handover date for each domain regardless of whether anyone is actually leaving, so the system behaves identically whether or not the private decision has happened.
+- Import the rival's wreckage: internally publish the postmortems, cancelled-project histories and reorganisation churn of the larger competitor so an incoming offer is evaluated against a concrete prior distribution.
+- Unfinished multi-year wager: structure consequential bets resolving 30-40 months out with a named forecaster of record, binding through narrative incompleteness rather than obligation.
+- Third-party judgement rental: sell the holder's system-specific judgement outward as paid advisory so the exit cost becomes a set of named external counterparties.
+- Debt auction board: make each fragile area have a named holder who publishes quarterly what it would cost to modify it and what would break, so judgement becomes a standing artefact the organisation transacts against.
+- Successor is the customer: reassign the deep-model holder so their only internal customer is whoever will hold that area in two years, graded on whether that successor can independently make a call the holder disagrees with and be right.
+- Fork the rival's offer: read every approach the larger competitor makes as a market signal about which chunk of judgement is scarce and reprice that chunk's internal standing within two weeks.
+- Break it on purpose: run announced removals where the holder of a fragile area is unavailable while the group must ship a real change through it.
+- Customers hold the model: push the why-it-is-built-this-way model outward to the largest customers as a jointly maintained artefact they depend on and correct.
+- Judgement has a balance sheet: make each fragile area a line item in financial reporting with a named holder, a replacement cost in months and a depreciation rate that rises as the model stays in one head.
+- Rent them to rivals: make the deepest holders contractually available to outside organisations as brokered paid short engagements, so market access is obtainable without leaving.
+- Legible only through objects: ban prose documentation for fragile areas and require the model to be encoded only as executable constraints that refuse bad changes.
+- Decision autopsy ledger: record every irreversible choice as a written wager naming the option not taken, the failure predicted and the date it would show.
+- Breakage oracle bets: run an internal prediction market where holders stake on whether change X breaks subsystem Y within 30 days, so judgement is priced and timestamped.
+- One-week chaos diary: intercept every "wait, do not touch that" moment with a standing rule that the speaker immediately writes two sentences of why into the code path itself.
+- Adversarial simulation twin: continuously propose plausible destructive changes and require the holder to accept or reject each with a stated reason, accumulating a refusal model that outlives them.
+- Single-person fork right: grant one individual a standing unilateral unreviewable right to halt any change to a named subsystem for 30 days, non-transferable and extinguished if unexercised.
+- Cost-of-interruption toll: log every question routed to a named holder with asker, subsystem and minutes, and publish the ranked map of single-point dependencies weekly.
+- Ten-thousand deprecation rule: automatically flag for deletion or rewrite any subsystem whose change-failure rate rises when its original author is unavailable.
+- Departure-triggered escrow payload: maintain a continuously updated per-person reconstruction file assembled from commits, reviews and incident threads, sealed until access is revoked.
+- Rebuild before anyone leaves: set the full reconstruction interval of every subsystem below the observed departure point, so each part is rebuilt once by a second pair of hands while the original builder is present but barred from touching it.
+- Blind reconstruction trial: have someone who did not build the thing reconstruct it from the written record alone while the originator sits present and silent, logging every forced question as a defect against the record.
+- Master chart toll: make one aggregated artefact the only route to information each person needs, with access priced in a merged contribution of their private observations.
+- Guaranteed nights claim: accrue to whoever builds a piece of the system a standing first-call claim on a scarce non-monetary internal resource, redeemable nowhere else and extinguished by exit.
+- Hidden move archive: archive past decisions as sealed positions with the actual choice concealed, forcing the reader to commit before seeing the answer so they get scored feedback on judgement rather than facts.
+- Conclusive register rule: declare the written hazard record conclusive rather than evidentiary, so an objection not on the record has no standing to block a change or to be invoked after the breakage.
+- Opponent's right to ask: attach to every proposed change a designated adversarial questioner with an enforceable right to interrogate and receive a written answer inside a fixed window.
+- Queen cell split: read the physical precursors of departure in what a person stops gatekeeping, and treat the precursor as a trigger to fission that person's domain while they are still present.
+- Stigmergic trace substrate: require every change to deposit a machine-readable marker in the artefact itself stating the constraint that forced it and the failure it prevents, with a decay rate that deletes stale reasoning.
+- Deliberate micro-necrosis: remove the named owner from a live system on a fixed schedule for a bounded window so gaps in transmitted judgement are discovered while they can still be repaired.
+- Two-body decision rule: make the unit of consequential decision-making a bonded pair with both signatures required and the pairing redrawn quarterly.
+- Threshold-triggered handover cascade: instrument how many live subsystems have exactly one person who has touched them in 90 days and fire a non-discretionary reassignment when density crosses a threshold.
+- Rebuildable scaffold only: declare any subsystem that cannot be reconstructed from its stated invariants by a stranger to be itself the defect, and fund a standing rebuild of the least reconstructible one each cycle.
+- Hostile reconstruction duel: pair every subsystem with a designated adversary whose standing assignment is to break it and publish how, forcing the holder to articulate the constraint as a defended proposition.
+- Bootstrap from cold substrate: maintain a small continuously exercised kernel of durable artefacts from which the operating system can be reconstituted, so the floor is set by what survives dormancy.
+- Cross-feeding metabolic debt: split each critical capability so no group can complete a workflow alone, making interface knowledge a daily necessity held reciprocally.
+- Shape the population not the experience: bias intake toward people whose honest next-best-alternative is this kind of place rather than people whose trajectory points at a larger name.
+- Unsolved problems as depleting stock: track the rate at which capable people consume the hard problems that existed when they arrived, and treat opening a new front as a scheduled act.
+- Compete on what they cannot approve: win on bespoke structural accommodation that one person here can approve in an afternoon and a rigid large organisation literally cannot.
+- Continuous rather than binary exit: buy in advance a bounded post-departure claim on the person's time for their old area, so leaving is a change in bandwidth rather than a change in state.
+- Change the payoff for early disclosure: make saying "I want something different within a year" trigger a defined and generous response rather than a quiet downgrade in trust.

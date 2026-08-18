@@ -1,0 +1,12 @@
+[
+  {"name": "Filter or leak", "mechanism": "Admit a randomised holdout with the identity check removed and compare ninety-day revenue, support load and realised abuse loss against the friction saved, so you learn whether the people leaving were ever worth keeping."},
+  {"name": "Reverse the message direction", "mechanism": "Have the person send an inbound message to you rather than waiting on an outbound code, which removes spam filtering, carrier throughput and delivery latency from the failure surface entirely."},
+  {"name": "Capability ceiling priced to abuse", "mechanism": "Grant everyone a capped amount of the capability whose worst-case misuse cost is below the marginal value of a confirmed person, and escalate the check only when consumption crosses that cost line."},
+  {"name": "Provisional record, reconciled later", "mechanism": "Issue a temporary identifier that carries full function immediately and run the identity match asynchronously as a background reconciliation job rather than a blocking gate."},
+  {"name": "Learned gate most never see", "mechanism": "Score arrivals on realised-abuse outcomes and require the check only from the scored minority, retraining the scorer on actual losses so the exempted share grows as the model improves."},
+  {"name": "The inviter posts the bond", "mechanism": "Make the existing customer who invited them stake their own standing or credit, transferring liability to the party who already knows the person and has an incentive to be right."},
+  {"name": "Load the wait with switching cost", "mechanism": "Fill the in-flight waiting window with data import, connection and naming work so irreversible investment accrues in the exact window where attention would otherwise be idle."},
+  {"name": "Move the check to consequence", "mechanism": "Relocate the identity requirement to the first irreversible or money-moving action rather than arrival, so it is paid against something the person already wants."},
+  {"name": "Refundable economic hostage", "mechanism": "Take a reversible hold on a payment instrument as the accountability anchor, substituting an economic stake for proof of who someone is."},
+  {"name": "Meter the requirement's owner", "mechanism": "Show the team that owns the rule the live revenue cost of their own threshold so the group setting the friction is the group feeling its price."}
+]

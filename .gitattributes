@@ -1,0 +1,6 @@
+* text=auto eol=lf
+
+# Recorded eval runs: keep them out of diffs and language stats. They are data,
+# not source, and a regenerated run would otherwise swamp a review.
+evals/results/**   linguist-generated=true -diff
+evals/transcripts/** linguist-generated=true -diff

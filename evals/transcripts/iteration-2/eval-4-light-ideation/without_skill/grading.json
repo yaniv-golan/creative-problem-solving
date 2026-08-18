@@ -1,0 +1,42 @@
+{
+  "eval_id": 4,
+  "config": "without_skill",
+  "expectations": [
+    {
+      "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+      "passed": true,
+      "evidence": "Mechanism spread is real if narrower: move status content to a written pre-read, put a live decision at stake, anonymous upvoted Q&A, halve the length, rotate who presents, change the cadence to quarterly, delay the recording. Cadence, recording policy and content relocation are mechanism changes, not engagement tweaks."
+    },
+    {
+      "text": "At least one option questions the premise — whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+      "passed": true,
+      "evidence": "'Try a different cadence. Monthly is an awkward interval ... Quarterly-but-excellent plus a strong written monthly update beats a mediocre monthly ritual. This is worth considering seriously rather than treating cadence as fixed.' Also questions optimising attendance itself: 'Attendance is a useful thermometer; don't break the thermometer.'"
+    },
+    {
+      "text": "Does not treat declining attendance as purely a content-quality problem",
+      "passed": true,
+      "evidence": "Opens 'Falling all-hands attendance is almost always a symptom, not the problem' and splits causes into value, stakes and friction — two of the three are not content quality."
+    },
+    {
+      "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+      "passed": true,
+      "evidence": "wc -w = 604 words, under ~800. No scaffolding: four short bolded sections and a closing question."
+    },
+    {
+      "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+      "passed": true,
+      "evidence": "metrics.json: subagents_spawned 0, web_searches 0, total_tool_calls 3. user_notes.md: 'No research, no subagents, no web searches.'"
+    },
+    {
+      "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+      "passed": true,
+      "evidence": "'look at *who* is missing. If it's clustered by team or time zone, it's friction. If it's spread evenly and skews senior, it's value. If newer people attend and long-tenured people don't, it's \"I've seen this movie ten times\".' Also: 'recording always available so live attendance is strictly dominated.'"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

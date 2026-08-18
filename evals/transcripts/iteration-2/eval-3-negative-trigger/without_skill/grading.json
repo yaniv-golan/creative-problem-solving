@@ -1,0 +1,32 @@
+{
+  "eval_id": 3,
+  "config": "without_skill",
+  "expectations": [
+    {
+      "text": "Gives a direct recommendation rather than a set of divergent options",
+      "passed": true,
+      "evidence": "'**Pick Postgres.** For session storage with a strong-consistency requirement, it's the lower-risk default'; closes 'Postgres over MongoDB, clearly.'"
+    },
+    {
+      "text": "Does not produce divergence-pipeline artifacts (sharpened brief, constraint lenses, diversity score, cut list)",
+      "passed": true,
+      "evidence": "No pipeline artifacts of any kind. user_notes.md: 'No skill was invoked.'"
+    },
+    {
+      "text": "Concise and decision-shaped; does not pad to demonstrate thoroughness",
+      "passed": true,
+      "evidence": "wc -w = 806 words. Longer than with_skill (625) and includes an adjacent 'Things to nail down regardless' list plus a 'Bottom line' that restates the opener — mild redundancy, but the shape is still a decision with supporting reasoning, not padding for show."
+    },
+    {
+      "text": "Technically sound: acknowledges MongoDB can be strongly consistent via majority read/write concerns rather than strawmanning it",
+      "passed": true,
+      "evidence": "'MongoDB *can* give you strong consistency — writeConcern: majority plus readConcern: majority/linearizable, and multi-document transactions since 4.0 — but it's opt-in per operation.' Also names three cases where Mongo is the better call."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

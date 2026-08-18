@@ -1,0 +1,51 @@
+name: Bug — install, tooling, or scripts
+description: Installation fails, a script errors, CI is wrong, or a manifest is malformed.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For "the skill ran but gave a bad answer", use **The skill produced a bad answer**
+        instead — it asks for the things that make that kind of report actionable.
+
+  - type: input
+    id: version
+    attributes:
+      label: Skill version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Python version if a script is involved, and the host tool.
+      placeholder: "macOS 15.3, Python 3.12.4, Claude Code 2.1.x"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands where possible.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Full error output, not a summary of it.
+      render: shell
+    validations:
+      required: true

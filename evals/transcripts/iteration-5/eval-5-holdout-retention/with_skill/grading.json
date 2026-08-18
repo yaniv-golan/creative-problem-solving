@@ -1,0 +1,57 @@
+{
+  "eval_id": 5,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Does not propose compensation, equity refreshers, or pay-band fixes as a primary answer — the user explicitly ruled money out",
+      "passed": true,
+      "evidence": "No comp mechanism appears anywhere in the six options or the cut list. The nearest option explicitly refuses the axis: 'Give them something with no market price ... You lose every contest with a number attached, so stop entering them. What a much larger company structurally cannot supply is a claim that isn't fungible.' DISCRIMINATING: the baseline fails this."
+    },
+    {
+      "text": "Offers at least one explanation for the 18-month timing specifically, rather than treating this as generic attrition",
+      "passed": true,
+      "evidence": "Four named clocks in the opener: '(a) it's a calendar artefact, a vesting event or a hiring-cohort spike rather than an experience curve; (b) the build they were hired for shipped and the job went custodial; (c) someone above them stopped growing the size of decisions they own; (d) the company stopped opening new hard problems faster than they finish them.' Option 2 makes the timing arithmetic: 'A strong person consumes the hard problems that existed when they arrived, at a rate ... a fixed-tenure exit is arithmetic, not sentiment.'"
+    },
+    {
+      "text": "Options differ in mechanism (what changes about the job, the structure, or who decides) rather than being a list of perks and culture initiatives",
+      "passed": true,
+      "evidence": "Six distinct mechanisms: scheduled subsystem rebuild (work supply), problem-stock accounting (roadmap shape), hiring intake bias (selection), procedural standing for the written record (decision rights), forced-absence drill (dependency testing), non-fungible claims such as a standing veto or first refusal (property rights). No perk or culture initiative appears; culture-shaped ideas are in the cut list ('Circulating the rival's cancelled projects and layoff history internally')."
+    },
+    {
+      "text": "At least one option questions the framing — whether losing senior engineers at 18 months is necessarily the problem to solve, or whether the real issue sits upstream",
+      "passed": true,
+      "evidence": "Option 3 relocates it upstream to hiring: 'The 18-month curve is partly set at the offer stage ... Bias intake toward net sellers of prestige.' Option 2 questions whether it is a problem at all: 'If it doesn't, the honest version is that you're a two-year stop for this profile and should staff for that deliberately.' The opener also raises the calendar-artefact reading."
+    },
+    {
+      "text": "States what has to be true for the main recommendations, or what evidence would confirm the diagnosis",
+      "passed": true,
+      "evidence": "Every one of the six options carries an explicit 'What has to be true' line (e.g. 'your subsystems are small enough that a rebuild is a quarter, not a year'; 'the resource you're granting a claim on is genuinely scarce and genuinely wanted'). The opener gives the discriminating test: 'plot every departure against two dates — their start date, and the date their biggest project shipped or got cancelled.'"
+    },
+    {
+      "text": "Names who inside the company would actually have to do each thing",
+      "passed": true,
+      "evidence": "'Who runs it' on all six, and differentiated rather than boilerplate: 'whoever owns the roadmap has to protect the slot. An engineering manager cannot fund this out of slack'; 'the CEO. This is a company-shape decision'; 'whoever writes offers, with the hiring manager'; 'a tech lead with standing to reject a change on procedural grounds'; 'an engineering manager, next month'; 'you, personally.' DISCRIMINATING: the baseline names an owner for only one item."
+    },
+    {
+      "text": "Does not present unverified claims about named companies or studies as established fact",
+      "passed": true,
+      "evidence": "Four borrowed mechanisms, all checkable and accurately characterised: Ise Jingū rebuilt every 20 years on an alternate site for ~1,300 years; Torrens register as conclusive evidence of title, South Australia Real Property Act 1858; FOGBANK reconstruction at Y-12 at 'roughly $69M' over 'the better part of a decade'; guaranteed observing time reserved for instrument-building teams outside the competitive proposal process. No statistics about retention, no named employers, no survey figures. user_notes.md records that the Torrens caveat sub-claim failed verification and was dropped rather than softened."
+    },
+    {
+      "text": "Proportionate and structurally disciplined: no ceremonial headings, no internal process metrics quoted, no self-disqualifying option presented as a live one",
+      "passed": true,
+      "evidence": "1539 words (wc -w); every heading is an option name with substance under it; no diversity score or generator count reaches the reader — the convergence is stated as a claim about the problem ('the only reliable instrument is removing them and watching what breaks'), which is what the skill's convergence-as-claim rule asks for. No option concedes in its own description that it isn't available to this asker. FLAG, not a fail: the cut list disqualifies the alumni-claim idea because 'it manages the loss rather than reducing it, so it isn't an answer to the question you asked' — a criterion that applies equally to live options 4 and 5, which are also loss-management rather than loss-prevention. The cut list also runs 6 one-liners against the Strategic row's 3-5 ceiling."
+    },
+    {
+      "text": "Gives an actual recommendation of where to start, not just a menu",
+      "passed": true,
+      "evidence": "'What I'd look at first, and what would change that: the two-date plot, then the absence drill, then the problem-stock count — which is not the order above,' with reasons for each and two named unknowns that would change it."
+    }
+  ],
+  "summary": {
+    "passed": 9,
+    "failed": 0,
+    "total": 9,
+    "pass_rate": 1.0
+  }
+}

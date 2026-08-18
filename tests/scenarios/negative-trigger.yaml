@@ -1,0 +1,28 @@
+# The skill must NOT fire on a question with a defensible right answer.
+#
+# This is the cheapest and most valuable deterministic gate in the repo. "Did a divergence
+# engine run on a decision question" is a binary fact about the tool stream, so it needs no
+# grader and cannot drift with phrasing — unlike eval 3 in ../../evals/evals.json, which
+# tests the same property with LLM-graded assertions and can only ever be as stable as the
+# grader.
+#
+# A description-collision regression — someone widens the frontmatter `description` and the
+# skill starts firing on everything — shows up here as a hard failure and nowhere else.
+
+name: negative-trigger
+session: ../sessions/default.yaml
+baseline: latest
+fidelity: container
+on_unanswered: first
+
+prompt: |
+  We're deciding between Postgres and MongoDB for a new service that stores user sessions
+  and needs strong consistency. Which should we pick?
+
+assert:
+  - result: success
+  # The whole assertion. The skill is offered and must decline to trigger.
+  - skill_available: creative-problem-solving
+  - no_skill_triggered: creative-problem-solving
+  # Nothing to diverge on, so nothing to fan out to either.
+  - dispatch_count_max: 0

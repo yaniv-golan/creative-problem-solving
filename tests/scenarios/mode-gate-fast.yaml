@@ -1,0 +1,40 @@
+# The mode gate, negative half: a BOUNDED problem must not trigger deep mode.
+#
+# DESIGN-NOTES calls the mode gate the most important thing in the skill, and this is the
+# direction that has actually failed: deep mode fired on this exact prompt in iteration 1
+# and cost 6.7x the wall-clock for a worse answer than a plain response (CHANGELOG 0.3.0).
+#
+# "Did it fan out to sub-agents" is a fact about the tool stream, so it needs no grader —
+# unlike eval 2, which tests the same property through an LLM-graded MODE CHECK assertion.
+
+name: mode-gate-fast
+session: ../sessions/default.yaml
+baseline: latest
+fidelity: container
+
+# The skill legitimately raises one clarifying gate here — "account-verification" is
+# ambiguous by design, and eval 2 asserts the skill handles that ambiguity rather than
+# guessing silently. `first` is the deliberate choice, not laziness: the answer is
+# immaterial to what this scenario asserts (whichever reading it takes, a bounded product
+# question must not fan out), and the harness's own guidance is to label-anchor only the
+# gates whose choice drives an assertion. Pinning a label here would buy nothing and add a
+# re-record flake every time the model rewords its options.
+#
+# The cost is that the run is flagged non-deterministic. Accepted, for the reason above.
+on_unanswered: first
+
+prompt: |
+  Our onboarding flow has a 60% drop-off at the account-verification step. We've already
+  tried shortening the form and adding a progress bar. I'm out of ideas — what else could
+  we do?
+
+assert:
+  - result: success
+  - skill_triggered: creative-problem-solving
+  # Fast mode's signature, as of 0.1.0: no research. This is now the ONLY observable
+  # difference between the two modes, so without it the fast/deep pair asserts nothing
+  # that distinguishes them.
+  - tool_not_called: WebSearch
+  # Nothing fans out in either mode any more; kept as a backstop against a regression
+  # that reintroduces dispatch silently.
+  - dispatch_count_max: 0

@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "eval_name": "negative-trigger",
+  "prompt": "We're deciding between Postgres and MongoDB for a new service that stores user sessions and needs strong consistency. Which should we pick?",
+  "assertions": [
+    "Does NOT run the four-phase creative problem-solving pipeline",
+    "Gives a direct recommendation rather than a set of divergent options",
+    "Response is concise and does not include a sharpened brief, lenses, or a diversity score"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "eval_id": 2,
+  "config": "without_skill",
+  "expectations": [
+    {
+      "text": "Distinguishes between possible CAUSES of the drop-off before proposing fixes, rather than going straight to an idea list",
+      "passed": true,
+      "evidence": "Opens by rejecting the friction framing, then '## First: split the 60%' with four distinct causes — 'Never received it / Received but never opened / Opened but didn't complete / Never got that far' — plus two diagnostics (median time-to-verify, resend rate) BEFORE the '## Ideas' section."
+    },
+    {
+      "text": "Raises that the 60% may be composed of different populations, or may be partly a measurement or attribution artifact",
+      "passed": true,
+      "evidence": "'If you added verification to stop fraud, part of that 60% may be bots doing exactly what you wanted. Real drop-off and fake drop-off look identical in the aggregate funnel.'"
+    },
+    {
+      "text": "Does not re-propose shortening the form or adding a progress bar",
+      "passed": true,
+      "evidence": "Neither is re-proposed; the progress bar is argued against — 'a progress bar tells people how much work is left, not why to do it.' ('ask whether you need [the phone number] at signup at all' is step elimination, not form shortening.)"
+    },
+    {
+      "text": "At least one option questions whether verification needs to happen at that point in the flow at all",
+      "passed": true,
+      "evidence": "'Delete or defer the step (biggest lever, usually) — Let people into the product unverified, in a limited state, and verify at the first moment it actually matters.'"
+    },
+    {
+      "text": "Options differ in mechanism (channel, timing, who verifies, whether to verify) rather than in copy, layout, or visual design",
+      "passed": true,
+      "evidence": "Group-level axes are mechanisms: defer/delete the step, SSO (who verifies), magic link, provider failover and SMS fallback (channel), polling/state-restoring links (device continuity), resume emails (timing). A minority of bullets are copy/template ('Trust and motivation' section, plain-text emails), but they are not the axis of variation."
+    },
+    {
+      "text": "Handles the ambiguity in 'account-verification' — either asks which kind, or states which reading it assumed and what would change under the others",
+      "passed": false,
+      "evidence": "Never addresses which kind of verification. It assumes email/SMS OTP throughout (SPF/DKIM, subject-line codes, one-time-code autofill) with no stated assumption. The closing question asks 'why do you verify at that point — regulatory, fraud, deliverability ... or just convention?' — which is a why question, not the which-kind ambiguity."
+    },
+    {
+      "text": "Proportionate to a bounded product question: under roughly 1200 words, no ceremonial section headings with no content under them",
+      "passed": true,
+      "evidence": "wc -w = 806 words, comfortably under ~1200. Five headed sections, all with substantive content; no empty ceremonial headings."
+    },
+    {
+      "text": "MODE CHECK: did NOT run a full deep multi-agent pass with parallel generators and web research on this bounded problem",
+      "passed": true,
+      "evidence": "user_notes.md line 1: 'MODE: none'. metrics.json: subagents_spawned 0, web_searches 0, total_tool_calls 3."
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 1,
+    "total": 8,
+    "pass_rate": 0.875
+  }
+}

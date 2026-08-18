@@ -1,0 +1,42 @@
+{
+  "eval_id": 4,
+  "config": "with_skill",
+  "expectations": [
+    {
+      "text": "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'",
+      "passed": true,
+      "evidence": "Eight options on genuinely different axes: allocate a scarce resource by vote ('Presence confers power'), distribute 20–30 named micro-roles, couple it to the internal job market, ban wins and run only bad news, invert the presentation direction, shrink the live session deliberately, delta-briefing plus ATC-style readback, and a diagnostic cohort cut. None is 'make it more engaging'."
+    },
+    {
+      "text": "At least one option questions the premise — whether the all-hands should exist in this form, or whether attendance is the right thing to optimise",
+      "passed": true,
+      "evidence": "'Cannibalize it on purpose ... it accepts that half the company not attending might be correct behavior rather than a problem. The company-wide-synchronous format was a choice, and it's the first thing that stops scaling.'"
+    },
+    {
+      "text": "Does not treat declining attendance as purely a content-quality problem",
+      "passed": true,
+      "evidence": "Explicitly argues against the content framing: 'every baseline move tries to make the session more worth watching. This makes it worth being at, which is a different variable.' The cohort cut argues the cause 'frequently turns out to be mechanical rather than motivational.'"
+    },
+    {
+      "text": "Proportionate: under roughly 800 words, no heavy scaffolding for a light question",
+      "passed": false,
+      "evidence": "wc -w = 1818 words — 2.3x the ~800-word ceiling for an explicitly light question. Heavy scaffolding present: 'Sharpened brief', 'The obvious answer (baseline)', a fixed 3-bullet apparatus under each of 8 ideas, a 5-item cut list, and a 'Set diversity: scored 10 candidate mechanisms — 9.88 effectively distinct lexically' section that exposes an internal scoring artifact to the reader."
+    },
+    {
+      "text": "MODE CHECK: did NOT spawn parallel generator subagents or run web research for this",
+      "passed": false,
+      "evidence": "No subagents (metrics.json subagents_spawned: 0), but metrics.json records web_searches: 2, and user_notes.md confirms 'both WebSearch calls returned nothing' because the budget was exhausted — i.e. web research WAS attempted on a light ideation question. The assertion is a disjunction and the research half fails; the parallel-generator half passes."
+    },
+    {
+      "text": "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes",
+      "passed": true,
+      "evidence": "'Cut the decline, don't average it ... \"half the company\" is almost certainly not a uniform 50% ... check whether the slot started colliding with something — a sprint ceremony, a new office's evening, a school run, a shift pattern.' Also: 'Whether the decline is gradual or has a step change in it. A step change means something specific happened.'"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 2,
+    "total": 6,
+    "pass_rate": 0.6667
+  }
+}
