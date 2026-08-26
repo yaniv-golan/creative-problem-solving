@@ -23,6 +23,30 @@ project adheres to [Semantic Versioning](https://semver.org/).
   link at the first parenthesis in a URL and does so silently; a destination holding a paren or a
   space is now bracketed.
 
+- **The run hands the reader the report as a file, not only as a message.** Writing a file and
+  delivering it are different acts, and which one a path performs depends on the host: the working
+  directory a run writes into may be the reader's own, may belong to the session, or may not be
+  somewhere they can reach at all. Step 10 now says to present the report as well as sending its
+  contents, described as an outcome rather than by naming a tool, because the tool differs by host
+  and naming one makes the instruction wrong on the others.
+
+- **The `outputs/` paragraph says which host it describes.** It promised a directory in "whatever
+  directory you invoked it from" that is never cleaned up, with advice to gitignore it — true from
+  a terminal, and not something a reader in a hosted assistant can rely on or reach. The promise
+  that nothing is deleted is unchanged, and now says what it is: the run never tidies away its own
+  evidence, which is not a claim about where the host keeps it.
+
+- **`tests/scenarios/ideas-command.yaml` asserts the report is reachable**, via
+  `computer_links_resolve`, rather than assuming a written file was a delivered one. A path
+  assertion would test a different thing on each host; this tests the property the reader cares
+  about, that what they are handed opens.
+
+### Fixed
+
+- **`--check-reply`'s limit is stated where it is used.** It compares the reply file against the
+  report file, so copying one to the other satisfies it, and it never sees the message actually
+  sent. It is a floor against summarising, not evidence the reader received anything.
+
 ## [0.2.0] - 2026-08-27
 
 ### Added

@@ -310,15 +310,23 @@ prose:
 A host missing any of these still runs the skill; it runs a weaker version of it and says so.
 
 **A run leaves a directory behind, on purpose.** `/ideas` writes everything it produces under
-`outputs/<timestamp>/` in whatever directory you invoked it from: the report, every option
-generated, the adjudicators' verdicts, and `_work/brief.json`, which holds your problem as you
-stated it. **Nothing under `outputs/` is ever deleted** — not the current run, not older ones.
+`outputs/<timestamp>/` in its working directory: the report, every option generated, the
+adjudicators' verdicts, and `_work/brief.json`, which holds your problem as you stated it.
+**Nothing under `outputs/` is ever deleted** — not the current run, not older ones.
 That is deliberate rather than an oversight. The integrity check counts what is on disk, so a
 stage file that was tidied away is indistinguishable from a stage that never ran, and a pipeline
 that can delete its own evidence cannot prove it did not skip a step. Old run directories
 accumulate; they are small, and clearing them is your call, not the run's. If you invoke `/ideas`
 inside a git repository, add `outputs/` to its `.gitignore` — the contents are yours, and
 committing them is rarely what you want.
+
+**Where that directory is depends on the host.** Run from a terminal, it is the directory you
+invoked from and everything above holds as written. Run inside an assistant that gives the session
+its own working area, the run directory belongs to that session rather than to you, and it may not
+outlive it — which is why the run also hands you the report as a file to open and keep, and sends
+its full contents in the reply. If you want the working files, say so and they can be handed over
+too; the guarantee that nothing is deleted is about the run never tidying away its own evidence,
+not a promise about where your host keeps it.
 
 ## Built with
 

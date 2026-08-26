@@ -48,3 +48,10 @@ assert:
   # SKILL.md's "One question, and only about meaning" ceiling, as in both pipeline-* scenarios.
   # Counts sub-questions, not gates, and is satisfied by zero.
   - questions_count_max: 1
+  # The report has to be REACHABLE, not merely written. Where a cwd-relative `outputs/<ts>/` lands
+  # differs by lane: at host-loop the agent's cwd already IS the visible outputs dir, at container
+  # it is a scratchpad sibling of mnt/, and on remote Cowork `outputs/` need not exist at all — so
+  # a path check would assert a different thing on each. This asserts the property the reader
+  # actually cares about, that the link they are handed resolves to a file, and it is
+  # filename-agnostic: `user_visible_artifact` would need the exact name the model invents.
+  - computer_links_resolve: true

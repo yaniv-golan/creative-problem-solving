@@ -515,7 +515,16 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
 
     It refuses a reply that does not contain the report's rendered options. That is a containment
     test, not a formatting one: a covering note above the content is fine, a summary instead of
-    the content is not.
+    the content is not. Note what it does **not** check: it reads the file you wrote, not the
+    message you send, so `cp report.md reply.md` satisfies it by construction. It is a floor
+    against summarising, not proof the reader got anything.
+
+    **Then present the report file to the reader**, as well as sending its contents. Describe the
+    outcome rather than naming a tool — the tool differs by host and a name that is right on one
+    is wrong or absent on another. Writing the file is not the same as delivering it: whether
+    `$RUN` is somewhere the reader can open depends on where the host put your working directory,
+    and on some hosts it is not reachable at all. The reader should end with something they can
+    open and keep, not only a long message.
 
 ## Reporting the list
 
