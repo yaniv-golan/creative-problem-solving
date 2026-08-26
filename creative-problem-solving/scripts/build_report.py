@@ -33,6 +33,26 @@ def one_line(t):
     """
     return " ".join((t or "").split())
 
+def source_link(url):
+    """A source rendered as its domain, linking to the full URL.
+
+    A hundred characters of percent-encoded path set in the middle of a sentence is not
+    something anyone reads. The domain is the part a reader weighs when deciding whether to
+    trust a check, and it is short enough to sit on the line.
+    """
+    from urllib.parse import urlsplit
+    host = (urlsplit(url).netloc or url).split("@")[-1]
+    if host.startswith("www."):
+        host = host[4:]
+    # A destination holding a paren or a space ends the link early and silently, mid-report.
+    # Pointy brackets fix that; a URL containing them itself cannot be linked at all, so it
+    # renders as bare text -- a name with no link beats a link that goes somewhere else.
+    if "<" in url or ">" in url:
+        return host or url
+    dest = f"<{url}>" if any(c in url for c in "() \t") else url
+    return f"[{host or url}]({dest})"
+
+
 def main(wd, out):
     text, lens_of = {}, {}
     for p in sorted(glob.glob(os.path.join(wd, "pool-*.json"))):
@@ -135,16 +155,19 @@ def main(wd, out):
         # Below rank 13 nothing was checked at all, so the label is carried once by the band
         # heading rather than repeated on every lead. Per-option here and band-level there is
         # not an inconsistency: inside the top 13 the label distinguishes leads from each other,
-        # and below it there is nothing to distinguish -- an identical <sup> on all of a hundred
+        # and below it there is nothing to distinguish -- an identical label on all of a hundred
         # families is noise that trains the reader to stop reading labels.
+        # Its own paragraph, in plain markdown. Trailing the option sentence, a label reads as
+        # part of the claim it qualifies; on its own line it reads as what it is, a note about
+        # the line above -- and no raw tag leaks as text where the report is shown unrendered.
         v = verdict.get(head, {})
         vd = (v.get("verdict") or "").lower()
         if vd == "confirmed" and v.get("source_url"):
-            b.append(f"  <sup>checked — {v['source_url']}</sup>")
+            b += ["", f"*Checked — {source_link(v['source_url'])}*"]
         elif vd == "no_external_claim":
-            b.append("  <sup>proposal — nothing to verify</sup>")
+            b += ["", "*Proposal — nothing to verify*"]
         elif rank <= 13:
-            b.append("  <sup>not verified</sup>")
+            b += ["", "*Not verified*"]
 
         if lead_prose:
             # Phase 4's template, as slots. The generator used to hand the model a heading and
@@ -200,7 +223,7 @@ def main(wd, out):
               "Searched, and the claim did not hold. Listed so you can see what was checked.", ""]
         for i in sorted(rejected):
             e = verdict[i]
-            src = f" — [source]({e['source_url']})" if e.get("source_url") else ""
+            src = f" — {source_link(e['source_url'])}" if e.get("source_url") else ""
             L.append(f"- {one_line(text[i])}{src}")
         for fid in dead:
             L.append(f"- *Family #{rank_of[fid]} ({fams[fid]['label']}) had no surviving "

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **A verified option's source renders as its domain, not a raw `<sup>` tag.** Each of the top
+  thirteen leads carried `<sup>checked — <full URL></sup>` trailing its option sentence. That set
+  up to a hundred characters of percent-encoded path in superscript in the middle of a line, which
+  nobody reads, and the tag itself leaks as literal text wherever the report is shown unrendered —
+  which is most places a `.md` file ends up. The label is now its own italic paragraph under the
+  option, with the domain as the link text:
+  `*Checked — [iaa.gov.il](https://www.iaa.gov.il/en/airports/herzlia/about/)*`. All four
+  verification states survive — checked, proposal, not verified, and the unlabelled band below
+  rank 13 — because inside the top thirteen the label is what distinguishes one lead from another.
+
+  The "Checked and failed" band uses the same form. It was emitting `[source](url)`, which ends the
+  link at the first parenthesis in a URL and does so silently; a destination holding a paren or a
+  space is now bracketed.
+
 ## [0.2.0] - 2026-08-27
 
 ### Added

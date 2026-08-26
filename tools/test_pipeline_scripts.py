@@ -770,7 +770,7 @@ def t_rev6_report():
     run("build_report.py", d, "--out", out_md)
     body = open(out_md).read()
     check("no_external_claim renders as a proposal",
-          "proposal — nothing to verify" in body,
+          "*Proposal — nothing to verify*" in body,
           "rendered as 'not verified', which reads as a check that failed")
 
     # the convergence line states what is measured, not independence
