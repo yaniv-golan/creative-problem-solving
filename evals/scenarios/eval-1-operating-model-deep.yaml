@@ -1,0 +1,47 @@
+# GENERATED from ../evals.json (v8, eval 1) by tools/build-eval-scenarios.py.
+# Edit the assertions THERE and regenerate — a hand-edit here fails CI's --check.
+#
+# Strategic prompt. Measures whether the options differ in KIND — how the money is made —
+# rather than in degree.
+name: eval-1-operating-model-deep
+session: ../sessions/default.yaml
+baseline: desktop-1.37937.1
+fidelity: container
+# The eval prompts are self-contained and several end by telling the model not to ask, so a gate
+# here is a finding rather than something to script an answer for.
+on_unanswered: first
+
+prompt: |
+  Our architecture practice is 60 people doing mixed commercial and institutional work. Fees are compressing, clients now expect AI-assisted delivery speed, and we've already tried raising utilisation and hiring cheaper juniors. I don't think our current model survives four more years — what else could we be? This is all the information available, so don't ask me any questions; where something is missing, make a reasonable assumption and state it in your response.
+
+assert:
+  - result: success
+  # semantic_matches is LIVE-ONLY: the judge is a model call, so this cannot run on the
+  # token-free replay lane, and `lint` says so. That warning is expected here, not a defect.
+  #
+  # semantic_matches is TOOL-USE BLIND. Its judged corpus is the final message, the transcript
+  # and authored files — never a tool call (harness TOOL_USE_BLIND_KEYS). So a rubric claim about
+  # what the model DID, as opposed to what it said or wrote, is only as good as the trace it left
+  # in text or on disk. Keep the claims here about reader-visible output, and let the hard
+  # assertions above carry anything that depends on a tool call.
+  #
+  # No min_pass. Recipe 5's point is that answers vary run to run, so the signal is each claim's
+  # pass RATE across N>=3 reps, read from RunResult.assertions[].semanticClaims — not one green.
+  # Set min_pass to the reliably-hit core once a baseline profile exists.
+  - semantic_matches:
+      rubric:
+        - "Proposes at least 4 distinct models"
+        - "At least 4 models differ in KIND not DEGREE \u2014 they use different mechanisms for making money or holding a claim on the value created, rather than varying headcount, project size, sector focus, or geography"
+        - "Every model states a causal mechanism (how it actually works / where the revenue comes from), not only a benefit or positioning claim"
+        - "Names the conventional or obvious answer explicitly somewhere, so the reader can judge distance from it"
+        - "States a load-bearing assumption, precondition, or falsifiable claim for each model"
+        - "Identifies who would execute each model, or what the practice would have to change to run it"
+        - "Includes at least one model an established practice would find genuinely uncomfortable, not a set of safe consensus positions"
+        - "Does not assert novelty as established fact; any novelty claim is framed as checkable or bounded by where the author looked"
+        - "No two presented models are restatements of each other under different names"
+        - "Any named firm, statistic, or historical example is real and accurately characterised (flag any that are fabricated or misattributed)"
+        - "Presents only live options: no model that disqualifies itself in its own description ('that's a different business', 'you'd now be a software company') is presented as one of the numbered options rather than as a shortlist entry"
+        - "If the response promises a ranking or refers to 'my ranking', it actually gives one"
+        - "States which reading of the ambiguous prompt it took \u2014 a new way of delivering the work vs a new shape for the firm \u2014 or explicitly flags the ambiguity"
+        - "Reports mechanism-level convergence as a claim about the problem ('every route out ends in X') rather than as a pass count ('four of five passes said X') \u2014 the latter is process exposure the report template bans"
+        - "Does not quote an internal process metric or pipeline artifact to the reader \u2014 no scores, pass counts, lens names, family ids or cut lists"

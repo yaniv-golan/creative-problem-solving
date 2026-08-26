@@ -1,8 +1,8 @@
 # Constraint lenses
 
 Longer worked prompts for the nine lenses. **`SKILL.md`'s Phase 1 table is the operative
-version** — it carries each lens's move and second move, and in testing this file was never
-opened from the main thread. Read it when a lens isn't landing.
+version** — it carries each lens's move and second move. Read this file when a lens isn't
+landing, not as routine.
 
 ## Contents
 
@@ -77,7 +77,8 @@ Best for: when everything generated so far sounds the same; risk and defensive s
 ### Constraint extremity
 
 > Generate solutions under each of these separately, treating each as absolutely binding:
-> (a) one hundredth of the current budget; (b) it must work in one week; (c) no humans
+> (a) one hundredth of a normal budget for this kind of work; (b) it must work in one week;
+> (c) no humans
 > are involved at any step; (d) it must work for exactly one person; (e) it must work at
 > ten thousand times the scale. Do not soften the constraint into something reasonable —
 > if a constraint makes the current approach impossible, that's the point, and the
@@ -87,8 +88,8 @@ Best for: capital-heavy or process-heavy incumbents, cost-structure problems.
 
 ### Time-shift
 
-> Identify the single resource that is currently scarce and expensive in this problem and
-> that is getting cheaper fast. Assume it is free and unlimited. Generate what becomes
+> Identify the single resource that a problem of this kind is usually scarce and expensive in,
+> and that is getting cheaper fast. Assume it is free and unlimited. Generate what becomes
 > possible, then work back to what is buildable on the current price curve. Separately:
 > identify what becomes scarce *because* that resource became abundant — the new
 > bottleneck is usually where the value moves.
@@ -126,8 +127,10 @@ intelligence, symbiosis, quorum sensing, migration); ecological (nutrient cyclin
 succession, redundancy, decomposition).
 
 **Grounding is mandatory.** An organism name with a hand-waved mechanism is the standard
-failure mode of AI biomimicry — confident and wrong. In deep mode, verify each mechanism
-with a search before it reaches the user; if it doesn't verify, cut it.
+failure mode of AI biomimicry — confident and wrong. Search verifies the borrowed mechanism behind
+the lead option of each of the top 13 families; if it doesn't verify, cut it. A biomimicry option that
+is a nested variant, or that falls below the top 13, ships unverified — and that label matters more
+here than anywhere else.
 
 The same rule covers the analogical-transfer lens above and any idea resting on a claim
 about how a real system works. A misremembered historical example carries the same risk as
@@ -193,12 +196,23 @@ it, but over an option set this engine produced: as a review structure, not the 
 
 ## Choosing lenses for a problem
 
-Five well-separated lenses beat nine overlapping ones — per-agent diversity contribution
-falls off sharply past about five generators.
+**Pick for separation, not for a number.** Adding a lens costs budget, not diversity: measured
+across four lenses against seven on the same problem, the duplicate rate stayed flat at 44% and
+no pair of lenses collapsed into another. Take every lens that genuinely attacks the problem
+differently; drop one only when it would produce the same *shape* of answer as one already
+chosen.
+
+**The failure mode is a mis-chosen lens, not a redundant one.** In that measurement the weakest
+lens put 18 of its 19 uniquely-reached options in the bottom third of the ranking, while still
+producing one family of ideas nothing else touched. After a run, look at each lens's
+uniquely-reached survivors: if they cluster in the bottom third, that lens was wrong for this
+kind of problem — a correction to the routing below, not grounds for dropping the lens.
+
+This rests on one problem and one run per condition.
 
 **Pick the lens in `SKILL.md`** — its Phase 1 table is operative. This file is the longer
-prompt text for a lens you have already chosen. Note that biomimicry is deep-only: it needs a
-verifiable organism, and fast mode has no search budget to check one.
+prompt text for a lens you have already chosen. Biomimicry carries a hard requirement: name the
+organism and the mechanism at a level someone could look up, because Phase 3 will check it.
 
 If two lenses would produce the same shape of answer for this particular problem, drop one
 and add a more distant one. Redundant generators cost budget and buy nothing — the whole

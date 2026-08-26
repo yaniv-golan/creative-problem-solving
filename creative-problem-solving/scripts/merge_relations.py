@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""Merge the adjudicator shards, resolve disagreements, and measure agreement.
+
+The proposer deals most pairs to exactly one shard, but deliberately deals a small sample to
+two. Those doubly-judged pairs are the only reliability instrument this pipeline has: two
+sub-agents judge the same pair without knowing the other exists, so how often they match says
+how stable the adjudication stage is -- the stage whose noise shows up downstream as families
+that vary from run to run.
+
+A disagreement still has to be resolved before the grouper reads the file, and it is resolved
+toward SEPARATION. Grouping treats `duplicate` and `implementation_variant` as pulling two
+options together and the other two as leaving them apart, so when readers split, the pipeline
+keeps them apart: a wrong merge presents an option as a footnote on someone else's idea, while a
+wrong split costs a line of reading.
+
+  merge_relations.py <work-dir>
+
+Writes relations.json (one verdict per pair, compact) and agreement.json. Prints the numbers.
+"""
+import json, sys, glob, os
+from collections import defaultdict, Counter
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from robust_json import load
+
+# Bands from three recorded runs: duplicate 18.5% / 19.5% / 0.7%, joinable 60.3% / 61.7% / 33.2%.
+# Drawn so the one measured anomaly actually trips them -- a band that stays silent on the only
+# outlier it was built for is decoration.
+DUP_BAND = (0.05, 0.45)
+JOIN_BAND = (0.40, 0.85)
+
+# higher = keeps the two options further apart
+SEPARATION = {"duplicate": 0, "implementation_variant": 1, "shared_component": 2, "distinct": 3}
+
+def main(wd):
+    shards = sorted(glob.glob(os.path.join(wd, "relations-*.json")))
+    if not shards:
+        sys.exit(f"FAIL: no relations-*.json in {wd}")
+
+    # EVERY PAIR DEALT MUST COME BACK, AND THIS IS THE PLACE TO NOTICE.
+    #
+    # An adjudicator returning fewer relations than its shard held is silent everywhere else: the
+    # merged file is simply short, and nothing downstream can tell a pair that was never judged
+    # from one that was never proposed. Measured on the 2026-08-26 live run -- cand-4.json dealt
+    # 117, relations-4.json returned 116 -- the single missing pair surfaced ~23 minutes later,
+    # at the END of the run, and was patched by re-adjudicating it and rewriting relations.json
+    # AFTER families, ranking and verification had already been built from it.
+    #
+    # That rewrite happened to be safe: the late verdict came back separating, so the grouping it
+    # invalidated was regenerated. Had it come back joining, only joinable.json would have needed
+    # regenerating and the run would have gone green over a grouping that contradicts a verdict.
+    # Checking here moves the failure four stages earlier, before anything is built on it.
+    # Compared against EVERY returned relation, not shard-against-its-own-file. The remedy below
+    # tells the caller to write a re-adjudication to a new relations-<n>.json, so a per-file
+    # comparison would refuse the very fix it just asked for -- an error message whose named
+    # action does not clear it is the unactionable kind this repo keeps getting worked around.
+    back = set()
+    for rp in shards:
+        back |= {frozenset((e.get("a"), e.get("b"))) for e in load(rp, "relations")}
+    missing = []
+    for c in sorted(glob.glob(os.path.join(wd, "cand-*.json"))):
+        k = os.path.basename(c)[5:-5]
+        if not os.path.exists(os.path.join(wd, f"relations-{k}.json")):
+            continue                                 # not yet adjudicated; the gate at step 9 owns that
+        dealt = {frozenset((p.get("a"), p.get("b"))) for p in load(c, "pairs")}
+        gap = dealt - back
+        if gap: missing.append((k, sorted(tuple(sorted(g)) for g in gap)))
+    if missing:
+        lines = [f"FAIL: {sum(len(g) for _, g in missing)} pair(s) dealt to an adjudicator never came back."]
+        for k, gap in missing:
+            lines.append(f"  shard {k} is short {len(gap)}: " +
+                         ", ".join(f"{a}~{b}" for a, b in gap[:12]) +
+                         (f", and {len(gap) - 12} more" if len(gap) > 12 else ""))
+        lines.append("Re-dispatch the adjudicator for each shard named above with ONLY its missing "
+                     "pairs, have it write relations-<next-free-index>.json, then re-run this "
+                     "script. Do not hand-edit relations.json: it is rebuilt from the shards here, "
+                     "and an edit is overwritten on the next run.")
+        sys.exit("\n".join(lines))
+
+    seen = defaultdict(list)
+    for s in shards:
+        for e in load(s, "relations"):
+            if e.get("relation") not in SEPARATION:
+                sys.exit(f"FAIL: {os.path.basename(s)}: unknown relation {e.get('relation')!r}")
+            # Tag every verdict with the shard it came from. Without this a single
+            # adjudicator repeating a pair inside its own shard counts as two adjudicators
+            # agreeing -- self-agreement is near-certain, so it inflates the figure and,
+            # worse, measures nothing. Observed in real runs: 2 of 38 and 1 of 41.
+            seen[frozenset((e["a"], e["b"]))].append(dict(e, _shard=os.path.basename(s)))
+
+    # The probe is only the pairs two DIFFERENT adjudicators judged blind.
+    probe = {k: v for k, v in seen.items() if len({e["_shard"] for e in v}) > 1}
+    self_judged = sum(1 for v in seen.values()
+                      if len(v) > 1 and len({e["_shard"] for e in v}) == 1)
+    conflicts = {k: v for k, v in probe.items() if len({e["relation"] for e in v}) > 1}
+
+    out = []
+    for k, entries in seen.items():
+        # max separation wins; ties keep the first, which is arbitrary but they agree anyway
+        best = max(entries, key=lambda e: SEPARATION[e["relation"]])
+        out.append({x: y for x, y in best.items() if x != "_shard"})
+
+    json.dump({"relations": out}, open(os.path.join(wd, "relations.json"), "w", encoding="utf-8"),
+              separators=(",", ":"))
+
+    agreed = len(probe) - len(conflicts)
+    rate = (agreed / len(probe)) if probe else None
+    json.dump({
+        "probe_pairs": len(probe),
+        "self_judged_excluded": self_judged,
+        "agreed": agreed,
+        "disagreed": len(conflicts),
+        "agreement_rate": rate,
+        "resolved_toward_separation": [
+            {"pair": sorted(k), "verdicts": sorted({e["relation"] for e in v}),
+             "kept": max(v, key=lambda e: SEPARATION[e["relation"]])["relation"]}
+            for k, v in conflicts.items()],
+    }, open(os.path.join(wd, "agreement.json"), "w", encoding="utf-8"), indent=2)
+
+    print(f"merged {sum(len(v) for v in seen.values())} verdicts from {len(shards)} shards "
+          f"-> {len(out)} pairs")
+    if self_judged:
+        print(f"note: {self_judged} pair(s) judged twice by the SAME adjudicator, excluded "
+              f"from the probe — one reader agreeing with itself measures nothing")
+    if probe:
+        print(f"agreement probe: {agreed}/{len(probe)} pairs judged the same by two adjudicators"
+              + (f" ({rate:.0%})" if rate is not None else ""))
+        if conflicts:
+            print(f"  {len(conflicts)} disagreement(s), each resolved toward separation:")
+            for k, v in list(conflicts.items())[:5]:
+                kept = max(v, key=lambda e: SEPARATION[e["relation"]])["relation"]
+                print(f"    {'~'.join(sorted(k))}: "
+                      f"{' vs '.join(sorted({e['relation'] for e in v}))} -> kept {kept}")
+    else:
+        print("agreement probe: NONE — no pair was judged twice, so this run measured nothing")
+
+    # WHAT THE AGREEMENT PROBE CANNOT SEE.
+    #
+    # The probe asks whether two adjudicators judged the same pair the same way. It says nothing
+    # about where the panel's verdicts sit as a whole, and those are different failures. Across
+    # three recorded runs the `duplicate` share was 18.5%, 19.5% and 0.7% -- a 25x spread that
+    # decides the entire partition, since 0.7% leaves almost nothing to group -- while the
+    # agreement rates were 75%, 83% and 81%, with the outlier sitting mid-range. A run can be
+    # perfectly self-consistent and still be calibrated somewhere the others are not.
+    #
+    # Warn-only, and the band is drawn from three runs: it reports "this run does not look like
+    # the ones we have seen", which is the strongest honest claim at n=3. A hard gate fitted to
+    # three points would refuse legitimate runs, and a refused legitimate run is how a check gets
+    # switched off.
+    if out:
+        share = Counter(e.get("relation") for e in out)
+        dup = share["duplicate"] / len(out)
+        join = (share["duplicate"] + share["implementation_variant"]) / len(out)
+        print(f"verdict mix: duplicate {dup:.1%}, joinable {join:.1%} of {len(out)} pairs")
+        if not (DUP_BAND[0] <= dup <= DUP_BAND[1]):
+            print(f"WARN: the `duplicate` share is {dup:.1%}, outside the "
+                  f"{DUP_BAND[0]:.0%}-{DUP_BAND[1]:.0%} of recorded runs (18.5%, 19.5%, 0.7%). "
+                  f"A very low share leaves grouping almost nothing to join, so expect many "
+                  f"single-option families; a very high one merges options the reader wanted to "
+                  f"compare. Check a handful of verdicts by hand before trusting the grouping.")
+        if not (JOIN_BAND[0] <= join <= JOIN_BAND[1]):
+            print(f"WARN: the joinable share is {join:.1%}, outside the "
+                  f"{JOIN_BAND[0]:.0%}-{JOIN_BAND[1]:.0%} of recorded runs (60.3%, 61.7%, 33.2%). "
+                  f"This sets how much of the pool can be grouped at all.")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2: sys.exit(__doc__)
+    main(sys.argv[1])

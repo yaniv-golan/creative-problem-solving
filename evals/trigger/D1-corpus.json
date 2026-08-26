@@ -1,0 +1,37 @@
+{
+  "purpose": "D1 factorial: separate stuck-language from context-richness as the driver of skill invocation.",
+  "frozen": "2026-08-20, before any candidate description text was drafted",
+  "factors": {
+    "context": "situational detail + first-person stake + a tried-X clause. tried-X is classed as CONTEXT (a fact about the situation), not as stuck-language (a statement about the asker's state). This boundary is a judgment call and is the main threat to the factorial's cleanliness; it is recorded here rather than discovered later.",
+    "stuck": "an explicit statement of being out of ideas, or an explicit request for options"
+  },
+  "cells": {
+    "A": "terse, no stuck",
+    "B": "terse, stuck",
+    "C": "rich, no stuck",
+    "D": "rich, stuck"
+  },
+  "load_bearing": "C. If C fires at rate comparable to B/D, the driver is context and no description rewrite reaches the problem.",
+  "questions": {
+    "kids": {
+      "A": "What should a parent do about kids forming attachments to AI companions?",
+      "B": "What should a parent do about kids forming attachments to AI companions? I'm out of ideas — what else could we try?",
+      "C": "My two kids, 9 and 13, have both started talking to an AI companion app every evening, and the younger one now prefers it to calling her friends. We've set screen-time limits and tried scheduling more in-person playdates, and neither has changed much. Their school has no policy on any of this. What should a parent do about it?",
+      "D": "My two kids, 9 and 13, have both started talking to an AI companion app every evening, and the younger one now prefers it to calling her friends. We've set screen-time limits and tried scheduling more in-person playdates, and neither has changed much. Their school has no policy on any of this. I'm out of ideas — what else could we try?"
+    },
+    "relationships": {
+      "A": "What will be the impact of AI and Robotics - and the rapid advancement in both - on human relationships?",
+      "B": "What will be the impact of AI and Robotics - and the rapid advancement in both - on human relationships? I keep circling the same few answers and I'm out of angles — what else is there?",
+      "C": "I've been asked to write the opening section of a long-range piece on how the next decade plays out, for readers who follow this closely. We've already worked through the obvious ground — companion apps substituting for friendship, automation freeing up time, synthetic media eroding trust in mediated contact — and it reads like everything else on the subject. What will be the impact of AI and robotics on human relationships?",
+      "D": "I've been asked to write the opening section of a long-range piece on how the next decade plays out, for readers who follow this closely. We've already worked through the obvious ground — companion apps substituting for friendship, automation freeing up time, synthetic media eroding trust in mediated contact — and it reads like everything else on the subject. I keep circling the same few answers and I'm out of angles — what else is there?"
+    }
+  },
+  "design": {
+    "n_per_cell_per_question": 6,
+    "total_runs": 48,
+    "detectable": "0/6 vs 4/6 -> Fisher p=0.06; 0/6 vs 5/6 -> p=0.015. Large cell differences only. Stated in advance.",
+    "environments": "MUST run in both the harness (one plugin mounted) and a roster resembling the live session (many competing skills). The observed failures were live; the harness is not the same environment and a harness-only result does not transfer.",
+    "scoring": "skillsInvoked AND evidence the pipeline ran (skillActivity>=1, toolCount, answer length). A load-then-decline is NOT scored as a fire."
+  },
+  "note_on_content": "Prompts are deliberately generic. No occupational, organisational or sector-specific detail belongs in this corpus — it is a public file."
+}

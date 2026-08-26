@@ -1,5 +1,20 @@
 # Design notes — creative-problem-solving
 
+> **Two architectural changes postdate most of this file. Read it with both in hand.**
+>
+> **Modes are gone (2026-08-22).** The skill had two until then; they were collapsed into one
+> always-grounded path — Phase 0 always retrieves the neighbour list, Phase 3 always verifies the
+> top 13 by search, and everything below that ships labelled unverified with an offer to check it.
+> References to fast/deep below are historical and describe how those runs actually worked.
+>
+> **Generation fans out again (2026-08-23).** Dispatch was removed before the 0.1.0 release —
+> "Iteration 6, concluded" below is the record of that decision, and it was correct on its
+> evidence. It has since been reversed, on new evidence, and the reversal is written up in
+> **"The rebuild — dispatch restored, on a different surface"** near the end of this file. Read
+> that section *before* acting on iteration 6, or you will re-derive a conclusion this project
+> has already moved past. The eval history in between is unchanged and still describes the
+> single-context pipeline it measured.
+
 Author: Yaniv Golan (yaniv@golan.name)
 
 **For humans maintaining this skill. Not loaded at runtime.** SKILL.md is what enters
@@ -15,6 +30,7 @@ weight in the agent's context window.
 - [Context budget: what lives where, and why](#context-budget-what-lives-where-and-why)
 - [Design decisions and their evidence](#design-decisions-and-their-evidence)
 - [Eval history](#eval-history)
+- [The rebuild — dispatch restored, on a different surface](#the-rebuild--dispatch-restored-on-a-different-surface-2026-08-23)
 - [Bugs found and fixed](#bugs-found-and-fixed)
 - [Known weaknesses and open questions](#known-weaknesses-and-open-questions)
 - [Sources](#sources)
@@ -72,19 +88,24 @@ straight out of the brief," which became "models reliably echo the seed vocabula
 Same behaviour, a quarter of the tokens.
 
 The same logic explains why this file isn't `README.md`. Anthropic's skill checklist says
-no README inside a skill folder — it invites duplicating SKILL.md. `DESIGN-NOTES.md` is
-unambiguously not the entry point. It is repo-only — `tools/build-zip.py`
-excludes it, so it is not in the installed archive at all — and it was never auto-loaded even
-when it did ship, because only SKILL.md is.
+no README inside a skill folder — it invites duplicating SKILL.md. This file is unambiguously
+not the entry point.
+
+It now lives in `docs/`, outside every packaged directory. It used to sit inside the skill
+folder and rely on `tools/build-zip.py` excluding it, which kept it out of the generic archive
+but *not* out of the Claude and Codex plugin payloads, which copy the skill directory whole. A
+pre-public audit caught that: the docs said it never ships and two of the three distribution
+paths shipped it. Location is a stronger guarantee than an exclusion list.
 
 ## Design decisions and their evidence
 
-> **What the released skill actually ships**, because several entries below were written for an earlier
+> **What the skill actually ships**, because several entries below were written for an earlier
 > architecture and are kept for their evidence rather than their description. Generation is
-> **3-5 successive in-context passes**, each denied the move the last one made — *not*
-> independent sub-agents, and not 5-7 of them. Dispatch was built, measured and removed before
-> release; the reasoning is in the iteration-6 entry. Read the agent-count and blind-generator
-> entries below as the literature that informed the design, not as the shipped shape.
+> **one isolated sub-agent per lens, dispatched in a single parallel batch** — not successive
+> in-context passes. Dispatch was removed before the 0.1.0 release and restored in the
+> 2026-08-23 rebuild; the iteration-6 entry records the removal and "The rebuild" near the end
+> records the reversal. Read the agent-count and blind-generator entries below as the literature
+> that informed the design.
 
 **Four phases, in this order.** Phase 0 (sharpen) is first because the brief is the
 strongest anchor in the room and the largest single novelty gain in the literature came
@@ -674,6 +695,32 @@ the core pipeline, and an external regression test cannot force the read but doe
 when it stops happening. That last one is `tests/` at the repo root. The skill stays a
 suggestion; the test is the enforcement.
 
+> **Correction, 2026-08-19 — the conclusion stands, one supporting clause does not.**
+> "Hooks are Claude Code only" was true when written and is now false: Cursor ships a mature
+> hook system covering the agent loop (including `subagentStart`/`subagentStop`), and Codex's
+> hooks engine has been stable since v0.124.0, sharing Claude Code's lifecycle event names
+> (`PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Stop`, `SessionStart`). So it is three of
+> nine hosts, not one.
+>
+> That does not revive the read-gate, and the reason matters: **the rejection never rested on
+> host availability.** It rests on self-attestation — the writer and the checker are the same
+> agent — which no amount of host support fixes. What changed is only the shape of the
+> portability objection: from *exclusivity* (one host has it) to *heterogeneity* (three hosts,
+> three different config surfaces and event contracts, six unverified). A skill shipping to nine
+> targets still cannot depend on it.
+>
+> Same correction applies to the sub-agent dispatch tool, and it is the one more likely to be
+> mis-cited: **`Agent` is no longer Claude-Code-only either.** Cursor has first-class subagents
+> with a `Task` tool (2.4, early 2026; 2.5 permits one level of nesting), and Codex shipped
+> subagents to GA on 2026-03-14 with parallel fan-out — though Codex only spawns them when
+> explicitly asked, which is its own reliability wrinkle. **Iteration 6's removal of dispatch
+> is untouched by this**, because its three legs are reliability (2/6 on opus), honesty
+> (fabricated process on failure) and no measured benefit — portability is not among them, and
+> anyone re-opening dispatch has to beat those three, not this paragraph. One further fact worth
+> checking against the binary before designing anything nested: sub-agents have historically not
+> received the `Agent` tool themselves, making recursive dispatch impossible
+> (`anthropics/claude-code#60763`); reporting conflicts on whether depth-5 nesting now works.
+
 Worth noting what the critique did *not* find: mode selection was correct (fast, zero
 dispatches), the structural budget held everywhere except the diagnosis cell, and no process
 leaked into the answer. The remaining two self-reported "gaps" — no fast-mode lens count, no
@@ -682,6 +729,12 @@ evaluator. Adding prose for either would have been the exact regression this ski
 avoid.
 
 ### Iteration 6, concluded — dispatch removed before release
+
+> **Superseded 2026-08-23.** This decision was reversed. It was right about the failure it
+> described and wrong about the cause: the compliance problem was the *surface* the instruction
+> sat on, not dispatch itself. See "The rebuild" below. Kept in full because the failure mode it
+> names — a run that announces process it did not perform — is the thing the current pipeline's
+> scripts exist to make impossible.
 
 **Decision: deep mode keeps the research and loses the sub-agents.**
 
@@ -780,8 +833,12 @@ rests on are two pre-registered experiments, both in `evals/`:
   problem, five runs per arm, blind-judged: **6.60 distinct mechanisms against 4.00**, premise
   tested 5/5 against 4/5, and a judge asked only whether the answers fell into groups split
   them **10/10 along the arms** without being told arms existed. The design pre-registered
-  *two* prompts and required an effect on both; the second is defined and not yet run, so the
-  rule is not settled.
+  *two* prompts and required an effect on both. **The second has since run and did not clear** —
+  +0.60 against a 1.0 threshold — so by the pre-registered rule this is a split, claimed for one
+  prompt only. A clean single-build re-measurement then scored the same comparison at +0.00 and
+  +1.00 under two blind judges reading the same ten answers, which puts the between-judge spread
+  at the whole detection threshold: the metric is judge-dominated and more generation runs cannot
+  resolve it.
 - **`results/minus-both.md`** — removing category negation and the successive-pass mechanic
   *together* cost **−0.60 mechanisms**, at the judge's own ±0.5 re-grading noise floor, and a
   blinded judge told a null was acceptable found no grouping. This is the more uncomfortable
@@ -792,6 +849,132 @@ rests on are two pre-registered experiments, both in `evals/`:
 Read together they say: the pipeline beats a plain prompt on the one strategic problem
 measured, and *why* is unlocated. Anyone proposing to add machinery should start from the
 second sentence.
+
+### The rebuild — dispatch restored, on a different surface (2026-08-23)
+
+**What changed:** one isolated sub-agent per lens, unconditional grounding, every generated
+option presented inside a ranked family, and stage integrity enforced by a script rather than
+requested in prose. `commands/ideas.md` carries the pipeline; `SKILL.md` carries the method.
+
+**Why iteration 6 was reversed.** Its finding stands: a body-level instruction to dispatch fired
+in a minority of runs, and a failed dispatch produced *fabricated process*. What it got wrong was
+the inference. The instruction had been written into `SKILL.md` five times; measured, that surface
+gets **1/6** compliance. The identical wording in a command file gets **6/6**. Dispatch was not
+unreliable — the place the requirement was written was. This is the same shape as the lens-read
+episode and as intervention #5: when prose repeatedly fails to produce a behaviour, relocate it.
+Restatement has never worked in this project; relocation has, three times now.
+
+**Why the fabrication risk is lower than it was, and it is not zero.** Iteration 6's decisive
+objection was that a skill promising calibrated honesty cannot ship a mode that misreports
+whether it ran. The answer is not a better instruction. Every stage now leaves files, and
+`scripts/verify_pipeline.py` refuses to let an answer be written unless they add up: every
+proposed pair adjudicated exactly once, every option in exactly one family, the ranking neither
+omitting nor inventing a family, no index file carrying text, the agreement probe present and
+large enough, presented count equal to generated count, no `confirmed` verdict without a source
+URL. A stage that did not run leaves nothing to count. The same principle governs the progress
+heartbeat: all four lines are printed by scripts, three of them riding calls the pipeline cannot
+skip, because a command whose only job is to print is the first one dropped and its absence is
+silent by construction.
+
+This is the validator-gate architecture the iteration 6 section named as buildable-but-untried,
+and it is worth noting *why* it was buildable now and not then. `tests/README.md` argues — still
+correctly — that a gate can enforce artifact **shape** and never **provenance**: if the skill
+demands a file per pass, a single-context run simply writes them. What makes these gates
+different is that they check *relations between stages* that no single context produces as a
+by-product: an adjudicated relation for every proposed pair, one verdict per pair rather than
+three, a family partition that covers the pool exactly once. Faking those is not writing a file;
+it is doing the work.
+
+**What is measured, and it is thin.** Two full runs have completed end to end; runs 3 and 4
+stalled and were fixed (a proposer asked to hold set arithmetic over ~1,600 pairs, and a
+progress script that no-opped on a bad path). One 50-card blind read on one problem, one judge:
+25 pipeline options all new to the reader, 15 not worth anyone's time, against a plain model's 9
+of 25 worth bringing — roughly 21 useful against 18, at twenty times the wall-clock. Novelty and
+usefulness came out close to orthogonal on that data, which is why the ranker asks whether a
+family survives the room it is taken to and unusualness is explicitly not a tiebreak.
+
+**What is not measured.** Whether the survivability ranking or the smaller per-option quota move
+the hit rate. Whether any of it beats the 0.1.0 pipeline, which is the comparison `evals/` was
+built for and has not been run. Family grouping is unstable run to run — 217, 102, 127 and 373
+families from the same 450 options under successive instructions, each grouping individually
+coherent — and that instability is accepted rather than solved, on the grounds that two editors
+organising the same material would also differ. No count of "distinct options" is reported
+anywhere, because that number is not measurable; the one reliability figure the pipeline does
+produce, it produces every run, by double-judging 40 pairs blind (89% and 93% on the two runs
+that have reported one).
+
+**And the trigger is worse than the docs used to imply.** The skill fires on naturally-phrased
+questions **0 times in 12** across three problems. It fires when a prompt asserts the obvious
+answers are known and inadequate. That is diagnosed, not fixed, and `/ideas` is the intended
+path — which also means the intended path is the one that needs a command file, sub-agent
+dispatch, `python3` and a Bash tool, none of which the bare Agent Skills install provides.
+
+### Category negation is not in `/ideas`, and the round was measured before deciding (2026-08-24)
+
+Phase 2 says "one extra round, not optional." `commands/ideas.md` does not run it, and `/ideas`
+is the documented entry point. That inconsistency was real and is now resolved deliberately
+rather than by omission: **the command does not run category negation, and this is the record of
+why.**
+
+**The case for adding it was strong on paper.** Negation is the best-evidenced single move in
+this project — *Denial Prompting / NeoGauge* (arXiv:2407.09007) had it beating every classical
+method standalone. And the architecture makes it unusually cheap: Phase 2's expensive step is
+"categorise your own pooled output into named clusters," which the pipeline already does at
+grouping, producing 84-105 *labelled* families instead of 4-6 hand-made clusters. The clustering
+is free; only the refusing round is missing.
+
+The obvious counter-argument — nine isolated lenses already buy the divergence negation buys —
+does not survive the run data. Families reached by four or more different lenses: 17, 19, 19
+across three runs, with a maximum spread of 6-7 of 9. Generators that cannot see each other
+still converge, which is exactly the condition negation exists to break.
+
+**So it was tested rather than argued about.** One generator, one completed run's 84 family labels, a brief
+demanding 10 options falling into none of them and naming the category each creates.
+
+Ten came back. Read against the labels, roughly seven looked new; one was a plain restatement of
+an existing family and two were probably variants.
+
+Two things then cut the estimate down.
+
+**The comparison was against labels, not options — and that inflates.** A negation option is
+judged against ~85 family labels, not the ~280 option texts. One of the ten scored 0.05 lexical
+overlap against every label and 0.21 against an actual option: judged the way the round would
+judge it, escaped; judged against what was really generated, a near-duplicate. Any escape count
+produced this way is an upper bound, and it is biased in the direction that flatters the
+mechanism being evaluated.
+
+**Then the seven survivors were verified by search, which is the number that decided it.**
+
+| verdict | count | |
+|---|---|---|
+| confirmed | 1 | a real institutional venue, documented, that none of the nine lenses had reached |
+| refuted | 1 | a mechanism that turns out to be *regulatorily prohibited* — the intermediary it depends on is barred from disclosing what the option needs disclosed |
+| unclear | 5 | |
+
+The five unclear share a shape worth naming, because it is the shape of a plausible option that
+dissolves on contact: each proposed mining some administrative or regulatory signal, and in
+every case the *institution* is real while the *accessibility* is unestablished. That is a
+recognisable failure shape and worth knowing — an option can be perfectly concrete, name a real
+body, and still rest on a record nobody outside it can actually read.
+
+**Decision: do not add the round.** The pre-registered rule was that 0-1 confirmations of seven
+meant the output would be mostly noise. It came in at one. Three independent lines now agree:
+`evals/results/minus-both.md` could not resolve the mechanism's contribution above the judge's
+noise floor; the ranker correctly ranks its output near the bottom on survivability; and
+verification confirms one in seven.
+
+**The ranker is not the obstacle, and must not be "fixed" to make this work.** An adversarial
+review of the add-it plan pointed out that negation output is by construction what `ideas.md`
+ranks down — "striking mainly because it is strange" — so it would land at rank 80+, unverified,
+one bullet. The tempting repair is to tell the ranker to value novelty for negation-origin
+families. That is rejected on arrival: the survivability rule exists *because* ranking for
+novelty produced 25/25 novel options of which 4/25 were worth bringing to a team, against a plain
+model's 9 of 25. Any origin-based rank floor is that same mistake wearing a lanyard.
+
+**What would reopen this.** A verification survival rate materially above 1 in 7 on a second
+problem, or a cheaper way to run the round than the four serial dispatches it needs. The single
+confirmed option is a genuine find that nine lenses missed, so the mechanism is not worthless —
+it is just not worth 10 minutes and four dispatches of a 40-minute run at this hit rate.
 
 ## Bugs found and fixed
 
@@ -845,8 +1028,8 @@ repo and see whether it flags one *true* near-duplicate the hand read missed. Re
 **177 options in 30 answers** — 17 flagged pairs, **zero true positives**. On the skill arm
 specifically (15 answers, 87 options) it flagged 2 pairs, both false, both driven by the
 "Why it's not the baseline:" boilerplate that iteration since removed. Worst score any skill
-answer has ever recorded: 92.1%. Full method and adjudication in
-`docs/internal/FINDINGS-self-run-2026-08-18.md`.
+answer has ever recorded: 92.1%. The full method and adjudication are in the maintainer's
+self-run findings, which are not published.
 
 **The structural argument, which is the part worth keeping.** It is not that the pipeline
 manufactures a high score by forcing lexical variation — the banned-word list has lapsed by
@@ -881,6 +1064,49 @@ set already excluded the script, so removing it from the full arm too means the 
 longer differs on a component whose contribution is already measured far more precisely than a
 ±0.5 judge could resolve.
 
+### Reading files as a set (2026-08-24)
+
+Eight statements across `SKILL.md`, `references/pipeline.md`, `references/evidence.md`,
+`agents/generator.md` and this file contradicted each other or described mechanisms nothing
+performed. Phase 1 was named after a mechanic its own next paragraph made impossible. The
+generator contract existed in three files with three different quotas. `SKILL.md`'s thesis
+paragraph named three evidence-backed mechanisms and the pipeline ran none of them as written.
+
+**Every one had survived three separate audits that day** — one for counts, one for paths, one
+for structure. Each audit checked files individually and each reported clean. A contradiction
+between two true-looking files is invisible to any check that reads one file at a time, and it
+is the failure mode a fast-moving architecture produces most: each statement was accurate when
+written and outlived the design it described.
+
+The other half of the lesson is that the fix for drift is not agreement. Four of the eight were
+duplicated statements of one contract; restating them to agree would have re-created the
+condition. They were resolved by deleting the copy and pointing at the one operative location —
+the same move that worked for the lens table, the pool file and the dispatch requirement.
+**Restatement has never worked in this project; relocation has, four times now.**
+
+### Open: is probability-scored sampling worth restoring?
+
+`SKILL.md` used to mandate verbalized sampling — K candidates each scored with the model's own
+estimate that it is the answer it would normally give, keeping the low tail. It reached the
+orchestrator and never the generators, so it has never run in the fan-out pipeline.
+
+What runs instead is tail-forcing by exhaustion: a quota of 30 with the instruction that the
+first several will be obvious. That is a different mechanism aimed at the same target, and it
+may be enough.
+
+Do not restore VS by argument. Its 1.6-2.1x figure was measured asking one model for K
+candidates in one context against direct prompting; nine generators each carrying a lens, a
+banned-word list, a banned obvious answer and a difference constraint is not that baseline, and
+`evidence.md` states the general rule that such results do not transfer. Apply the standard used
+for category negation: pre-register, run one generator with a probability-scored contract
+against one without on the same brief, judge blind, decide on the number.
+
+Two arguments to weigh when it is run. For: isolation buys *between-pool* diversity while VS
+buys *within-pool* tail, and blind generators still converge — families reached by four or more
+lenses run 17-19 per run. Against: at K=30 the quota already forces the tail, so a
+self-reported probability may not discriminate, and a per-option probability is a numeric
+novelty signal sitting in front of a ranker forbidden to use one.
+
 ## Known weaknesses and open questions
 
 - **~~The diversity kernel is lexical.~~ Resolved 2026-08-18 by retirement, not upgrade** —
@@ -890,9 +1116,12 @@ longer differs on a component whose contribution is already measured far more pr
   MB plus numpy — and would still be weakest on exactly the cross-vocabulary case that failed.
   **Convergence detection has no tool and is not getting one.** The best mechanism-level
   detector available in any run is the executing model, and Phase 3 step 1 deploys it.
-- **Deep mode's cost/benefit rests on one strategic prompt.** One clear win there, one clear
-  loss on a bounded question. One strategic prompt at five runs per arm is what the gate rests
-  on; a second strategic prompt and a re-test on bounded questions are both outstanding.
+- **The pipeline's cost/benefit rests on one strategic prompt, and that prompt measured an
+  architecture that no longer exists.** One clear win there, one clear loss on a bounded question,
+  five runs per arm. The mode gate that used to protect the bounded case has been removed and
+  nothing replaced it, so the loss is now unmitigated except by the user's choice to type
+  `/ideas`. A second strategic prompt, a re-test on bounded questions, and any measurement at all
+  of the current pipeline against a plain prompt are all outstanding.
 - **Homogenisation is not solved and cannot be, here.** All five models in the main study
   clustered on digital/technological solutions regardless of method; alignment sets a floor
   no prompting topology has breached. Denial of the last move raises the floor.

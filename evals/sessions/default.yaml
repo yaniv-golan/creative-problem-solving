@@ -1,0 +1,7 @@
+# Shared setup for the eval scenarios. Mirrors ../../tests/sessions/default.yaml — the model is
+# pinned for the same reason: these grade answer quality, and a quality number that does not say
+# which model produced it is not comparable to the next one.
+model: claude-opus-5
+plugins:
+  local_plugins: [../../creative-problem-solving]
+  enabled: [creative-problem-solving@local]

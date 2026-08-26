@@ -1,0 +1,68 @@
+{
+  "_purpose": "Stage 1 frozen artifacts. Authored BEFORE any scored answer exists, per evals/EXPERIMENT-decision-value-stage1.md. Hash recorded in that file at freeze time. Do not edit after freezing; supersede with a new file and a new hash.",
+  "frozen_at": "2026-08-20",
+  "stage1_problem_count": 2,
+  "_note_on_count": "Stage 1 validates the instrument, not the skill, so it needs enough control instances to exercise each gate rather than many problems. Two problems, matching the two public eval prompts, with multiple control instances per problem. The pre-registration did not fix this number; it is fixed here, before calibration.",
+  "problems": {
+    "P1": {
+      "prompt_ref": "evals.json eval 1 — operating-model-deep",
+      "summary": "A 60-person architecture practice, mixed commercial and institutional, facing fee compression and AI-accelerated delivery expectations, having already tried raising utilisation and hiring cheaper juniors.",
+      "reference_policy": [
+        {"rank": 1, "action": "Specialise into the higher-margin institutional segment and raise fees there", "actor": "managing partner"},
+        {"rank": 2, "action": "Adopt AI delivery tooling to cut documentation cost per project", "actor": "head of practice technology"},
+        {"rank": 3, "action": "Hire a business development lead to widen the pipeline", "actor": "managing partner"}
+      ],
+      "hard_constraints": [
+        "Requires capital beyond retained earnings or a modest facility",
+        "Requires authority over people the firm does not employ",
+        "Breaches professional licensure, responsible-charge or liability rules",
+        "Requires headcount growth funded by the compressing revenue line",
+        "Requires a capability no one in a 60-person practice plausibly has, with no hire named"
+      ],
+      "scenarios": [
+        {"id": "P1S1", "weight": 0.35, "description": "Fee compression continues and commercial documentation work commoditises fastest.",
+         "admissibility": ["Executable without capital beyond retained earnings", "Needs at most one senior hire from outside the profession"],
+         "milestone": "A revenue line not priced on hours or percentage-of-cost reaches ~20% of fee income within three years"},
+        {"id": "P1S2", "weight": 0.20, "description": "A major institutional client consolidates its panel from twelve firms to three.",
+         "admissibility": ["Executable by existing partners inside twelve months"],
+         "milestone": "The lost or at-risk revenue is retained or replaced within twelve months"},
+        {"id": "P1S3", "weight": 0.25, "description": "Regulation tightens sharply on existing-stock performance and safety, creating mandatory work on buildings already standing.",
+         "admissibility": ["Does not require abandoning the existing client base"],
+         "milestone": "The firm holds a defensible, named position in that work within twenty-four months"},
+        {"id": "P1S4", "weight": 0.20, "description": "A well-funded competitor automates documentation and undercuts on price across the commercial segment.",
+         "admissibility": ["Does not depend on the firm winning a price war"],
+         "milestone": "Win rate on contested commercial work does not fall over twenty-four months"}
+      ]
+    },
+    "P2": {
+      "prompt_ref": "evals.json eval 5 — holdout-retention",
+      "summary": "A company losing senior engineers to larger companies at roughly the 18-month mark, with benchmarked and matched compensation.",
+      "reference_policy": [
+        {"rank": 1, "action": "Introduce annual refresh grants so total compensation does not decay after year one", "actor": "head of people"},
+        {"rank": 2, "action": "Create a senior/staff technical ladder with published criteria", "actor": "VP engineering"},
+        {"rank": 3, "action": "Run stay interviews at 12 months instead of exit interviews at 18", "actor": "engineering managers"}
+      ],
+      "hard_constraints": [
+        "Requires compensation spend the company has stated it cannot match",
+        "Requires authority over people or budgets the asker does not control",
+        "Breaches employment law or enforceable-contract limits in a normal jurisdiction",
+        "Depends on the departing engineers behaving against their own stated interests",
+        "Requires a headcount or seniority level the company does not have"
+      ],
+      "scenarios": [
+        {"id": "P2S1", "weight": 0.35, "description": "The pull is career trajectory: larger companies offer scope and titles this company cannot match at current size.",
+         "admissibility": ["Does not require the company to be larger than it is"],
+         "milestone": "A named senior engineer turns down an external offer for a stated non-compensation reason within twelve months"},
+        {"id": "P2S2", "weight": 0.25, "description": "The pull is realisable money: illiquid equity versus liquid public stock.",
+         "admissibility": ["Executable without new primary capital"],
+         "milestone": "Senior engineers can realise or credibly value equity within eighteen months"},
+        {"id": "P2S3", "weight": 0.20, "description": "The push is accumulated load: the best engineers carry interrupts, on-call and escalations that arrived with competence.",
+         "admissibility": ["Does not simply move the load onto someone else who then leaves"],
+         "milestone": "Measured interrupt load on the top decile falls and stays down for two quarters"},
+        {"id": "P2S4", "weight": 0.20, "description": "The cause is intake: the company hires people for whom a large company is the natural next step.",
+         "admissibility": ["Acts on future hires without disparaging current staff"],
+         "milestone": "A changed hiring profile is in use and its first cohort passes eighteen months"}
+      ]
+    }
+  }
+}

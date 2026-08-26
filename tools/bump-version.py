@@ -87,7 +87,6 @@ def main():
 
     plugin_name = meta["plugin_name"]
     skills = meta.get("skills", [])
-    formats = meta.get("formats", [])
 
     updated = []
 
@@ -118,6 +117,30 @@ def main():
     codex_pj = os.path.join(repo, plugin_name, ".codex-plugin", "plugin.json")
     if _update_json_version(codex_pj, "version", version):
         updated.append(codex_pj)
+
+    # 5c. The OpenAI/Codex marketplace's git ref.
+    #
+    # This file was outside every version sweep -- bump-version did not touch it and check-repo
+    # did not read it -- so its `"ref": "main"` installed whatever main happened to be, including
+    # unreleased work. Pinning it alone would have been worse: a pinned-and-forgotten ref
+    # silently installs the PREVIOUS release forever, which fails as quietly as it did before.
+    # It is only safe to pin because this sweep now moves it, so the pin follows the release
+    # rather than outliving it.
+    agents_mkt = os.path.join(repo, ".agents", "plugins", "marketplace.json")
+    if os.path.isfile(agents_mkt):
+        with open(agents_mkt, encoding="utf-8") as fh:
+            data = json.load(fh)
+        changed = False
+        for plugin in data.get("plugins", []):
+            src = plugin.get("source") or {}
+            if "ref" in src and src["ref"] != "v" + version:
+                src["ref"] = "v" + version
+                changed = True
+        if changed:
+            with open(agents_mkt, "w", encoding="utf-8") as fh:
+                json.dump(data, fh, indent=2, ensure_ascii=False)
+                fh.write("\n")
+            updated.append(agents_mkt)
 
     # 6 & 7. Each skill's SKILL.md and VERSION
     for skill in skills:

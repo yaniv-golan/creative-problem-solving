@@ -51,8 +51,8 @@ jobs:
           <p>An agent skill that generates non-obvious options for open-ended problems.</p>
           <ul>
             <li><a href="./static/install-claude-desktop.html">Install in Claude Desktop</a> (also Claude Cowork)</li>
-            <li><a href="https://github.com/yaniv-golan/creative-problem-solving#installation">Install for Claude Code, Cursor, Codex, ChatGPT, OpenClaw and others</a></li>
-            <li><a href="https://github.com/yaniv-golan/creative-problem-solving#evals">Read the eval results, including the rounds it lost</a></li>
+            <li><a href="https://github.com/yaniv-golan/creative-problem-solving/blob/main/INSTALL.md">Install for Claude Code, Cursor, Codex, ChatGPT, OpenClaw and others</a></li>
+            <li><a href="https://github.com/yaniv-golan/creative-problem-solving#does-it-actually-work">Read the eval results, including the rounds it lost</a></li>
             <li><a href="https://github.com/yaniv-golan/creative-problem-solving">Source on GitHub</a></li>
           </ul>
           </main>

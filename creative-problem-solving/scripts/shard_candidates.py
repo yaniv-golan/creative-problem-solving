@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""Deduplicate the proposed pairs, split them into balanced shards, and plant the agreement probe.
+
+The proposer used to be told to do all three itself: never repeat a pair, deal round-robin so
+the shards balance, and additionally deal a chosen 40 to a second shard. That is set bookkeeping
+over more than a thousand items, held in context, while emitting a large structured file. It is
+also exactly the kind of work a model does worst and a script does exactly.
+
+Splitting it out has a second effect that matters more than tidiness. The agreement probe is a
+hard gate -- verify_pipeline refuses a run whose probe is too small -- so leaving its size to a
+model's diligence means a run can burn forty minutes and fail at the last step. Here the count
+is guaranteed by construction.
+
+  shard_candidates.py <work-dir> [--shards N] [--probe 48] [--per-shard 126]
+
+Reads candidates.json, writes cand-1.json .. cand-N.json. Deterministic: the probe sample is
+evenly spaced through the deduplicated list, so the same input always produces the same shards.
+"""
+import json, sys, os, glob
+from collections import Counter
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from robust_json import load, load_obj
+from progress import line as progress_line
+
+# Warn-only thresholds, drawn from three recorded runs. They say "this run does not look like the
+# ones we have seen", not "this run is wrong" -- with three samples that is the strongest claim
+# available, and a hard gate fitted to three points would refuse legitimate runs and get itself
+# switched off. Observed: pool over-share 3.21x / 1.41x / 3.27x, busiest single option 37 / 8 / 84
+# pairs. So both bands fire on two of the three runs and stay silent on the middle one.
+POOL_OVERSHARE = 2.0
+ID_HOG = 12
+
+def concentration_warnings(wd, uniq):
+    """Report a proposer that piled its pairs onto one pool or one option.
+
+    Worth one second here because the alternative is finding out later: a star-shaped candidate
+    graph makes one option the hub of a family that swallows the pool, and on the first recorded
+    run four options carried a quarter of all joinable edges. Nothing downstream can see the cause
+    by then.
+    """
+    ends = Counter()
+    for p in uniq:
+        for x in (p["a"], p["b"]):
+            ends[x] += 1
+    if not ends: return
+
+    hogs = [(i, n) for i, n in ends.most_common() if n > ID_HOG]
+    if hogs:
+        shown = ", ".join(f"{i} in {n} pairs" for i, n in hogs[:4])
+        print(f"WARN: {len(hogs)} option(s) appear in more than {ID_HOG} proposed pairs "
+              f"({shown}{', …' if len(hogs) > 4 else ''}). One option pulling this many pairs "
+              f"tends to become the hub of an oversized family; check it is not a generic "
+              f"restatement of the problem.")
+
+    sizes = {}
+    for f in sorted(glob.glob(os.path.join(wd, "pool-*.json"))):
+        # One hardened read. A raw `json.load(open(f))` used to sit beside a `load(f, "items")`
+        # here, reading the same file twice through two different parsers -- and a generator that
+        # fenced its pool in ```json passed load(), which strips the fence, then died on the raw
+        # read with a JSONDecodeError naming a line number in this warning helper. Wrapper noise
+        # is what robust_json exists to absorb, so nothing reads a model-written file around it.
+        pool = load_obj(f)
+        if not isinstance(pool.get("items"), list):
+            load(f, "items")  # does not return: dies naming the stage that wrote the file
+        sizes[str(pool.get("pool") or len(sizes) + 1)] = len(pool["items"])
+    if not sizes:
+        # Said out loud rather than skipped in silence: an absent input that quietly disables a
+        # check is indistinguishable from a check that passed.
+        print("WARN: no pool-*.json beside candidates.json, so the per-pool concentration check "
+              "did not run. Only the per-option check above applies.")
+        return
+    total = sum(sizes.values())
+    per_pool = Counter()
+    for x, n in ends.items():
+        per_pool[x.split("-")[0].lstrip("p")] += n
+    grand = sum(per_pool.values())
+    over = []
+    for k, n in per_pool.items():
+        exp = sizes.get(k, 0) / total if total else 0
+        if exp and (n / grand) / exp > POOL_OVERSHARE:
+            over.append((k, (n / grand) / exp))
+    for k, r in sorted(over, key=lambda t: -t[1]):
+        print(f"WARN: pool {k} holds {r:.1f}x its expected share of proposed pair endpoints. "
+              f"A proposer that read one pool far more closely than the rest leaves the others "
+              f"under-compared, and nothing downstream can recover a pair that was never proposed.")
+
+
+PER_SHARD = 126   # top of the measured band: real cand-*.json sizes run 108-126 at three shards
+SHARDS_MIN = 3    # the probe cross-checks adjudicators against each other; two cannot triangulate
+
+
+def plan_shards(npairs, nprobe, per_shard):
+    """How many shards to deal into, and why the answer is bounded at both ends.
+
+    Load is counted AFTER the probe is planted, because the probe adds a second copy of `nprobe`
+    pairs -- shard size is (unique + probe) / shards, not unique / shards. Measured on the frozen
+    runs, three shards give 108-126 pairs each on four of them and 276 on `dense-frozen`, which is
+    the run that tripped two hard die()s. That is the cliff this exists to remove.
+
+    The ceiling is the part that is easy to get wrong. The probe is dealt one pair per home shard,
+    so past `nprobe` shards some adjudicator is never cross-checked -- and it fails SILENTLY: the
+    probe still reports `nprobe` planted and still clears verify_pipeline's floor of 40 while the
+    agreement figure covers only some of the adjudicators. That is the same shape as the stride bug
+    that put every probe pair in one shard on two of three recorded runs. Capping at `nprobe // 4`
+    keeps at least four probe pairs per shard, with the cap reported rather than applied quietly.
+    """
+    want = -(-(npairs + nprobe) // per_shard)          # ceil
+    cap = max(SHARDS_MIN, nprobe // 4)
+    return max(SHARDS_MIN, min(want, cap)), want, cap
+
+
+def main(wd, nshards, nprobe, per_shard=PER_SHARD):
+    # The generation heartbeat rides on this call rather than on a separate one. A progress
+    # command that exists only to print is the first thing skipped when nothing depends on it,
+    # and nothing notices; this call the pipeline cannot skip.
+    hb = progress_line(wd)
+    if hb: print(hb)
+
+    pairs = load(os.path.join(wd, "candidates.json"), "pairs")
+
+    seen, uniq = set(), []
+    for p in pairs:
+        a, b = p.get("a"), p.get("b")
+        if not a or not b or a == b: continue
+        k = frozenset((a, b))
+        if k in seen: continue
+        seen.add(k); uniq.append({"a": a, "b": b})
+    if not uniq: sys.exit("FAIL: candidates.json proposed no usable pairs")
+
+    concentration_warnings(wd, uniq)
+
+    if nshards is None:
+        nshards, want, cap = plan_shards(len(uniq), nprobe, per_shard)
+        if want > cap:
+            print(f"WARN: {len(uniq)} unique pairs want {want} shards at {per_shard} per shard, but "
+                  f"the agreement probe can only cross-check {cap}. Sharding into {cap}; each "
+                  f"adjudicator gets about {(len(uniq) + nprobe) // cap} pairs, above the budget. "
+                  f"Raise --probe to lift the ceiling, or --shards to override deliberately.")
+
+    shards = [[] for _ in range(nshards)]
+    for i, p in enumerate(uniq): shards[i % nshards].append(p)
+
+    # The probe: a sample dealt to a SECOND shard so two adjudicators judge it independently.
+    # Evenly spaced rather than the first N, so it is not all one corner of the pool.
+    #
+    # Sampled per home shard, not by one stride over the whole pool. A stride picks indices
+    # 0, step, 2*step...; a pair's home shard is i % nshards, so when step is a multiple of
+    # nshards every probe pair shares one home and every copy lands in one shard. That is not a
+    # corner case: at 325 unique pairs and a probe of 48 the stride is exactly 6, and two of the
+    # three recorded runs planted all 48 into shard 2 -- so adjudicator 3 was never cross-checked
+    # by anyone, the agreement figure described one pair of adjudicators rather than the panel,
+    # and that shard carried 44% more pairs than the others. Sampling within each home shard makes
+    # the spread of (judge, second judge) pairings a property of the construction instead of an
+    # accident of arithmetic.
+    probe = max(0, min(nprobe, len(uniq)))
+    homes = [[i for i in range(len(uniq)) if i % nshards == s] for s in range(nshards)]
+    chosen = []
+    for s in range(nshards):
+        take = min(probe // nshards + (1 if s < probe % nshards else 0), len(homes[s]))
+        if take <= 0: continue
+        st = max(1, len(homes[s]) // take)
+        chosen += [(s, i) for i in homes[s][::st][:take]]
+    # A home shard too small to supply its share would otherwise shrink the probe below the
+    # requested size, and the probe is a hard gate at step 9.
+    if len(chosen) < probe:
+        have = {i for _, i in chosen}
+        for s, m in enumerate(homes):
+            for i in m:
+                if len(chosen) >= probe: break
+                if i not in have: chosen.append((s, i)); have.add(i)
+            if len(chosen) >= probe: break
+    planted = 0
+    for s, i in chosen:
+        shards[(s + 1) % nshards].append(uniq[i])
+        planted += 1
+
+    for i, s in enumerate(shards, 1):
+        json.dump({"pairs": s}, open(os.path.join(wd, f"cand-{i}.json"), "w", encoding="utf-8"),
+                  separators=(",", ":"))
+
+    dropped = len(pairs) - len(uniq)
+    print(f"{len(uniq)} unique pairs"
+          + (f" ({dropped} duplicate proposal(s) dropped)" if dropped else "")
+          + f" across {nshards} shards {[len(s) for s in shards]}"
+            f" (dispatch one adjudicator per shard); "
+            f"{planted} planted twice as the agreement probe")
+
+if __name__ == "__main__":
+    a = sys.argv[1:]
+    if not a: sys.exit(__doc__)
+    def opt(name, d):
+        return int(a[a.index(name) + 1]) if name in a else d
+    # 48, against verify_pipeline's floor of 40. Planting exactly the floor leaves no margin:
+    # merge_relations legitimately drops a probe pair when both shards are judged by the same
+    # adjudicator, and one such drop then reds the whole run at step 9 -- the last gate of a
+    # forty-minute run, for a reason the reader did nothing to cause. Eight spare pairs against
+    # ~2,000 adjudications costs nothing measurable.
+    # --shards defaults to None, not 3: absent the flag the count is DERIVED from pair volume
+    # (see plan_shards). Passing --shards is an explicit override and skips the budget entirely.
+    main(a[0], opt("--shards", None), opt("--probe", 48), opt("--per-shard", PER_SHARD))

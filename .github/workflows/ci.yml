@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Callable, so release.yml can depend on THIS suite rather than a copy of it. A duplicated
+  # step list is a gate that drifts: the copy stays green while the original gains a check.
+  workflow_call:
 
 permissions:
   contents: read
@@ -37,6 +40,31 @@ jobs:
           python3 -m pip install --quiet numpy
           python3 test_diversity.py
 
+      # The scripts the /ideas pipeline shells out to. They hold the invariants a run cannot
+      # recover from — a lost option, a pair judged twice with different verdicts, a heartbeat that
+      # never fires — and unlike tests/scenarios/ they need no Docker, no token and no model, so
+      # they belong on the PR gate where a forked PR can pass them.
+      # Pinned exactly, for the reason the harness pin is exact: a floating linter changes what
+      # CI asserts without anyone editing the repo, and a NEW rule appearing in a patch release
+      # reds a build for a change nobody made. Upgrading is a deliberate edit.
+      #
+      # Scope is everything not excluded in pyproject.toml, which deliberately includes
+      # evals/instruments/ — those are frozen-by-hash and never execute in CI, and a file nothing
+      # runs is exactly where an unused name or a bare except sits undisturbed.
+      - name: Lint
+        run: |
+          python3 -m pip install --quiet ruff==0.15.0
+          python3 -m ruff check .
+
+      - name: Pipeline script tests
+        run: python3 tools/test_pipeline_scripts.py
+
+      # Drives a real `git commit` in a throwaway repo. A hook that is correct and not installed
+      # renders exactly like one that ran, so this asserts the hook is reached, not only that its
+      # stripping is right — and carries a negative control that fails if the hook is absent.
+      - name: Git hook tests
+        run: python3 tools/test_hooks.py
+
   integrity:
     name: Repo integrity
     runs-on: ubuntu-latest
@@ -52,6 +80,32 @@ jobs:
       - name: Check repo integrity
         run: python3 tools/check-repo.py
 
+      # evals/scenarios/*.yaml are generated from evals/evals.json. The JSON is the record — the
+      # assertions, versioned, with the reasoning for every change. This fails if someone
+      # hand-edited a scenario, which would leave the rubric grading something nobody wrote down.
+      # The generated Pages homepage linked README#installation and README#evals for months.
+      # Neither heading has ever existed, and a dead in-page anchor does not 404 -- the browser
+      # lands at the top of the page and looks fine, which is why nobody noticed.
+      - name: Generated Pages links resolve
+        run: |
+          python3 - <<'PY'
+          import re, sys, pathlib
+          wf = pathlib.Path(".github/workflows/deploy-pages.yml").read_text()
+          readme = pathlib.Path("README.md").read_text()
+          slugs = {re.sub(r"[^a-z0-9 -]", "", h.lower()).strip().replace(" ", "-")
+                   for h in re.findall(r"^#+ (.+)$", readme, re.M)}
+          bad = [a for a in re.findall(r"creative-problem-solving#([A-Za-z0-9_-]+)", wf)
+                 if a not in slugs]
+          if bad:
+              print("::error::deploy-pages.yml links README anchors that do not exist: %s" % bad)
+              print("   README headings resolve to: %s" % sorted(slugs))
+              sys.exit(1)
+          print("all README anchors referenced by deploy-pages.yml resolve")
+          PY
+
+      - name: Eval scenarios match evals.json
+        run: python3 tools/build-eval-scenarios.py --check
+
       - name: Build the distributable zip
         run: python3 tools/build-zip.py
 
@@ -65,10 +119,15 @@ jobs:
   scenario-lint:
     name: Behavioural scenario lint
     runs-on: ubuntu-latest
-    # The token-free half of tests/. `lint` needs no Docker and no Claude token, so unlike
-    # the live `run` lane it is safe on the PR gate — a forked PR can pass it. It catches an
-    # assertion placed on a lane where it would silently evaluate to nothing, which is the
-    # failure mode that makes a scenario look green while asserting nothing at all.
+    # The token-free half of tests/. None of these three commands needs Docker or a Claude
+    # token, so unlike the live `run` lane they are safe on the PR gate — a forked PR can
+    # pass them. `lint` catches an assertion placed on a lane where it would silently
+    # evaluate to nothing, which is the failure mode that makes a scenario look green while
+    # asserting nothing at all; `lint-skill` and `analyze-skill` scan the skill body itself.
+    #
+    # The job id and display name are deliberately unchanged now that it does more than
+    # scenario linting — renaming a check that branch protection may require would make the
+    # required check read as missing. Rename both together, if ever.
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
@@ -76,10 +135,56 @@ jobs:
         with:
           node-version: '22'
 
-      # A floor, not an exact pin: a scenario that adopts a flag added in a later release
-      # should resolve it, while an accidental older resolve fails loudly.
+      # An EXACT pin, changed from `^1.24.0` on 2026-08-24. The caret was doing what it was
+      # written to do — holding major 1 so a 2.x could not break this gate — and the cost was
+      # that CI and every developer here stopped testing the same tool. Local resolved 2.1.0
+      # while CI resolved inside 1.x, and three of the nine issues this repo was preparing to
+      # file upstream turned out to be already fixed in the version CI was not running. A
+      # floating range hides that; an exact pin turns it into a visible bump.
+      #
+      # Upgrading is now a deliberate edit: run the four checks below locally against the new
+      # version first, then change this line.
+      #
+      # Scenarios pin an exact `baseline:` too, so a harness bump does NOT silently move which
+      # platform baseline they resolve against — that failure mode is closed. It was real: a
+      # 1.24.0 bump moved the tests to `desktop-1.32352.0` and left the reliability table
+      # describing a platform they no longer ran on (see CHANGELOG 0.2.0). Moving the baseline
+      # is now its own edit across the eleven scenarios and tools/build-eval-scenarios.py, and
+      # it invalidates any measured reliability figure taken on the old one.
       - name: Install cowork-harness
-        run: npm install --global cowork-harness@^1.23.0
+        run: npm install --global cowork-harness@2.3.0
 
+      # --strict makes the WARN class gate, which a bare lint would only print. --min-severity
+      # WARN is the other half and it is load-bearing, not decoration: `gate-needs-controlout`
+      # is an unconditional INFO advisory that fires on the mere PRESENCE of a gate assertion
+      # (both pipeline-* scenarios now carry `questions_count_max`), and the linter is static —
+      # it never reads a cassette, so it cannot know the advice does not apply. Without the
+      # floor, --strict reds this gate on an advisory about a cassette this repo does not have.
       - name: Lint scenarios
-        run: cowork-harness lint tests/scenarios/*.yaml
+        run: cowork-harness lint --strict --min-severity WARN tests/scenarios/*.yaml
+
+      # The eval scenarios lint on the same gate. They are live-only (a `semantic_matches` judge
+      # is a model call) so they never RUN here — but a malformed rubric or a misspelled assertion
+      # key is exactly the kind of thing that would otherwise be found only by spending tokens.
+      - name: Lint eval scenarios
+        run: cowork-harness lint --strict --min-severity WARN evals/scenarios/*.yaml
+
+      # Two static scans, both token-free and fork-safe. They were adopted as regression insurance
+      # against footguns the skill had no way to commit; the 2026-08-23 rebuild gave it three of
+      # the four — scripts invoked as `python3 "$CPS/scripts/<name>.py"`, a root the pipeline
+      # resolves once at step 0 (the ${CLAUDE_PLUGIN_ROOT} form was measured reaching bash empty), and
+      # six pinned subagent types (still no hooks.json).
+      #
+      # Their scopes differ and it matters. analyze-skill takes the PLUGIN root and scans all 10
+      # files, commands/ideas.md and agents/*.md included — where those paths and type names
+      # actually live. lint-skill takes the SKILL directory and reads SKILL.md alone; it errors
+      # `no-skill` if pointed at the plugin root. So its footgun checks are aimed at a file that
+      # contains neither, which tests/README.md records as a known gap rather than a green.
+      #
+      # analyze-skill reserves exit 3 for could-not-verify, independently of --strict: a red there
+      # means the scan could not run, which is a different fact from a finding.
+      - name: Lint skill body for Cowork host-loop footguns
+        run: cowork-harness lint-skill --strict creative-problem-solving/skills/creative-problem-solving
+
+      - name: Static path-fidelity and artifact scan
+        run: cowork-harness analyze-skill creative-problem-solving --strict

@@ -8,11 +8,23 @@ body:
         For "the skill ran but gave a bad answer", use **The skill produced a bad answer**
         instead — it asks for the things that make that kind of report actionable.
 
+  - type: markdown
+    attributes:
+      value: |
+        **This is a public issue, and it is indexed.** Commands and output often carry more than
+        they look like they do: absolute paths with your username, tokens in an environment dump,
+        client or employer names in a working directory, private document contents in a traceback.
+        Please remove those before pasting, and replace what you cut with `[REDACTED]` so the shape
+        survives.
+
+        **If the bug cannot be shown without sensitive material, do not post it here.** Email the
+        maintainer instead — the address is in [`SECURITY.md`](../blob/main/SECURITY.md).
+
   - type: input
     id: version
     attributes:
       label: Skill version
-      placeholder: "0.1.0"
+      placeholder: "0.2.0"
     validations:
       required: true
 

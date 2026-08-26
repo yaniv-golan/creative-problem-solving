@@ -11,7 +11,7 @@
 
 name: negative-trigger
 session: ../sessions/default.yaml
-baseline: latest
+baseline: desktop-1.37937.1
 fidelity: container
 on_unanswered: first
 

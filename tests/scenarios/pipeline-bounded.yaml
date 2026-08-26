@@ -1,0 +1,71 @@
+# WHAT THIS COVERS, and what it deliberately does not.
+#
+# This file was `mode-gate-fast.yaml` and asserted mode selection. There are no modes: every run
+# is grounded — Phase 0 retrieves what already exists as a difference constraint, Phase 3
+# verifies the prominently-presented options by search. So the fast/deep pair had nothing left
+# to distinguish and has been repurposed to assert the pipeline's shape on a bounded question.
+#
+# IT DOES NOT ASSERT SUB-AGENT DISPATCH, on purpose. SKILL.md requires it, but a body-level
+# instruction to hand generation away was MEASURED at 1/6 compliance; the identical requirement
+# in the command file got 6/6. Asserting dispatch here would buy a flake, not a guarantee.
+# `ideas-command.yaml` covers the path where dispatch is reliable.
+#
+# HISTORY WORTH KEEPING. As the mode gate's negative half, this prompt's job was that a BOUNDED
+# problem must NOT trigger deep mode — the direction that had actually failed: deep mode fired on
+# this exact prompt in iteration 1 and cost 6.7x the wall-clock for a worse answer than a plain
+# response. DESIGN-NOTES called that gate the most important thing in the skill. It no longer
+# exists, and nothing replaced it, so this scenario can no longer assert proportionality at all —
+# it asserts grounding. The unprotected case is recorded in DESIGN-NOTES ("The rebuild") rather
+# than pretended away here.
+#
+# "Did it ground by search" is a fact about the tool stream, so it needs no grader — unlike
+# eval 2, which tested the same property through an LLM-graded MODE CHECK assertion.
+
+name: pipeline-bounded
+session: ../sessions/default.yaml
+baseline: desktop-1.37937.1
+fidelity: container
+
+# The skill legitimately raises one clarifying gate here — "account-verification" is
+# ambiguous by design, and eval 2 asserts the skill handles that ambiguity rather than
+# guessing silently. `first` is the deliberate choice, not laziness: the answer is
+# immaterial to what this scenario asserts (whichever reading it takes, a bounded product
+# question must not fan out), and the harness's own guidance is to label-anchor only the
+# gates whose choice drives an assertion. Pinning a label here would buy nothing and add a
+# re-record flake every time the model rewords its options.
+#
+# The cost is that the run is flagged non-deterministic. Accepted, for the reason above.
+#
+# This is measured, not assumed: the released-tree run (skillHash 6d73ce525e) raised exactly
+# one gate — "What actually happens at the account-verification step?" — answered by `first`
+# and flagged non-deterministic. `tests/README.md` used to claim no gate was auto-answered in
+# the measured batch; that sentence was wrong and has been corrected against these records.
+on_unanswered: first
+
+prompt: |
+  Our onboarding flow has a 60% drop-off at the account-verification step. We've already
+  tried shortening the form and adding a progress bar. I'm out of ideas — what else could
+  we do?
+
+assert:
+  - result: success
+  - skill_triggered: creative-problem-solving
+  # INVERTED from this file's mode-gate era, where it asserted tool_not_called: WebSearch
+  # because absence of research was fast mode's whole signature. Grounding is unconditional
+  # now, so the failure guarded here is a run that SKIPS it — which would put unchecked
+  # borrowed mechanisms in front of a reader.
+  - tool_called: WebSearch
+  # SKILL.md: "One question, and only about meaning" — scope, emphasis, target segment,
+  # detail level and output format all fail its bar. This counts SUB-questions, so a single
+  # AskUserQuestion bundling three of them counts as 3, which is the violation itself rather
+  # than a technicality. An EARLIER generation (skillHash f8566139f7) bundled 4 and 3
+  # sub-questions on the deep scenario, including "What should the deliverable look like?" —
+  # an output-format question the rule excludes by name. This is the assertion that catches
+  # that class coming back.
+  #
+  # CEILING, stated so a green is not over-read: this sees `AskUserQuestion` gates only. The
+  # skill mandates no gate tool — SKILL.md contemplates prose asking explicitly ("If you
+  # can't ask, pick the likeliest reading") — so a run that asks three meaning questions in
+  # plain chat records zero gates and passes. It is a partial guard on the rule, not
+  # coverage of it. A maximum is also satisfied by zero, so it never requires a gate to fire.
+  - questions_count_max: 1

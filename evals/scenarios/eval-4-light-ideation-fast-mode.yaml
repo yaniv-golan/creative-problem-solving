@@ -1,0 +1,41 @@
+# GENERATED from ../evals.json (v8, eval 4) by tools/build-eval-scenarios.py.
+# Edit the assertions THERE and regenerate — a hand-edit here fails CI's --check.
+#
+# Light question. Measures whether a small problem gets a small answer that still differs
+# in mechanism.
+name: eval-4-light-ideation-fast-mode
+session: ../sessions/default.yaml
+baseline: desktop-1.37937.1
+fidelity: container
+# The eval prompts are self-contained and several end by telling the model not to ask, so a gate
+# here is a finding rather than something to script an answer for.
+on_unanswered: first
+
+prompt: |
+  Attendance at our monthly all-hands has been sliding for a while — we're down to about half the company showing up. Got any ideas?
+
+assert:
+  - result: success
+  # semantic_matches is LIVE-ONLY: the judge is a model call, so this cannot run on the
+  # token-free replay lane, and `lint` says so. That warning is expected here, not a defect.
+  #
+  # semantic_matches is TOOL-USE BLIND. Its judged corpus is the final message, the transcript
+  # and authored files — never a tool call (harness TOOL_USE_BLIND_KEYS). So a rubric claim about
+  # what the model DID, as opposed to what it said or wrote, is only as good as the trace it left
+  # in text or on disk. Keep the claims here about reader-visible output, and let the hard
+  # assertions above carry anything that depends on a tool call.
+  #
+  # No min_pass. Recipe 5's point is that answers vary run to run, so the signal is each claim's
+  # pass RATE across N>=3 reps, read from RunResult.assertions[].semanticClaims — not one green.
+  # Set min_pass to the reliably-hit core once a baseline profile exists.
+  - semantic_matches:
+      rubric:
+        - "Produces options that differ in mechanism rather than being variations on 'make the meeting more engaging'"
+        - "At least one option questions the premise \u2014 whether the all-hands should exist in this form, or whether attendance is the right thing to optimise"
+        - "Does not treat declining attendance as purely a content-quality problem"
+        - "Proportionate: under roughly 800 words, no heavy scaffolding for a light question"
+        - "Any borrowed mechanism or outside-world claim (how another company operates, what a field's practice is, a study, an organism) is either supported where it is stated or explicitly labelled unverified \u2014 not presented at the same confidence as the rest"
+        - "Surfaces at least one non-obvious diagnosis of WHY attendance falls, not just a list of fixes"
+        - "The diagnosis block is a signpost rather than a section: roughly 3 lines or under ~120 words, not a third of the response"
+        - "Does not quote an internal process metric or pipeline artifact to the reader \u2014 no scores, pass counts, lens names, family ids or cut lists"
+        - "Any organism or outside-domain analogy states the mechanism it is borrowing, not just the name, and is labelled unverified if unchecked"

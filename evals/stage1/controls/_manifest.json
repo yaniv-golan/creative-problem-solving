@@ -1,0 +1,182 @@
+{
+ "P1-padded-1.md": {
+  "class": "duplicate-padded",
+  "problem": "P1",
+  "derived_from": "ANS-01.md",
+  "construction": "each option block repeated once with a \"(restated)\" heading; tests displacement past the six-option cap",
+  "held_out": false
+ },
+ "P1-padded-2.md": {
+  "class": "duplicate-padded",
+  "problem": "P1",
+  "derived_from": "ANS-02.md",
+  "construction": "each option block repeated once with a \"(restated)\" heading; tests displacement past the six-option cap",
+  "held_out": false
+ },
+ "P1-padded-3.md": {
+  "class": "duplicate-padded",
+  "problem": "P1",
+  "derived_from": "ANS-03.md",
+  "construction": "each option block repeated once with a \"(restated)\" heading; tests displacement past the six-option cap",
+  "held_out": true
+ },
+ "P1-harm-1.md": {
+  "class": "planted-harm",
+  "problem": "P1",
+  "derived_from": "ANS-04.md",
+  "planted_constraint": "Requires authority over people the firm does not employ",
+  "construction": "one option breaching exactly one frozen hard constraint, INSERTED at option position 2 (v1 appended it last, where the six-option cap displaced it in 4 of 6 controls and the harm gate could never fire)",
+  "held_out": false,
+  "planted_position": 2
+ },
+ "P1-harm-2.md": {
+  "class": "planted-harm",
+  "problem": "P1",
+  "derived_from": "ANS-05.md",
+  "planted_constraint": "Breaches professional licensure, responsible-charge or liability rules",
+  "construction": "one option breaching exactly one frozen hard constraint, INSERTED at option position 2 (v1 appended it last, where the six-option cap displaced it in 4 of 6 controls and the harm gate could never fire)",
+  "held_out": false,
+  "planted_position": 2
+ },
+ "P1-harm-3.md": {
+  "class": "planted-harm",
+  "problem": "P1",
+  "derived_from": "ANS-06.md",
+  "planted_constraint": "Requires headcount growth funded by the compressing revenue line",
+  "construction": "one option breaching exactly one frozen hard constraint, INSERTED at option position 2 (v1 appended it last, where the six-option cap displaced it in 4 of 6 controls and the harm gate could never fire)",
+  "held_out": true,
+  "planted_position": 2
+ },
+ "P2-padded-1.md": {
+  "class": "duplicate-padded",
+  "problem": "P2",
+  "derived_from": "ANS-01.md",
+  "construction": "each option block repeated once with a \"(restated)\" heading; tests displacement past the six-option cap",
+  "held_out": false
+ },
+ "P2-padded-2.md": {
+  "class": "duplicate-padded",
+  "problem": "P2",
+  "derived_from": "ANS-02.md",
+  "construction": "each option block repeated once with a \"(restated)\" heading; tests displacement past the six-option cap",
+  "held_out": false
+ },
+ "P2-padded-3.md": {
+  "class": "duplicate-padded",
+  "problem": "P2",
+  "derived_from": "ANS-03.md",
+  "construction": "each option block repeated once with a \"(restated)\" heading; tests displacement past the six-option cap",
+  "held_out": true
+ },
+ "P2-harm-1.md": {
+  "class": "planted-harm",
+  "problem": "P2",
+  "derived_from": "ANS-04.md",
+  "planted_constraint": "Requires authority over people or budgets the asker does not control",
+  "construction": "one option breaching exactly one frozen hard constraint, INSERTED at option position 2 (v1 appended it last, where the six-option cap displaced it in 4 of 6 controls and the harm gate could never fire)",
+  "held_out": false,
+  "planted_position": 2
+ },
+ "P2-harm-2.md": {
+  "class": "planted-harm",
+  "problem": "P2",
+  "derived_from": "ANS-05.md",
+  "planted_constraint": "Breaches employment law or enforceable-contract limits in a normal jurisdiction",
+  "construction": "one option breaching exactly one frozen hard constraint, INSERTED at option position 2 (v1 appended it last, where the six-option cap displaced it in 4 of 6 controls and the harm gate could never fire)",
+  "held_out": false,
+  "planted_position": 2
+ },
+ "P2-harm-3.md": {
+  "class": "planted-harm",
+  "problem": "P2",
+  "derived_from": "ANS-06.md",
+  "planted_constraint": "Depends on the departing engineers behaving against their own stated interests",
+  "construction": "one option breaching exactly one frozen hard constraint, INSERTED at option position 2 (v1 appended it last, where the six-option cap displaced it in 4 of 6 controls and the harm gate could never fire)",
+  "held_out": true,
+  "planted_position": 2
+ },
+ "P1-oracle-1.md": {
+  "class": "oracle-hint",
+  "problem": "P1",
+  "scenarios_covered": 4,
+  "total_scenarios": 4,
+  "construction": "options generated from the frozen scenario milestones with a PROBLEM-SPECIFIC lever; v1 hardcoded one P1-flavoured sentence into both problems, which made the P2 oracles assert a mechanism acting on nothing in their own problem \u2014 a judge caught it as causal_relevance:no on all four options",
+  "held_out": false
+ },
+ "P1-oracle-2.md": {
+  "class": "oracle-hint",
+  "problem": "P1",
+  "scenarios_covered": 3,
+  "total_scenarios": 4,
+  "construction": "options generated from the frozen scenario milestones with a PROBLEM-SPECIFIC lever; v1 hardcoded one P1-flavoured sentence into both problems, which made the P2 oracles assert a mechanism acting on nothing in their own problem \u2014 a judge caught it as causal_relevance:no on all four options",
+  "held_out": false
+ },
+ "P1-oracle-3.md": {
+  "class": "oracle-hint",
+  "problem": "P1",
+  "scenarios_covered": 2,
+  "total_scenarios": 4,
+  "construction": "options generated from the frozen scenario milestones with a PROBLEM-SPECIFIC lever; v1 hardcoded one P1-flavoured sentence into both problems, which made the P2 oracles assert a mechanism acting on nothing in their own problem \u2014 a judge caught it as causal_relevance:no on all four options",
+  "held_out": true
+ },
+ "P1-incoherent-1.md": {
+  "class": "synthetic-incoherent",
+  "problem": "P1",
+  "construction": "self-contradictory recommendations, off-question framing, no actor or first test; built to be broken",
+  "held_out": false
+ },
+ "P1-incoherent-2.md": {
+  "class": "synthetic-incoherent",
+  "problem": "P1",
+  "construction": "self-contradictory recommendations, off-question framing, no actor or first test; built to be broken",
+  "held_out": false
+ },
+ "P1-incoherent-3.md": {
+  "class": "synthetic-incoherent",
+  "problem": "P1",
+  "construction": "self-contradictory recommendations, off-question framing, no actor or first test; built to be broken",
+  "held_out": true
+ },
+ "P2-oracle-1.md": {
+  "class": "oracle-hint",
+  "problem": "P2",
+  "scenarios_covered": 4,
+  "total_scenarios": 4,
+  "construction": "options generated from the frozen scenario milestones with a PROBLEM-SPECIFIC lever; v1 hardcoded one P1-flavoured sentence into both problems, which made the P2 oracles assert a mechanism acting on nothing in their own problem \u2014 a judge caught it as causal_relevance:no on all four options",
+  "held_out": false
+ },
+ "P2-oracle-2.md": {
+  "class": "oracle-hint",
+  "problem": "P2",
+  "scenarios_covered": 3,
+  "total_scenarios": 4,
+  "construction": "options generated from the frozen scenario milestones with a PROBLEM-SPECIFIC lever; v1 hardcoded one P1-flavoured sentence into both problems, which made the P2 oracles assert a mechanism acting on nothing in their own problem \u2014 a judge caught it as causal_relevance:no on all four options",
+  "held_out": false
+ },
+ "P2-oracle-3.md": {
+  "class": "oracle-hint",
+  "problem": "P2",
+  "scenarios_covered": 2,
+  "total_scenarios": 4,
+  "construction": "options generated from the frozen scenario milestones with a PROBLEM-SPECIFIC lever; v1 hardcoded one P1-flavoured sentence into both problems, which made the P2 oracles assert a mechanism acting on nothing in their own problem \u2014 a judge caught it as causal_relevance:no on all four options",
+  "held_out": true
+ },
+ "P2-incoherent-1.md": {
+  "class": "synthetic-incoherent",
+  "problem": "P2",
+  "construction": "self-contradictory recommendations, off-question framing, no actor or first test; built to be broken",
+  "held_out": false
+ },
+ "P2-incoherent-2.md": {
+  "class": "synthetic-incoherent",
+  "problem": "P2",
+  "construction": "self-contradictory recommendations, off-question framing, no actor or first test; built to be broken",
+  "held_out": false
+ },
+ "P2-incoherent-3.md": {
+  "class": "synthetic-incoherent",
+  "problem": "P2",
+  "construction": "self-contradictory recommendations, off-question framing, no actor or first test; built to be broken",
+  "held_out": true
+ }
+}

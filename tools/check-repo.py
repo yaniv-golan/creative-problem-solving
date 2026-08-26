@@ -23,12 +23,21 @@ import filecmp
 import json
 import os
 import re
+import subprocess
 import sys
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-# NanoClaw enforces a 500-line ceiling on SKILL.md; keep headroom.
-SKILL_MD_MAX_LINES = 500
+# SKILL.md is loaded on every invocation, so its length is a per-run context cost paid whether or
+# not the run needs the detail. The Agent Skills guidance is to keep the always-loaded body small
+# and push specifics into references/, which this skill does.
+#
+# This was 500 because NanoClaw enforced that as a hard platform limit. NanoClaw is no longer a
+# supported target, so the number is now ours and means something softer: a ceiling high enough not
+# to distort edits, low enough that crossing it is a prompt to move detail into references/ rather
+# than a surprise. Raising it again is a decision, not a formality -- every line here is read on
+# every run.
+SKILL_MD_MAX_LINES = 600
 # Claude's skill loader truncates very long descriptions.
 DESCRIPTION_MAX_CHARS = 1024
 
@@ -362,6 +371,364 @@ for sname in skill_names:
             fail("SKILL.md (%s) points at %s, which does not exist" % (sname, ref))
     else:
         ok("every references/ path in %s/SKILL.md resolves" % sname)
+
+
+# --------------------------------------------------------------------------
+# 11. Duplicated CLAIMS agree, and no new surface makes them unnoticed
+# --------------------------------------------------------------------------
+# A claim the payload makes in several places is not kept true by care. The hard part is not
+# that two copies drift apart -- that is rare and visible. It is ENUMERATION: nobody can say how
+# many places make the claim, so a sweep that fixes every known one is still incomplete, and
+# there is no way to tell the difference between finished and unfinished.
+#
+# So this does not try to compare prose. Two things it CAN do:
+#
+#   (1) A canonical fragment. Where a file states verification scope, it must contain the exact
+#       phrase naming that scope. The sentences were rewritten to make this possible -- the same
+#       structure as the description check above, which is a derivation rule rather than string
+#       equality, and which is the one duplicated claim that never drifted.
+#   (2) A tripwire. A crude regex per claim family, plus the list of files allowed to match it.
+#       A hit anywhere else fails: align and register the new surface, or reword to silence.
+#       Turning "would the next review find an eighth surface?" into a diff is the whole point.
+#
+# False positives cost one line in ALLOWED. That is the cheap direction.
+print("\nduplicated claims agree, and no surface is unregistered")
+
+SCOPE_FRAGMENT = "the lead option of each of the top 13 families"
+CLAIMS = {
+    "verification-scope": {
+        "fingerprint": re.compile(r"checked by search|checks by search|verifies by search"
+                                  r"|Search verifies|gets checked", re.I),
+        "allowed": {
+            "README.md",
+            "SECURITY.md",
+            "%s/skills/%s/SKILL.md" % (plugin_name, skill_names[0]),
+            "%s/skills/%s/references/lenses.md" % (plugin_name, skill_names[0]),
+            "%s/skills/%s/references/pipeline.md" % (plugin_name, skill_names[0]),
+            "%s/agents/generator.md" % plugin_name,
+            "%s/agents/verifier.md" % plugin_name,
+            "%s/agents/grouper.md" % plugin_name,
+            "%s/commands/ideas.md" % plugin_name,
+            # The report prints the scope to the reader, above the band that was not checked.
+            # It is the only surface the reader is guaranteed to see, so it is held to the
+            # phrase rather than merely permitted to mention verification.
+            "%s/scripts/build_report.py" % plugin_name,
+        },
+        # Files that must carry the exact scope phrase, not merely mention verification.
+        "must_contain_fragment": {
+            "README.md",
+            "SECURITY.md",
+            "%s/scripts/build_report.py" % plugin_name,
+            "%s/skills/%s/SKILL.md" % (plugin_name, skill_names[0]),
+            "%s/skills/%s/references/lenses.md" % (plugin_name, skill_names[0]),
+            # The operative pipeline is the surface a run actually follows. Narrowing the promise
+            # in the files a reader sees while leaving it wide in the file the run executes is
+            # how the claim and the behaviour come apart in the first place.
+            "%s/skills/%s/references/pipeline.md" % (plugin_name, skill_names[0]),
+        },
+    },
+    "independence": {
+        # Payload only. A fingerprint cannot tell asserting a claim from forbidding or quoting one,
+        # and CONTRIBUTING/DESIGN-NOTES do both while discussing why the claim is not made. Those
+        # are maintainer docs; the question this asks is whether the SHIPPED payload asserts
+        # independence, so it scans what ships.
+        "payload_only": True,
+        # Tightened after its first run: a bare "on their own" caught "frameworks don't work on
+        # their own" and "both baselines diagnosed first unprompted" -- ordinary English, not the
+        # claim. The claim is always ABOUT the passes, so require the vocabulary within a clause
+        # of the phrasing. Registering those files instead would have licensed a real claim there
+        # later, which is the failure this exists to prevent.
+        # `independen\w*` rather than `independently`: the adjective form ("several independent
+        # lenses") is the same claim and was invisible to the adverb. Matched against
+        # whitespace-normalised text, so a claim split across a line break is not a hiding place.
+        "fingerprint": re.compile(
+            r"(lens|lenses|pass|passes|angle|angles|generator|generators)[^.]{0,80}"
+            r"(on their own|unprompted|independen\w*)"
+            r"|(on their own|unprompted|independen\w*)[^.]{0,80}"
+            r"(lens|lenses|pass|passes|angle|angles)", re.I),
+        # Deliberately empty. Passes are isolated but share a brief, so nothing in the payload
+        # may claim they arrived anywhere independently -- report the count instead.
+        "allowed": set(),
+        "must_contain_fragment": set(),
+    },
+}
+
+SEARCH_ROOTS = [".", plugin_name, ".github"]
+skip_dirs = ("docs/internal", "evals", "node_modules", ".git", "dist", "tests", "static",
+             ".agents")   # byte-identical mirror; the mirror check above already enforces it
+scanned = []
+for root, dirs, files in os.walk(REPO):
+    rel_root = os.path.relpath(root, REPO)
+    if any(rel_root == d or rel_root.startswith(d + os.sep) for d in skip_dirs):
+        dirs[:] = []
+        continue
+    for fn in files:
+        if fn.endswith((".md", ".py")):
+            scanned.append(os.path.relpath(os.path.join(root, fn), REPO))
+
+for claim, spec in CLAIMS.items():
+    unregistered, missing_fragment = [], []
+    for rel in sorted(scanned):
+        if rel.startswith("tools/") or rel == "CHANGELOG.md":
+            continue                      # tooling and history describe claims, they do not make them
+        # Normalised for the same reason the fragment check is: a claim that lands across a line
+        # break is still the claim, and a checker that misses it teaches nothing except that
+        # wrapping is a way around it.
+        if spec.get("payload_only") and not (rel.startswith(plugin_name + "/")
+                                             or rel in ("README.md", "SECURITY.md")):
+            continue
+        raw = read_text(rel)
+        if rel.endswith(".py"):
+            # In code the claim is what the program EMITS. A `#` comment is never user-visible,
+            # and comments are where the reasoning about a claim lives -- including the reasoning
+            # for not making it. Strip them, or the file is flagged for explaining itself.
+            raw = "\n".join(ln.split("#", 1)[0] if not ln.lstrip().startswith("#") else ""
+                            for ln in raw.splitlines())
+        text = " ".join(raw.split())
+        if spec["fingerprint"].search(text) and rel not in spec["allowed"]:
+            unregistered.append(rel)
+    for rel in sorted(spec["must_contain_fragment"]):
+        # Whitespace-normalised, because prose gets re-wrapped and the phrase will land across a
+        # line break sooner or later. A check that fails on a newline is a check people learn to
+        # work around, and the property being asserted is that the file says this -- not that it
+        # says it without wrapping.
+        if " ".join(SCOPE_FRAGMENT.split()) not in " ".join(read_text(rel).split()):
+            missing_fragment.append(rel)
+    if unregistered:
+        for rel in unregistered[:6]:
+            fail("%s makes the '%s' claim but is not a registered surface for it. Align its "
+                 "wording and add it to CLAIMS in tools/check-repo.py, or reword it to stop "
+                 "making the claim." % (rel, claim))
+    elif missing_fragment:
+        for rel in missing_fragment:
+            fail("%s must state the verification scope using the exact phrase %r" %
+                 (rel, SCOPE_FRAGMENT))
+    else:
+        ok("'%s': %d registered surface(s), none unregistered%s"
+           % (claim, len(spec["allowed"]),
+              ", all carrying the scope phrase" if spec["must_contain_fragment"] else ""))
+
+
+# --------------------------------------------------------------------------
+# 12. The Codex marketplace ref is pinned to this version
+# --------------------------------------------------------------------------
+# `.agents/plugins/marketplace.json` sat outside every version sweep: bump-version.py did not
+# write it and nothing read it. Its `"ref": "main"` therefore installed whatever main was at the
+# moment someone installed, unreleased work included. It is pinned now, and asserted here --
+# because the failure mode of a pin nobody maintains (silently installing the previous release,
+# forever) is quieter than the one it replaced.
+print("\nthe Codex marketplace ref is pinned to this version")
+agents_mkt_rel = ".agents/plugins/marketplace.json"
+agents_mkt = os.path.join(REPO, agents_mkt_rel)
+if not os.path.isfile(agents_mkt):
+    ok("%s absent — nothing to pin" % agents_mkt_rel)
+else:
+    want = "v" + read_text("VERSION").strip()
+    refs = [(p.get("name"), (p.get("source") or {}).get("ref"))
+            for p in load_json(agents_mkt_rel).get("plugins", [])]
+    bad = [(n, r) for n, r in refs if r is not None and r != want]
+    if bad:
+        for n, r in bad:
+            fail("%s pins %s at ref %r, but VERSION is %s. A mutable or stale ref installs "
+                 "something other than this release; run tools/bump-version.py"
+                 % (agents_mkt_rel, n, r, want))
+    else:
+        # Matching VERSION is half the property. The pin is a `git-subdir` ref an installer
+        # resolves, so a pin that agrees with VERSION and names a tag nobody pushed installs
+        # nothing at all -- and the old success line said "pins every plugin at v0.2.0", which
+        # reads as though that had been checked.
+        #
+        # Not a failure: between a version bump and its tag, main legitimately pins a tag that
+        # does not exist yet, and a check that reds main for the normal state of an unreleased
+        # repo is a check people switch off. release.yml is where this becomes fatal -- it runs
+        # ON the tag, so the tag is there by construction. What this owes the reader is to stop
+        # implying the stronger claim.
+        try:
+            have_tag = subprocess.run(["git", "rev-parse", "-q", "--verify",
+                                       "refs/tags/%s" % want],
+                                      cwd=REPO, capture_output=True).returncode == 0
+        except FileNotFoundError:
+            have_tag = None
+        if have_tag:
+            ok("%s pins every plugin at %s, and that tag exists" % (agents_mkt_rel, want))
+        elif have_tag is None:
+            ok("%s pins every plugin at %s (not a git checkout, so the tag was not looked up)"
+               % (agents_mkt_rel, want))
+        else:
+            ok("%s pins every plugin at %s — that tag does NOT exist yet, so the Agent Skills "
+               "marketplace entry resolves to nothing until %s is pushed. Expected before a "
+               "release, not after one" % (agents_mkt_rel, want, want))
+
+
+# --------------------------------------------------------------------------
+# 13. The payload counts that ARE still stated are true
+# --------------------------------------------------------------------------
+# This count has drifted four times: four scripts, then five, then six, and a payload described
+# as "six files" while listing five of them. Each drift was fixed by hand and the next one
+# happened anyway, because a number in prose has to be maintained in step with a directory and
+# nothing was checking.
+#
+# Most of those numbers are gone -- SECURITY.md now names the scripts and the reference files
+# instead of counting them, which cannot drift. INSTALL.md still says "six files" because there
+# the count and its enumeration sit in one sentence and check each other. That one is asserted
+# here against the real payload rather than trusted.
+print("\nstated payload counts are true")
+WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight"}
+skill_root = os.path.join(REPO, plugin_name, "skills", skill_names[0])
+n_refs = len([f for f in os.listdir(os.path.join(skill_root, "references"))
+              if f.endswith(".md")])
+# SKILL.md + references + LICENSE + VERSION, which is what build-zip.py assembles.
+n_payload = 1 + n_refs + 2
+install = read_text("INSTALL.md")
+claim = "%s files, all prose:" % WORDS.get(n_payload, n_payload)
+refclaim = "%s\n`references/` documents" % WORDS.get(n_refs, n_refs)
+if claim not in install:
+    fail("INSTALL.md should say %r — the zip payload is SKILL.md + %d references + LICENSE + "
+         "VERSION. Update the sentence or the payload, whichever is wrong." % (claim, n_refs))
+elif refclaim not in install:
+    fail("INSTALL.md's file count is right but its breakdown does not say %r (%d reference "
+         "documents ship)" % (refclaim.replace("\n", " "), n_refs))
+else:
+    ok("INSTALL.md's payload count matches the %d files build-zip.py assembles" % n_payload)
+
+
+# --------------------------------------------------------------------------
+# 14. Nothing private is tracked
+# --------------------------------------------------------------------------
+# docs/internal/ is gitignored maintainer scratch and holds material that must not be published.
+# Ignoring a directory does not protect it: `git add -f` overrides the ignore silently, and a
+# force-add is exactly the move someone makes when a file "should obviously be committed".
+#
+# A content scanner is the wrong control here and was considered first. It cannot see ignored
+# files at all, so it would scan everything except the directory that holds the risk. What is
+# checkable is the invariant itself: no path under docs/internal/ is tracked, ever. That is a
+# question git answers directly, and it fails the same way whether the content looked sensitive
+# or not -- which is the point, since the judgement about what is sensitive is what fails.
+print("\nnothing private is tracked")
+PRIVATE_TREES = ["docs/internal/"]
+# Narrow, and deliberately so. A bare `except Exception` here caught a NameError in this very
+# block on its first run and reported "skipped", green -- a check that cannot run rendering
+# identically to one that passed, which is the failure this repo has now hit at four separate
+# layers. Only the two conditions that legitimately mean "not a git checkout" are tolerated.
+try:
+    tracked = subprocess.run(["git", "ls-files", "-z"], cwd=REPO, capture_output=True,
+                             text=True, check=True).stdout.split("\0")
+except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+    ok("skipped: not a git checkout (%s)" % type(exc).__name__)
+else:
+    leaked = sorted(f for f in tracked if f and any(f.startswith(t) for t in PRIVATE_TREES))
+    if leaked:
+        for f in leaked[:10]:
+            fail("%s is TRACKED — it lives in a gitignored maintainer tree and must not be "
+                 "committed. If it belongs in the repo, move it out of that tree deliberately "
+                 "rather than force-adding it" % f)
+    else:
+        ok("no tracked file lives under %s" % ", ".join(PRIVATE_TREES))
+
+    # The other half: a tracked file may not CITE a specific file in one of those trees. Not
+    # tracking the file and pointing at it anyway is worse than either alone -- the reader is
+    # sent to a path that resolves for exactly one person, and a dead relative link does not
+    # 404, it just reads as a reference the reader failed to find. Summarise the finding in
+    # place, or say the working is unpublished; both are honest, and a path is not.
+    cite = re.compile(r"(?:%s)[A-Za-z0-9._-]+\.[A-Za-z0-9]+"
+                      % "|".join(re.escape(t) for t in PRIVATE_TREES))
+    dangling = []
+    for rel in sorted(f for f in tracked if f):
+        if rel.startswith("tools/check-repo.py") or rel.endswith((".png", ".zip", ".ico")):
+            continue                      # this file defines the pattern; binaries have no prose
+        try:
+            hits = sorted(set(cite.findall(read_text(rel))))
+        except (OSError, UnicodeDecodeError):
+            continue
+        for h in hits:
+            dangling.append((rel, h))
+    if dangling:
+        for rel, h in dangling[:10]:
+            fail("%s cites %s, which is gitignored and never ships — a reader who clones this "
+                 "repo cannot open it. Summarise the point in place, or say the detail is "
+                 "unpublished, but do not print a path only you can resolve" % (rel, h))
+    else:
+        ok("no tracked file cites a specific file under %s" % ", ".join(PRIVATE_TREES))
+
+
+# --------------------------------------------------------------------------
+# 15. The documented script inventory matches the directory and the pipeline
+# --------------------------------------------------------------------------
+# SECURITY.md tells a researcher which files execute on a user machine. That list was wrong for a
+# whole release: plan_groups.py and merge_families.py were added, shelled out by the pipeline, and
+# named nowhere -- 705 lines of executing code outside the stated scope, while every check here
+# was green.
+#
+# The previous control was "name the scripts instead of counting them, because a list cannot
+# drift". A list drifts by OMISSION, and omission is invisible in the way a wrong count is not:
+# nothing about five names looks like it should have been seven. So the invariant is asserted
+# against the two sources of truth rather than reasoned about -- the directory says which scripts
+# exist, pipeline.md says which are invoked, and SECURITY.md must agree with both.
+print("\nthe documented script inventory is true")
+scripts_dir = os.path.join(REPO, plugin_name, "scripts")
+on_disk = {f for f in os.listdir(scripts_dir) if f.endswith(".py")}
+# The invocation form, not a mention: pipeline.md discusses progress.py in prose and shows
+# `python3 "/scripts/shard_candidates.py"` as a NEGATIVE example of an unset $CPS. Matching the
+# literal `$CPS/scripts/<name>.py` form is what separates "the pipeline runs this" from "the
+# pipeline talks about this".
+pipeline_md = read_text(os.path.join(plugin_name, "skills", skill_names[0],
+                                     "references", "pipeline.md"))
+invoked = set(re.findall(r'python3 "\$CPS/scripts/([a-z_]+\.py)"', pipeline_md))
+imported = on_disk - invoked
+
+ghosts = sorted(invoked - on_disk)
+if ghosts:
+    fail("references/pipeline.md invokes %s, which %s not exist in %s/scripts/"
+         % (", ".join(ghosts), "does" if len(ghosts) == 1 else "do", plugin_name))
+
+security = read_text("SECURITY.md")
+# Split at the sentence that separates the two claims, so a script named only in the "imported"
+# half is not credited as documented-as-invoked, and vice versa.
+# Walk back to the start of that sentence: the names being called "imported" sit BEFORE the
+# phrase, so splitting at the phrase itself files them under "invoked".
+_phrase = security.find("are imported by those rather than")
+split = security.rfind(". ", 0, _phrase) + 2 if _phrase != -1 else -1
+if _phrase == -1:
+    fail("SECURITY.md no longer contains the 'imported by those rather than invoked' sentence "
+         "that separates its invoked list from its imported list — this check cannot tell the "
+         "two claims apart. Restore the sentence or update this check deliberately.")
+else:
+    said_invoked = {n for n in on_disk if "`%s`" % n in security[:split]}
+    said_imported = {n for n in on_disk if "`%s`" % n in security[split:]}
+    missing = sorted(invoked - said_invoked)
+    if missing:
+        fail("SECURITY.md does not name %s among the scripts the pipeline invokes, but "
+             "references/pipeline.md shells out to %s. SECURITY.md is what a security researcher "
+             "reads to learn what executes; a script missing from it is outside the stated scope"
+             % (", ".join(missing), "it" if len(missing) == 1 else "them"))
+    miscast = sorted(said_invoked & imported)
+    if miscast:
+        fail("SECURITY.md lists %s among the scripts the pipeline invokes, but no "
+             "`python3 \"$CPS/scripts/...\"` line in references/pipeline.md runs %s"
+             % (", ".join(miscast), "it" if len(miscast) == 1 else "them"))
+    unnamed = sorted(imported - said_imported - said_invoked)
+    if unnamed:
+        fail("SECURITY.md names neither as invoked nor as imported: %s. Every file in "
+             "%s/scripts/ ships to a user machine and must be accounted for"
+             % (", ".join(unnamed), plugin_name))
+    if not (missing or miscast or unnamed):
+        ok("SECURITY.md accounts for all %d script(s): %d invoked, %d imported"
+           % (len(on_disk), len(invoked), len(imported)))
+
+# INSTALL.md states the same inventory as counts, in a sentence that also enumerates the jobs.
+# Both numbers are asserted here for the reason the zip payload count is: a number in prose has
+# to be maintained in step with a directory, and nothing else is checking.
+install_md = read_text("INSTALL.md")
+for label, n, phrase in (("files in scripts/", len(on_disk),
+                          "%s stdlib-only Python scripts" % WORDS.get(len(on_disk), len(on_disk))),
+                         ("scripts the pipeline runs", len(invoked),
+                          "The pipeline runs %s of them" % WORDS.get(len(invoked), len(invoked)))):
+    if phrase not in install_md:
+        fail("INSTALL.md should say %r — %s/scripts/ holds %d .py file(s) and "
+             "references/pipeline.md invokes %d of them"
+             % (phrase, plugin_name, len(on_disk), len(invoked)))
+    else:
+        ok("INSTALL.md's %s count says %d, and that is true" % (label, n))
 
 
 # --------------------------------------------------------------------------

@@ -13,57 +13,220 @@ facts belong here. Quality judgements belong in `../evals/`.
 | Scenario | Asserts | Catches |
 |---|---|---|
 | `negative-trigger.yaml` | the skill does **not** fire on "Postgres or MongoDB?" | a widened `description` that makes the engine run on decision questions |
-| `mode-gate-fast.yaml` | a bounded problem does **no** web research | deep mode firing where it once cost 6.7× the time for a worse answer than a plain response |
-| `mode-gate-deep.yaml` | a strategic problem **does** research | deep mode silently becoming fast mode |
-| `meta-trigger.yaml` | the skill **does** fire when someone asks how to improve a tool they maintain | a description that misses its own declared home turf |
+| `pipeline-bounded.yaml` | a bounded problem **does** ground by search, and asks **at most one** gated question | grounding silently not happening, which would put unchecked borrowed mechanisms in front of a reader |
+| `pipeline-strategic.yaml` | a strategic problem **does** ground by search, and asks **at most one** gated question | the same, plus a gate bundling scope and output-format questions the skill's own rule excludes |
+| `meta-no-trigger.yaml` | the skill does **not** fire when someone asks how to improve a tool they maintain | a description that fires on phrasing rather than on an explicit ask |
+| `ideas-command.yaml` | `/creative-problem-solving:ideas` **routes into** the skill | the command expanding to prose the model answers directly — indistinguishable from success on the verdict line, and the only place dispatch is worth asserting |
+| `deliverable-composition.yaml` | a strategic run's **file** deliverable exists and still carries load-bearing-assumption language | Phase 3's annotations dropping out when the answer is composed into a document |
 
-`meta-trigger` and `negative-trigger` are a pair and should be read together: one asserts the
-skill fires on a new class, the other that it still declines on decision questions. A
+`deliverable-composition` guards the boundary the others never cross: the point where the
+answer stops being a chat report and becomes a file. Phases 0-3 constrain generation; composition
+does not — it is a fresh pass with none of those constraints attached, which is how a pruned
+pipeline grows back as hedged options hardening into committed policy and specificity the run
+never produced. Phase 3's critique cannot reach it: at Phase 3 those sentences do not exist yet.
+
+**What it cannot see, stated plainly.** "Every number traces to pipeline output or user data" is
+not a tool-stream fact — no assertion distinguishes an invented threshold from a derived one, and
+that half stays an `../evals/` question, judged. What it asserts instead is the discipline that
+goes missing *first* when composition runs unconstrained: a delivered document carrying no
+load-bearing-assumption language anywhere. The match is a deliberately wide alternation, because
+pinning `SKILL.md`'s template phrasing verbatim would assert the template rather than the
+property. Second limit: in practice the deliverable is asked for on a **later turn**, and an
+asserted `run` is single-turn, so the scenario compresses report and document into one prompt. A
+green here does not clear the later-turn case.
+
+`meta-no-trigger` and `negative-trigger` are a pair and should be read together, and since
+2026-08-24 they assert the same thing from two directions: the skill does not select itself.
+`meta-no-trigger` was inverted when the description became explicit-only — it used to assert
+firing on that prompt, and the prompt is unchanged precisely because it is the hardest case for
+the new contract. `ideas-command` is what proves the explicit door still opens; these two prove
+the implicit one stays shut, including on the strongest possible knock. A
 description edit that only widens is easy; the pair is what shows it widened in the right
 direction. Both verified on the tool stream (`skillActivity`), not just on the verdict line.
 
-> **What these cannot see, stated plainly.** Since sub-agent dispatch was removed before release, deep
-> mode's entire tool-stream signature is **one boolean** — did `WebSearch` fire. The run that
-> `mode-gate-deep.yaml` was originally written to catch (a deep-mode announcement with zero
-> sub-agents) would **pass** the assertions it carries today, because it did search while
-> narrating everything else.
+**The question ceiling, and what it half-covers.** `SKILL.md` states a hard rule — *"One
+question, and only about meaning"*, where scope, emphasis, target segment, detail level and
+output format all fail its bar. Both `pipeline-*` scenarios now assert `questions_count_max: 1`,
+which counts **sub-questions**, so a single `AskUserQuestion` bundling three of them counts as 3.
+That is not hypothetical: an earlier generation (`skillHash f8566139f7`) raised gates on the deep
+scenario bundling four and three sub-questions — including *"What should the deliverable look
+like?"* and *"What should I hand you?"*, output-format questions the rule excludes by name — on a
+prompt that explicitly told the model not to ask anything.
+
+Read the green for exactly what it is: the assertion sees `AskUserQuestion` gates **only**. The
+skill mandates no gate tool, and `SKILL.md` contemplates prose asking outright (*"If you can't
+ask, pick the likeliest reading"*), so a run that asks three meaning questions in plain chat
+records zero gates and passes. A maximum is also satisfied by zero. It is a partial guard on the
+rule, not coverage of it — the rest is an `../evals/` question, judged.
+
+`negative-trigger.yaml` is the one scenario that deliberately omits it: the skill must not fire
+there at all, which `no_skill_triggered` already asserts, so a question ceiling would add nothing
+the stronger key doesn't already carry.
+
+**Why there is no "wrote no files" assertion.** `no_unexpected_files: []` looks like the obvious
+tripwire against someone re-landing an artifact-writing instruction — the `pool.jsonl` design that
+was pre-registered, measured 0/3 and reverted. It was evaluated and **declined**, for a reason
+worth writing down: the key is scoped to **user-visible roots** (`outputs/`, connected folders).
+The agent's scratchpad sits outside every one of them, so an instruction telling the skill to
+write per-pass candidates to a working file would most likely land exactly where this assertion
+cannot see. It would guard the case that never happens and miss the case that did. The deterrent
+that works is the measured record in
+[`DESIGN-NOTES.md`](../docs/DESIGN-NOTES.md)
+intervention #5, not a live-only assertion with a blind spot in the middle of it.
+
+> **What these cannot see, stated plainly — and this inverted on 2026-08-23.** Sub-agent dispatch
+> was removed before release, which left the expensive path's entire tool-stream signature as
+> **one boolean**: did `WebSearch` fire. Dispatch is now back and required — nine generators,
+> three adjudicators, a grouper, a ranker and three verifiers — so a run *does* leave a rich
+> tool-stream trace, and `dispatch_count` is a real signal again.
 >
-> Nothing in the tool stream can prove the four phases ran, now that generation happens in one
-> context by design. That is a real cost of the simplification, and it is recorded here rather
-> than papered over.
+> **The two `pipeline-*` scenarios still do not assert it, on purpose.** A body-level instruction
+> to hand generation away measured **1/6** compliance; the identical requirement in
+> `commands/ideas.md` measured **6/6**. Asserting dispatch on the skill-body path would buy a
+> flake, not a guarantee, so it is asserted where it is reliable — `ideas-command.yaml` — and the
+> `pipeline-*` pair asserts grounding instead. What remains unassertable there is the same as
+> before: a strategic run that searched twice and narrated the rest would pass them.
 >
-> **This was attempted and failed.** A `pool.jsonl` instruction — write each pass's candidates
-> to a file, read it back in Phase 2 — would have given this lane something richer to assert.
-> It was written, pre-registered at a 5/6 write rate, and measured **0/3**: the skill invoked
-> every time and made no tool call at all beyond loading itself. Reverted. Combined with an
-> equivalent instruction in an earlier development build that went 0/4, artifact-writing instructions are 0/7 across two
-> architectures. See [`DESIGN-NOTES.md`](../creative-problem-solving/skills/creative-problem-solving/DESIGN-NOTES.md) intervention #5 for the rule that explains it. Whether the pipeline produces better answers is an `evals/` question,
-> judged — not a `tests/` question, asserted.
+> What no scenario can see at all is whether the pipeline's *stages* ran as specified. That is
+> now checked inside the run instead, by `scripts/verify_pipeline.py` — every proposed pair
+> adjudicated exactly once, every option in exactly one family, the ranking neither omitting nor
+> inventing a family, no index file carrying text, the agreement probe present and large enough,
+> and the presented count equal to the generated count. An external test cannot force that; a
+> script that counts files can, because a stage that did not run leaves nothing to count.
 >
-> This is also why `mode-gate-fast.yaml`'s `tool_not_called: WebSearch` is not optional: absence
+> **This was attempted and failed — in the skill body.** A `pool.jsonl` instruction — write each
+> pass's candidates to a file, read it back in Phase 2 — would have given this lane something
+> richer to assert. It was written, pre-registered at a 5/6 write rate, and measured **0/3**: the
+> skill invoked every time and made no tool call at all beyond loading itself. Reverted. With an
+> equivalent instruction in an earlier development build that went 0/4, artifact-writing
+> instructions in `SKILL.md` were 0/7 across two architectures. See
+> [`DESIGN-NOTES.md`](../docs/DESIGN-NOTES.md)
+> intervention #5 for the rule that explains it.
+>
+> **The same instruction on the command surface works every time.** Under `/ideas` each generator
+> writes its own pool file and returns a one-line receipt, and every completed run has produced
+> them — the pipeline cannot proceed without them, and `verify_pipeline.py` reads them. That is
+> not a refutation of the 0/7: it is the same finding as the 1/6-vs-6/6 dispatch result. Where the
+> instruction lives decides whether it happens. Whether the pipeline produces better answers is
+> still an `evals/` question, judged — not a `tests/` question, asserted.
+>
+> Note this direction has since INVERTED. When the skill had two modes, `mode-gate-fast`
+> asserted `tool_not_called: WebSearch` because absence of research was fast mode's signature.
+> Grounding is now unconditional, so `pipeline-bounded` asserts `tool_called: WebSearch` — the
+> failure it guards is a run that skips grounding, not one that performs it. The paragraph below
+> is retained for the reasoning about absence-assertions, which still holds. Original text:
+> `mode-gate-fast.yaml`'s `tool_not_called: WebSearch` was not optional: absence
 > of research is the only thing that now distinguishes the two modes, so without it the pair
 > asserts nothing about the mode gate at all.
 
-The two `mode-gate-*` scenarios are the same property in both directions, and the gate is
-what [`DESIGN-NOTES.md`](../creative-problem-solving/skills/creative-problem-solving/DESIGN-NOTES.md) calls the most important thing in the skill. Testing only the negative
-half is how you end up with a deep mode that has silently stopped being deep — the answer
-still looks fine, because a good direct answer looks like a good pipeline answer.
+The two `pipeline-*` scenarios are the same property on two question shapes: grounding happens.
+They were a mode gate, which is what
+[`DESIGN-NOTES.md`](../docs/DESIGN-NOTES.md)
+called the most important thing in the skill before modes were removed. The reason to keep both
+halves is unchanged in form: a pipeline that has silently stopped grounding still produces an
+answer that looks fine, because a good direct answer looks like a good pipeline answer.
 
 ## Reliability, measured
 
+> **All numbers in this section predate the 2026-08-23 rebuild, and the section's own closing
+> rule condemns them.** It says re-run after any change to `SKILL.md`'s frontmatter or Phase 1;
+> both were rewritten, generation moved into sub-agents, the scenarios were renamed and
+> repurposed, and `ideas-command.yaml` has never been measured at all. Read what follows as the
+> record of a tree that no longer exists. The scenarios still lint clean, which is the only
+> current claim this directory can make.
+
 `--repeat 3` on each scenario, `claude-opus-5`. Measured 2026-08-17 against the tree that was
-tagged 0.1.0 on 2026-08-18:
+tagged 0.1.0 on 2026-08-18, under **`cowork-harness` 1.23.0, baseline `desktop-1.30096.1`**:
 
 | Scenario | Result | Cost |
 |---|---|---|
 | `negative-trigger` | **3/3** | $0.40 |
-| `mode-gate-fast` | **3/3** | $1.18 |
-| `meta-trigger` | **3/3** | — |
-| `mode-gate-deep` | **3/3** | $3.18 |
+| `mode-gate-fast` (now `pipeline-bounded`) | **3/3** | $1.18 |
+| `meta-trigger` (now `meta-no-trigger`, inverted) | **3/3** | — |
+| `mode-gate-deep` (now `pipeline-strategic`) | **3/3** | $3.18 |
 
-All four measured on the prompts they currently carry, all runs deterministic — no gate was
-auto-answered, so none of these greens rests on an unscripted question the harness answered for
-the model.
+All four measured on the prompts they currently carry.
+
+> **Correction, 2026-08-18.** This paragraph previously read "all runs deterministic — no gate
+> was auto-answered, so none of these greens rests on an unscripted question the harness
+> answered for the model." **That was false**, and it is corrected here rather than quietly
+> edited because the scenario comments reasoned against it. Checked against the preserved run
+> records: the released tree (`skillHash 6d73ce525e`) raised a gate on `mode-gate-fast` —
+> *"What actually happens at the account-verification step?"* — auto-answered by
+> `on_unanswered: first` and flagged `nonDeterministic`. Earlier generations gated on
+> `mode-gate-deep` too. So some of these greens **do** rest on a question the harness answered
+> for the model. That is the documented, deliberate cost of `on_unanswered: first`
+> (`mode-gate-fast.yaml` explains why the answer is immaterial to what the scenario asserts) —
+> what was wrong was the claim that the cost had not been paid.
+
+**`deliverable-composition`, measured 2026-08-19 — n=1.** One live `container` run,
+`claude-opus-5`, **PASS**: 34 tools, 356.5s, $1.59, 27 turns, no verdict signals, all four guards
+ok. Provenance checked rather than assumed: `skillsInvoked` carries the skill (so this is not a
+measurement of the model), `models` is exactly `['claude-opus-5']`, `ablated` unset, and the run
+raised **zero** `AskUserQuestion` gates — so unlike the `mode-gate-*` greens, none of this rests
+on an answer the harness supplied. `user_visible_artifact` and `artifact_text` both evaluated
+live against the delivered `outputs/strategy.md`.
+
+> **Provenance caveat, stated rather than buried.** This run did NOT use the agent binary its
+> baseline pins. Claude Desktop moved to 2.1.234 while the committed baseline
+> (`desktop-1.32352.0`) pins 2.1.229, so the run was taken with
+> `COWORK_HARNESS_ALLOW_AGENT_FALLBACK=1` and the harness reported the expected ELF sha256
+> mismatch as advisory. `cowork-harness sync` was deliberately NOT run to close the gap: its own
+> diff reports two unknown deltas on the newer app — including a spawn-contract anchor it can no
+> longer locate — so re-pinning would have committed a baseline that does not describe the live
+> contract. Re-measure against a synced baseline once the harness models 1.32885.1.
+
+Read this as one green, not as the 3/3 discipline the table below reports for the other four.
+
+**Smoke pass on the newer platform, 2026-08-18** — `cowork-harness` 1.24.0, baseline
+`desktop-1.32352.0`, `claude-opus-5`, **one run per scenario** (scenario names as they were then:
+`mode-gate-fast` is now `pipeline-bounded`, `mode-gate-deep` is now `pipeline-strategic`): 4/4
+pass, $1.87 total
+(`meta-trigger`, now `meta-no-trigger`, $0.55; `mode-gate-deep` $0.70, `mode-gate-fast` $0.46, `negative-trigger` $0.15).
+`negative-trigger` recorded `skillsInvoked: []` — it declined, which is the whole assertion.
+`mode-gate-fast` again raised exactly one gate, the same one as the released-tree record.
+
+Provenance checked rather than assumed, on all four: `fingerprint.skillHash` `6d73ce525e`
+(identical to the released-tree runs, so the gate comparison above is like-for-like),
+`ablated: null`, the skill present in `context.availableSkills`, `models` exactly
+`['claude-opus-5']` with no `<synthetic>` entries, and four `result.json` files counted on disk
+rather than inferred from the command's exit.
+
+Read this as **n=1**, not as a replacement for the 3/3 table above: a single green says nothing
+about flakiness, and the rule-of-three caveat below applies with far more force at one run than
+at three. It is recorded because it is the only measurement taken on the baseline the tests
+currently resolve to.
+
+**The baseline is now pinned, and the numbers above predate it.** Every scenario declares
+`baseline: desktop-1.37937.1` explicitly. Pinning began on 2026-08-24, replacing `baseline:
+latest` — a resolver over the newest baseline the installed harness ships, which moved underneath
+these numbers twice without a diff showing it. The chain is `desktop-1.30096.1` (what this table
+was measured under) → `1.32352.0` (harness 1.24.0) → `1.32885.1` → `1.34493.1` (harness 2.1.0) →
+`1.37937.1` (harness 2.3.0, adopted 2026-08-26) — **including two staged-agent changes, ELF
+`2.1.229` → `2.1.237` → `2.1.246`, which container fidelity stages and therefore runs**.
+`cowork-harness diff desktop-1.34493.1 desktop-1.37937.1 --changelog` shows the last hop
+token-free.
+
+The 2026-08-26 hop is the one hop here whose delta is fully enumerated rather than assumed. Field
+by field the two baselines differ only in identity and provenance — `appVersion`, `agentVersion`,
+`agentBinary.*`, `capturedAt`, `asarFingerprint`, `asarGateIds` — plus exactly two spawn
+environment keys, `CLAUDE_CODE_PROMPT_CACHE_TTL=1h` and
+`CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=5m`. `mountLayout`, `guest`, `network`, `settings`,
+`bgEnvStrip`, `requireFullVmSandbox` and the rest of `spawn` are byte-identical. The second key
+is worth naming because this pipeline is sub-agent-heavy, so it plausibly moves cost and latency
+even though it does not move semantics.
+
+The reassurance that used to sit here no longer covers the gap. It said the delta was small —
+one added spawn environment variable, an unchanged agent ELF (2.1.229), a byte-identical rendered
+system prompt — and that was measured across `1.30096.1 → 1.32352.0` only. `doctor` now stages
+ELF **2.1.246**, so the "unchanged ELF" half does not hold across the current distance and the
+sentence read as more reassuring than its evidence supported. Treat this table as stamped under
+`desktop-1.30096.1` and four baselines stale: re-measure rather than re-reason about the delta.
+
+Moving the baseline is now a deliberate edit in twelve places — six scenarios here, five
+generated eval scenarios, and `tools/build-eval-scenarios.py`, which writes the literal into
+them — for the same reason the harness version is pinned exactly rather than floated. Do not read
+these numbers as current for a newer baseline.
 
 Read the 3/3s for what they are. They are evidence the previously-flaky thing stopped being
 flaky — the dispatch-era mode gate ran 2/3, then 1/3, then 1/3. They are **not** a bound on the
@@ -79,24 +242,64 @@ unpinned session silently tests the harness default instead of the target.
 
 ## Running them
 
-Requires [`cowork-harness`](https://github.com/yaniv-golan/cowork-harness) ≥ 1.23.0, Docker,
+Requires [`cowork-harness`](https://github.com/yaniv-golan/cowork-harness) 2.3.0 — the exact
+version CI pins, so a local green means what CI's green means — plus Docker,
 and a Claude auth token. None of that is needed to use or contribute to the skill itself —
 this lane is optional.
 
 ```bash
-cowork-harness lint tests/scenarios/*.yaml          # free, no Docker, no token
-cowork-harness --dotenv .env run tests/scenarios    # live: needs Docker + token
+cowork-harness lint --strict --min-severity WARN tests/scenarios/*.yaml   # free, no Docker, no token
+cowork-harness --dotenv .env run tests/scenarios                          # live: needs Docker + token
 ```
+
+`--min-severity WARN` is not decoration. `gate-needs-controlout` is an unconditional INFO
+advisory that fires on the mere presence of a gate assertion — both `pipeline-*` scenarios
+carry `questions_count_max` — and the linter is static, so it cannot read a cassette to know
+the advice does not apply. Without the floor, `--strict` fails on it. (`lint --strict` gates on
+INFO; `lint-skill --strict` deliberately never does. The two flags share a name, not a rule.)
 
 `lint` alone is worth running on any scenario edit — it catches assertions placed on a lane
 where they would silently evaluate to nothing.
 
 ## What is in CI and what is not
 
-`lint` is. It needs no Docker and no token, so it runs on every PR including forks, and it
-catches the one thing static analysis can catch here: an assertion placed on a lane where it
-would silently evaluate to nothing. A scenario that asserts nothing still passes; that is the
-failure this gate exists for.
+Three token-free commands are. They need no Docker and no token, so they run on every PR
+including forks:
+
+- **`lint --strict --min-severity WARN`** — the one thing static analysis can catch here: an
+  assertion placed on a lane where it would silently evaluate to nothing. A scenario that
+  asserts nothing still passes; that is the failure this gate exists for.
+- **`lint-skill --strict`** — the two Cowork host-loop footguns in a skill body
+  (`${CLAUDE_PLUGIN_ROOT}` used as a path in an in-VM bash context; a hook writing state the
+  in-VM agent cannot see), plus a provably-typo'd pinned `subagent_type`.
+- **`analyze-skill --strict`** — a `/sessions` path handed to a file tool, and interactive
+  artifact write-backs that are lost under Cowork.
+
+**The last two stopped being decoration on 2026-08-23.** They were named here as regression
+insurance against footguns the skill had no way to commit — it shipped no scripts, no pinned
+`subagent_type` and no plugin-root bash usage. It now ships all three: six scripts invoked as
+`python3 "$CPS/scripts/<name>.py"` — a root resolved once at step 0, after `${CLAUDE_PLUGIN_ROOT}`
+was measured reaching bash as the empty string — and six pinned sub-agent types. Still
+no `hooks.json`.
+
+**Their scopes differ, and only one of them sees the new surface.** `analyze-skill
+creative-problem-solving` scans the whole plugin — 10 files, including `commands/ideas.md` and all
+six `agents/*.md`, which is exactly where the plugin-root paths and the pinned type names live.
+`lint-skill` is pointed at the *skill directory* and reads one file, `SKILL.md`; it rejects the
+plugin root outright (`no-skill`: no SKILL.md there). So the footgun checks `lint-skill` carries —
+`${CLAUDE_PLUGIN_ROOT}` used as a path in an in-VM bash context, a provably-typo'd
+`subagent_type` — are aimed at a file that contains neither.
+
+**And scope is not the only limit — the narrower one is what actually let a bug through.**
+`lint-skill` treats as an in-VM bash context only a fenced ```bash/```sh/```shell block, a
+hooks-config `"command"` value, or a `Bash(...)` directive; everything else is left alone to bound
+false positives. Probed against 2.1.0 with the identical token in `SKILL.md` itself: a fenced block
+warns, an inline code span does not. Every one of this repo's six plugin-root invocations was an
+inline code span, so widening the scope alone would not have caught them — the positive control is
+what distinguishes "pointed at the wrong file" from "would not have fired anyway". Filed upstream as
+item 10 on the maintainer's unpublished cowork-harness list. A typo'd `subagent_type` fails
+silently at dispatch, falling back to `general-purpose` with no symptom but a generator holding
+the whole toolbox, so that gap is worth knowing about rather than assuming covered.
 
 The **live** runs are not, and shouldn't be. They need a Claude token, which a forked PR
 cannot have, and Docker. Wiring them to the PR gate would mean every outside contribution
@@ -123,7 +326,7 @@ Real determinism needs a verifier the agent does not control, and only one is po
 anything. It fails loudly when a behaviour stops happening, which is the property that actually
 decays.
 
-A gate architecture *is* buildable — [`DESIGN-NOTES.md`](../creative-problem-solving/skills/creative-problem-solving/DESIGN-NOTES.md) archives a working reference
+A gate architecture *is* buildable — [`DESIGN-NOTES.md`](../docs/DESIGN-NOTES.md) archives a working reference
 implementation and the condition under which it would be worth building. It was not tried, and
 that is recorded as an untried option rather than an impossible one.
 
@@ -143,3 +346,17 @@ The general lesson, and it is not "add a gate": when prose repeatedly fails to p
 behaviour, the moves that work are to make the behaviour unnecessary, to relocate the content to
 where the reader already is, or to test for it. Writing the instruction a fourth time in bold is
 not on the list.
+
+## Unit tests for the pipeline scripts
+
+The scenarios above need a sandboxed agent, a token and ~40 minutes. The six scripts in
+`creative-problem-solving/scripts/` do not, and they carry the invariants a run cannot recover
+from — a lost option, a pair judged twice with different verdicts, a heartbeat that never fires.
+
+    python3 tools/test_pipeline_scripts.py
+
+Stdlib only, synthetic fixtures, a few seconds. Every case in it is a failure that actually
+happened in a run or in fuzzing, and nearly all of them were silent at the time: a script that
+returned 0 on a path that did not exist, a merge that pretty-printed ~17k tokens of indentation,
+a proposer that repeated itself, adjudicators that contradicted each other on the one boundary
+that decides whether two options merge.

@@ -1,0 +1,45 @@
+# GENERATED from ../evals.json (v8, eval 3) by tools/build-eval-scenarios.py.
+# Edit the assertions THERE and regenerate — a hand-edit here fails CI's --check.
+#
+# NEGATIVE trigger. A decision with a defensible correct answer — the divergence engine
+# should not run at all. This one asserts the skill does NOT fire.
+name: eval-3-negative-trigger-decision
+session: ../sessions/default.yaml
+baseline: desktop-1.37937.1
+fidelity: container
+# The eval prompts are self-contained and several end by telling the model not to ask, so a gate
+# here is a finding rather than something to script an answer for.
+on_unanswered: first
+
+prompt: |
+  We're deciding between Postgres and MongoDB for a new service that stores user sessions and needs strong consistency. Which should we pick?
+
+assert:
+  - result: success
+  # The whole point of this case: the engine must stay out of a question that has a
+  # defensible answer. A divergence engine that runs on everything is worse than none.
+  #
+  # This assertion, not the rubric, is what actually polices it. The rubric's
+  # 'does not produce divergence-pipeline artifacts' claim is a soft cross-check:
+  # semantic_matches cannot see a tool call, so it catches a pipeline that NARRATES
+  # itself or writes files, and would miss one that ran purely through dispatches.
+  # no_skill_triggered is tool-use aware and carries the weight.
+  - no_skill_triggered: creative-problem-solving
+  # semantic_matches is LIVE-ONLY: the judge is a model call, so this cannot run on the
+  # token-free replay lane, and `lint` says so. That warning is expected here, not a defect.
+  #
+  # semantic_matches is TOOL-USE BLIND. Its judged corpus is the final message, the transcript
+  # and authored files — never a tool call (harness TOOL_USE_BLIND_KEYS). So a rubric claim about
+  # what the model DID, as opposed to what it said or wrote, is only as good as the trace it left
+  # in text or on disk. Keep the claims here about reader-visible output, and let the hard
+  # assertions above carry anything that depends on a tool call.
+  #
+  # No min_pass. Recipe 5's point is that answers vary run to run, so the signal is each claim's
+  # pass RATE across N>=3 reps, read from RunResult.assertions[].semanticClaims — not one green.
+  # Set min_pass to the reliably-hit core once a baseline profile exists.
+  - semantic_matches:
+      rubric:
+        - "Gives a direct recommendation rather than a set of divergent options"
+        - "Does not produce divergence-pipeline artifacts \u2014 no sharpened brief, no lens names, no families, no cut list"
+        - "Concise and decision-shaped; does not pad to demonstrate thoroughness"
+        - "Technically sound: acknowledges MongoDB can be strongly consistent via majority read/write concerns rather than strawmanning it"

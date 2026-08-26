@@ -1,0 +1,3 @@
+# Frozen 2026-08-20 BEFORE re-atomisation round 2. Identical to the list used on round 1.
+# Fixed now so the round-2 caveat check cannot be tuned to pass.
+assum\w*|depends? on|only if|only when|has to be true|have to be true|probably|likely|unlikely|might|may |could |roughly|approximately|about |uncertain\w*|unclear|not verified|unverified|thin evidence|weak evidence|conditional|caveat\w*|if and only if|provided that|assuming|in principle|arguably|tends? to|typically|conventional wisdom|directionally|rough\w*|estimate\w*|I think|not confident

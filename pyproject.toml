@@ -1,0 +1,35 @@
+# Lint configuration only. This project ships no Python package — the scripts are stdlib-only
+# files a host runs directly — so there is no [project] table and nothing here is installable.
+#
+# The rule selection is deliberately narrow, and the reason is worth stating because the obvious
+# next step is to widen it. This repo's Python is compact on purpose: multi-statement lines,
+# short names in short functions, and long explanatory comments above the code they justify. A
+# formatter would rewrite all of it, and a full style ruleset would report hundreds of findings
+# that are decisions rather than defects. Neither would have caught a single bug found in this
+# repo's audit.
+#
+# What is selected is the class that would: real errors, undefined names, unused imports and
+# variables, mutable default arguments, bare excepts. That last one is not decoration — a broad
+# `except` around a gate turned a NameError into a green "skipped" in tools/check-repo.py, and
+# the fix was found by hand.
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+exclude = ["evals/transcripts", "dist", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E9",    # syntax / IO errors that stop the file running at all
+    "F",     # pyflakes: undefined names, unused imports and locals, f-string mistakes
+    "B002",  # ++n, which in Python is a no-op that looks like an increment
+    "B006",  # mutable default argument
+    "B011",  # assert False
+    "E711",  # comparison to None with ==
+    "E712",  # comparison to True/False with ==
+    "E713",  # `not x in y`
+    "E722",  # bare except
+]
+ignore = [
+    "E741",  # single-letter names are idiomatic in these short scripts
+]

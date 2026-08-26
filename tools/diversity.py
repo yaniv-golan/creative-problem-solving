@@ -11,8 +11,8 @@ near-duplicate pairs, every one of them false, and zero of the mechanism-level
 convergences found by hand. The two routing rules in SKILL.md were each individually
 correct and jointly emptied its true-positive domain — it must not be run on the raw
 pool (one-line mechanisms, too terse for the kernel) and the assembled options it was
-routed to instead are wholes the author just composed to be distinct. See
-`docs/internal/FINDINGS-self-run-2026-08-18.md`, entry D1.
+routed to instead are wholes the author just composed to be distinct. Recorded as entry D1
+of the maintainer's self-run findings, which are not published.
 
 Measures how many *effectively distinct* directions a set of ideas covers, using a
 cosine similarity kernel over word and character n-grams. This approximates the Vendi

@@ -1,0 +1,54 @@
+# WHAT THIS COVERS, and what it deliberately does not.
+#
+# This file was `mode-gate-deep.yaml` and asserted mode selection. There are no modes: every run
+# is grounded — Phase 0 retrieves what already exists as a difference constraint, Phase 3
+# verifies the prominently-presented options by search. So the fast/deep pair had nothing left
+# to distinguish and has been repurposed to assert the pipeline's shape on a strategic question.
+#
+# IT DOES NOT ASSERT SUB-AGENT DISPATCH, on purpose. SKILL.md requires it, but a body-level
+# instruction to hand generation away was MEASURED at 1/6 compliance; the identical requirement
+# in the command file got 6/6. Asserting dispatch here would buy a flake, not a guarantee.
+# `ideas-command.yaml` covers the path where dispatch is reliable.
+#
+# What it asserts: an open STRATEGIC problem must actually do the research. This was the mode
+# gate's positive half.
+#
+# READ THIS BEFORE TRUSTING A GREEN RUN. What this file observes is a SINGLE BOOLEAN — did
+# WebSearch fire. It does NOT prove the pipeline ran: a run that searched twice and narrated
+# everything else would pass. Under the rebuild a real run leaves a much richer trace (nine
+# generators, three adjudicators, a grouper, a ranker, three verifiers), but this scenario
+# deliberately does not assert it, for the 1/6-vs-6/6 reason above. What checks the stages is
+# scripts/verify_pipeline.py, inside the run. Answer quality lives in ../../evals/, judged.
+#
+# The prompt is phrased as a situation with a stated constraint, and tells the agent not to ask
+# questions. Both are load-bearing: a prompt that draws a clarifying gate ends the run at the
+# gate and measures nothing. ../../evals/README.md has the worked case.
+name: pipeline-strategic
+session: ../sessions/default.yaml
+baseline: desktop-1.37937.1
+fidelity: container
+on_unanswered: first
+
+prompt: |
+  Our architecture practice is 60 people doing mixed commercial and institutional work. Fees
+  are compressing, clients now expect AI-assisted delivery speed, and we've already tried
+  raising utilisation and hiring cheaper juniors. I don't think our current model survives
+  four more years — what else could we be? This is all the information available, so don't ask
+  me any questions; where something is missing, make a reasonable assumption and state it in
+  your response.
+
+assert:
+  - result: success
+  - skill_triggered: creative-problem-solving
+  - tool_called: WebSearch
+  # SKILL.md's "One question, and only about meaning" rule, which this prompt additionally
+  # tells the model not to exercise at all. Not hypothetical here: four runs on an earlier
+  # generation (skillHash f8566139f7) raised a gate DESPITE the "don't ask me any questions"
+  # instruction, and three of them bundled 3-4 sub-questions — "How radical should the
+  # operating model be?", "What should the deliverable look like?", "What should I hand
+  # you?" — which are scope and output-format questions the rule excludes by name. The
+  # released generation (6d73ce525e) asked nothing. This keeps it that way.
+  #
+  # Same ceiling as in pipeline-bounded: `AskUserQuestion` gates only, so prose questions are
+  # invisible to it, and a maximum is satisfied by zero.
+  - questions_count_max: 1

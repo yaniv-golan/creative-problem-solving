@@ -1,0 +1,50 @@
+# The /ideas command is the documented, intended entry point — so it needs a test that it
+# actually invokes the pipeline, not just that the file exists.
+#
+# WHY THIS EXISTS. Two slash forms reach this plugin and they are NOT equivalent. A real
+# commands/*.md file expands and invokes the skill. The skill auto-exposed by Claude Code as
+# `/creative-problem-solving:creative-problem-solving` did NOT invoke it in harness testing —
+# 794 words, zero tools, skillActivity 0 — while `:ideas` did. That asymmetry is invisible from
+# the source tree and was found only by running both, so it gets a regression test here.
+#
+# LIMIT, read before trusting a green. This asserts the command ROUTES. It says nothing about
+# whether the pipeline then produced good options — that is an ../../evals/ question, judged.
+name: ideas-command
+session: ../sessions/default.yaml
+baseline: desktop-1.37937.1
+fidelity: container
+# The command tells the model not to ask, but mode choice can still legitimately raise one gate;
+# `first` buys re-record robustness at the price of a nonDeterministic flag, as in the pipeline-* pair.
+on_unanswered: first
+# A full run is tens of minutes across roughly eighteen dispatches — far longer than the other
+# scenarios here, which is why this one sets its own budget.
+timeout_ms: 5400000
+
+# Leading slash is load-bearing: mid-sentence slashes are not expanded by the agent binary.
+prompt: "/creative-problem-solving:ideas Our four independent bookshops are losing footfall, we cannot match online on price, and author events and a loyalty card are already spent. What else could we be?"
+
+assert:
+  - result: success
+  # The command routed INTO the skill. This is the whole point of the scenario: a run where the
+  # command expands to prose the model then answers directly would still be `success`, and this
+  # is the only assertion that separates those two outcomes.
+  - skill_triggered: creative-problem-solving
+  # The command carries no stages; they live in references/pipeline.md and are reached only
+  # through the skill. Every script invocation is in that reference and nowhere else, so a bash
+  # call cannot happen unless it was read — which makes this the check that the routing chain
+  # holds end to end, not just that the skill fired.
+  #
+  # `Bash`, not `mcp__workspace__bash`: this scenario pins `fidelity: container`, where Bash is
+  # native. The workspace alias belongs to the hostloop tier, and asserting it here names a tool
+  # this lane never calls — a claim that cannot pass however well the skill behaves.
+  - tool_called: "Bash"
+  # The pipeline writes only under outputs/ and deletes nothing there. A run that improvises
+  # scratch files and tidies them away is one `rm` away from removing a pool file, and a deleted
+  # stage is exactly what the integrity check cannot see.
+  - no_delete_in_outputs: true
+  # Dispatch happened rather than being described. A run that narrates the fan-out reads the
+  # same as one that performed it, and only the tool stream separates them.
+  - subagent_dispatched: "creative-problem-solving:generator"
+  # SKILL.md's "One question, and only about meaning" ceiling, as in both pipeline-* scenarios.
+  # Counts sub-questions, not gates, and is satisfied by zero.
+  - questions_count_max: 1

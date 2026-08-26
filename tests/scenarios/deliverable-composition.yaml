@@ -1,0 +1,59 @@
+# The composition boundary: what happens when the answer becomes a FILE.
+#
+# WHY THIS EXISTS. Phases 0-3 constrain generation; composition — the memo, brief or deck the user
+# asks for once the options exist — is a fresh generation pass with none of those constraints
+# attached. That is where a pruned pipeline grows back: hedged options harden into committed
+# policy, the load-bearing assumption and the who-runs-it line drop out, and specificity the
+# pipeline never produced gets invented to fill a section. Phase 3's critique cannot reach any of
+# it, because at Phase 3 those sentences do not exist yet. SKILL.md's "When the answer becomes a
+# document" block is the rule this scenario guards.
+#
+# READ THIS BEFORE TRUSTING A GREEN RUN — two limits, both real.
+#
+# 1. It cannot see the defect it was written for. "Every number traces to pipeline output or user
+#    data" is not a tool-stream fact; no assertion distinguishes an invented threshold from a
+#    derived one. What IS checkable is the discipline that goes first when composition runs
+#    unconstrained: the load-bearing assumption. A delivered document carrying no assumption
+#    language anywhere has dropped Phase 3's annotations on the floor. Whether a surviving number
+#    is real stays an ../../evals/ question, judged.
+# 2. It compresses two turns into one. In practice the deliverable is requested AFTER the report,
+#    on a later turn, with the pipeline's constraints already out of working attention — and an
+#    asserted `run` is single-turn. One prompt asking for both is the weaker reproduction, and a
+#    green here does not clear the later-turn case.
+name: deliverable-composition
+session: ../sessions/default.yaml
+baseline: desktop-1.37937.1
+fidelity: container
+# Same trade the pipeline-* pair documents: no gate here is load-bearing for what is asserted
+# (this prompt tells the model not to ask), so `first` buys re-record robustness at the price of
+# a nonDeterministic flag, rather than an exact-label anchor that drifts.
+on_unanswered: first
+
+# Deliberately a strategic problem — the tier whose answers are long enough that composition has
+# something to harden, and the tier where a document actually gets asked for. The named output
+# path is what makes `user_visible_artifact` deterministic; the "don't ask me" clause is load-bearing, since a
+# run that ends at a clarifying gate measures nothing.
+prompt: |
+  We run four independent bookshops, 30 staff, one city. Footfall is falling, we cannot match
+  online on price, and we have already tried author events and a loyalty card. I don't think this
+  model survives four more years — work out what else we could be, then write the result up as a
+  strategy document at outputs/strategy.md. This is all the information available, so don't ask
+  me any questions; where something is missing, make a reasonable assumption and state it.
+
+assert:
+  - result: success
+  - skill_triggered: creative-problem-solving
+  # SKILL.md's "One question, and only about meaning" ceiling, as in both pipeline-* scenarios.
+  # Counts sub-questions, not gates, and is satisfied by zero.
+  - questions_count_max: 1
+  # --- delivered-file class: manifest-backed, so live and (with a recorded manifest) replay ---
+  # The deliverable reached a user-visible root. Catches the run that answers in chat and never
+  # writes the file, which would make the assertion below pass vacuously on an absent artifact.
+  - user_visible_artifact: outputs/strategy.md
+  # The assumption discipline survived the boundary. A deliberately WIDE alternation: the exact
+  # wording is the model's, and pinning "What has to be true" verbatim would assert SKILL.md's
+  # template phrasing rather than the property. It fails on the document that carries no
+  # assumption language anywhere — which is the composition pass having run unconstrained.
+  - artifact_text:
+      artifact: outputs/strategy.md
+      matches: '(has to be true|have to be true|assumption|assumes|only if|depends on|would need to be)'

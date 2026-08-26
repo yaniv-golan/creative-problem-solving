@@ -9,15 +9,30 @@ body:
         `SKILL.md` exist because a specific run went wrong — the eval history in
         `DESIGN-NOTES.md` records which. A concrete failing case is what turns into a fix.
 
-        Please paste the real prompt and the real answer. Redact freely; a redacted
-        transcript is far more useful than a description of one.
+        Please paste the real prompt and the real answer.
+
+        **Before you paste: this is a public issue, and it is indexed.** Please remove —
+
+        - API keys, tokens, `.env` contents, anything from a credential store
+        - client, customer, employer or fund names, and internal project code names
+        - personal data about anyone who did not choose to be in this thread
+        - absolute paths that carry your username or machine name
+        - anything from a private document the run was given
+
+        A redacted transcript is far more useful than a description of one, so redact and paste
+        rather than paraphrase. Replace what you cut with `[REDACTED: client name]` and similar,
+        so the shape of the run survives.
+
+        **If the failure cannot be shown without sensitive material, do not post it here.** Email
+        the maintainer instead — the address is in [`SECURITY.md`](../blob/main/SECURITY.md) — and
+        say it is a bad-output report rather than a vulnerability.
 
   - type: input
     id: version
     attributes:
       label: Skill version
       description: From `VERSION`, or the `metadata.version` line in `SKILL.md`.
-      placeholder: "0.1.0"
+      placeholder: "0.2.0"
     validations:
       required: true
 
@@ -34,7 +49,7 @@ body:
         - Cursor
         - ChatGPT
         - Manus
-        - OpenClaw / NanoClaw
+        - OpenClaw
         - Other
     validations:
       required: true
@@ -85,7 +100,7 @@ body:
       label: Does it match a failure the skill already tries to prevent?
       description: Optional, but it tells us whether an existing rule stopped working or a new one is needed.
       options:
-        - label: Deep mode fired on a problem that did not need it
+        - label: Ran the full forty-minute pipeline on a problem that deserved a short answer
         - label: Ran at all on a question with one defensible right answer
         - label: Showed its own process (lens names, sharpened brief, cluster analysis)
         - label: Options differed in degree, not in kind

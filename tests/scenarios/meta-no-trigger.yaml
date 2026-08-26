@@ -1,0 +1,62 @@
+# Does the skill stay OUT of the way when someone asks how to improve a tool they maintain?
+#
+# This scenario was inverted on 2026-08-24. It used to assert the opposite -- that the skill
+# FIRES on this prompt -- because the description was written to be found, and this prompt was
+# its declared home turf: open-ended, no known-good answer, explicitly stuck, a rethink asked
+# for, closing with "I'm out of ideas that aren't just more rules in the file."
+#
+# The description is now explicit-only. A ~40-minute run that returns a long document has to be
+# the user's deliberate choice rather than something inferred from how they phrased a question,
+# and the measurement behind that decision is that implicit firing was never reliable anyway:
+# 0 times in 12 on naturally-phrased questions. So the behaviour this asserts is reversed, and
+# the prompt is kept EXACTLY as it was -- it is the hardest case for the new contract, the one
+# most likely to tempt a model into firing, which is precisely why it is worth testing.
+#
+# What still fires is `/ideas`, covered by ideas-command.yaml. Between them: one scenario proves
+# the explicit door opens, this one proves the implicit door stays shut on the strongest possible
+# knock.
+#
+# THE PROMPT DELIBERATELY DESCRIBES A HYPOTHETICAL TOOL, not this skill. When the skill's own
+# source is readable, reading it competes with invoking it -- true in production as well as
+# here, so a maintainer asking about THIS skill remains a genuine uncovered case.
+#
+# Do NOT assert a mode. There have been none since 2026-08-23.
+
+name: meta-no-trigger
+session: ../sessions/default.yaml
+baseline: desktop-1.37937.1
+fidelity: container
+on_unanswered: first
+
+prompt: |
+  I maintain an internal CLI that our team uses to spin up test environments. Three things
+  I can't fix by writing more documentation: people skip the setup step and then file bugs
+  about it, the config file has grown to the point where nobody reads it before editing,
+  and every time I add a validation check somebody works around it rather than fixing their
+  config. I've rewritten the docs three times and added warnings everywhere.
+
+  How could this be significantly better? I'm out of ideas that aren't just more rules in
+  the file.
+
+assert:
+  - result: success
+  - skill_available: creative-problem-solving
+  # The whole point of this scenario, inverted 2026-08-24: the skill must NOT fire on a prompt
+  # that only *sounds* like its subject matter. Firing here would be the expensive failure --
+  # forty minutes and a long document in answer to a question that wanted a paragraph.
+  - no_skill_triggered: creative-problem-solving
+  # No sub-agents either. Dispatch is how this pipeline generates, so a dispatch here would mean
+  # it fired by another route even if the trigger assertion somehow passed.
+  - dispatch_count_max: 0
+  # SKILL.md's "One question, and only about meaning" rule is universal, so it applies here
+  # too — this prompt is the description's declared home turf and the skill does fire on it.
+  # Counts SUB-questions, so a bundled AskUserQuestion carrying three counts as 3. The live
+  # run of the released tree asked nothing at all, so this is an upper bound holding at zero.
+  #
+  # Same ceiling as the pipeline-* pair: `AskUserQuestion` gates only, so a question asked in
+  # prose is invisible to it, and a maximum is satisfied by zero.
+  #
+  # `negative-trigger.yaml` deliberately does NOT carry this. The skill must not fire there at
+  # all, which `no_skill_triggered` already asserts; a question ceiling on a run that should
+  # never invoke the skill would assert nothing the stronger key doesn't.
+  - questions_count_max: 1

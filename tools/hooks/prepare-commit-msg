@@ -1,0 +1,32 @@
+#!/bin/sh
+# Strip Claude attribution trailers from every commit message in this repository.
+#
+# Why this exists as a hook rather than a rule: the rule already exists, in CLAUDE.md, and it
+# was violated by every commit in this repo's short history anyway. The harness that writes
+# these messages appends `Claude-Session:` and `Co-Authored-By: Claude` by default, and a
+# default beats an instruction often enough that six consecutive commits carried both. An
+# instruction asks the author to remember; this does not need them to.
+#
+# The session URL is the reason. It is a permanent public pointer into a full session
+# transcript -- a far larger surface than the commit it rides on, and one whose access policy
+# can change while the URL sits in public git forever.
+#
+# Install: tools/install-hooks.sh
+set -e
+
+MSG_FILE="$1"
+[ -n "$MSG_FILE" ] && [ -f "$MSG_FILE" ] || exit 0
+
+# Leave the co-author line for every author who is not Claude. A human co-author on a pairing
+# commit is exactly the thing this trailer is for.
+sed -i.bak \
+  -e '/^Claude-Session:[[:space:]]/d' \
+  -e '/^Co-[Aa]uthored-[Bb]y:.*[Cc]laude/d' \
+  "$MSG_FILE"
+rm -f "$MSG_FILE.bak"
+
+# Removing trailers leaves the blank line that separated them from the body, which git keeps
+# and which turns into trailing whitespace in the stored message.
+printf '%s\n' "$(cat "$MSG_FILE")" > "$MSG_FILE.tmp" && mv "$MSG_FILE.tmp" "$MSG_FILE"
+
+exit 0

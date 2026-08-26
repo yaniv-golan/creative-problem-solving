@@ -6,8 +6,8 @@
 > against a pre-registered threshold of 1.0. The blinded judge's own two-group split recovered
 > the arms **10/10**.
 >
-> The second prompt — the strategic `operating-model-deep` question — is defined in
-> `evals.json` and **not yet run**. Since the decision rule below requires an effect on
+> The second prompt — the strategic `operating-model-deep` question — **ran on 2026-08-18 and
+> returned +0.60, below the 1.0 threshold.** Since the decision rule below requires an effect on
 > **both** prompts, what stands is a partial result on one: the exact situation the two-prompt
 > design was chosen to prevent.
 >
@@ -49,7 +49,9 @@ problem where it claims to win.
   history had used a single strategic prompt; one prompt cannot separate "the pipeline works"
   from "the pipeline works on this question."
   1. `operating-model` — a strategic question about an operating model under AI pressure.
-     **Not yet run**, so this arm is empty.
+     **Run 2026-08-18: +0.60, did not clear.** That dataset spans four skill hashes; a clean
+     single-build re-measurement scored the same comparison at +0.00 and +1.00 under two blind
+     judges, so the metric is judge-dominated.
   2. `holdout-retention` — "losing senior engineers at 18 months, comp is competitive, it's not
      the money" (eval 5's held-out problem, a different domain, already validated as
      deep-qualifying — and the one where a plain answer beat the skill in iteration 5 by

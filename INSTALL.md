@@ -1,15 +1,31 @@
 # Installing Creative Problem Solving
 
+**What has actually been tested: Claude** (Code, Desktop, Cowork). The instructions below cover
+other hosts because the skill uses the open [Agent Skills](https://agentskills.io) standard and
+*should* work on them — ChatGPT most likely, others probably — but none of them have been
+verified, and a host missing sub-agent dispatch, `python3` or web search runs a weaker version of
+`/ideas` than the one described. If you try one, a report either way is genuinely useful.
+
 The skill uses the open [Agent Skills](https://agentskills.io) standard, so most hosts install
 it the same way: point them at this repository, or drop the release zip in their skills folder.
 
-**Once installed there is nothing to run.** The skill offers itself to the agent when you ask
-for options on an open-ended problem — see
-[when it runs](README.md#when-it-runs-and-when-it-refuses).
+**Once installed there is nothing to configure.** There is, however, something to type. The
+skill does offer itself when you ask for options on an open-ended problem — see
+[when it runs](README.md#when-it-runs-and-when-it-refuses) — the skill does not self-select
+on naturally-phrased questions (0 of 12 in testing), and a full run takes about forty minutes,
+which is not something you want by surprise. **Invoking it explicitly is the intended path.** In
+Claude Code and Claude Desktop:
 
-To invoke it explicitly on a prompt that wouldn't trigger it, Claude Code and Claude Desktop
-expose it as a slash command: `/creative-problem-solving:creative-problem-solving` (plugin
-name, then skill name). Elsewhere, just ask for it by name.
+```
+/creative-problem-solving:ideas   <your problem>
+```
+
+Most hosts accept the bare `/ideas` when nothing else claims that name. Elsewhere, just ask for
+it by name — *"use creative problem solving on this"* — which works on every host.
+
+Claude Code also auto-exposes the skill itself as
+`/creative-problem-solving:creative-problem-solving`. Prefer the command above: in harness
+testing the auto-exposed form did **not** invoke the pipeline, while `:ideas` did.
 
 ---
 
@@ -55,8 +71,9 @@ Or from within a Claude Code session:
 1. Open **Cursor Settings** → **Plugins**
 2. Paste `https://github.com/yaniv-golan/creative-problem-solving` into the **Search or Paste Link** box
 3. Confirm the install, and make sure the plugin is **enabled** afterwards
-4. The skill then appears to the agent automatically — there is no command to run. Ask for
-   options on an open-ended problem and it triggers on its own.
+4. The skill then appears to the agent automatically. Cursor does not expose the `/ideas`
+   command, so ask for it by name — *"use creative problem solving on this"* — rather than
+   relying on the skill to select itself, which it deliberately does not do.
 
 ### Codex CLI
 
@@ -91,17 +108,6 @@ Or install manually:
 3. Click **+ Add** → **Upload**
 4. Upload the zip
 
-### NanoClaw
-
-NanoClaw uses the same plugin marketplace as Claude Code. Install via:
-
-```bash
-claude plugin marketplace add https://github.com/yaniv-golan/creative-problem-solving
-claude plugin install creative-problem-solving@creative-problem-solving-marketplace --scope project
-```
-
-> **Note:** NanoClaw enforces a 500-line limit on SKILL.md files. This skill's SKILL.md is under that limit; detail lives in `references/`.
-
 ### OpenClaw
 
 **Option A — Agent Skills standard (recommended):** the `.agents/skills/` directory in this repo is on OpenClaw's default discovery path, so you can clone or symlink directly.
@@ -127,13 +133,50 @@ Download [`creative-problem-solving.zip`](https://github.com/yaniv-golan/creativ
 
 ## What you are installing
 
-Six files: `SKILL.md`, two `references/` documents, one stdlib-only Python script, `LICENSE`
-and `VERSION`. Nothing is minified, generated at install time, or fetched at runtime — you can
-read all of it first, and the release zip and the `.agents/skills/` mirror are held to the same
-payload by `tools/sync-mirrors.py`.
+Two payloads, depending on the path you took above.
+
+**The zip, and the `.agents/skills/` mirror — six files, all prose:** `SKILL.md`, three
+`references/` documents, `LICENSE`, `VERSION`. No executable code at all. The two are held to
+the same payload by `tools/sync-mirrors.py`. Any host on the Agent Skills standard gets this,
+and it is the whole method *and* the whole pipeline — `references/pipeline.md` carries the
+stages. What it cannot carry is the executable half: the scripts that check the stages ship with
+the plugin, not the zip. A host with sub-agent dispatch runs the same fan-out either way; a host
+without one runs it as sequential passes in a single context and says so in a line.
+
+**The plugin — the above plus the machinery the pipeline runs on:** `commands/ideas.md`, six
+sub-agent definitions in `agents/` (one per pipeline role, each carrying only the tools its role
+needs), and eight stdlib-only Python scripts in `scripts/`. The pipeline runs six of them through
+your host's Bash tool to shard the candidate pairs, merge the adjudicators' verdicts, partition
+the options into clusters, reassemble those into families, build the report, and check the
+finished run's integrity before a word of the answer is written — the other two are a shared JSON
+loader and a progress-line builder the six import. They
+read and write JSON under one directory — except the report builder, which writes the report in
+Markdown to the `--out` path it is given, deliberately outside that directory — make no network
+calls and spawn no subprocesses.
+
+Nothing in either payload is minified, generated at install time, or fetched at runtime — you
+can read all of it first, and [`SECURITY.md`](SECURITY.md) scopes the scripts explicitly.
+
+**Not every plugin manifest declares all of it, and that is worth knowing before you judge a
+host.** The Claude manifest declares the skill and `commands/`; the Cursor manifest declares the
+skill, `commands/` and each file in `agents/`; the Codex manifest declares the skill only. All
+three install the same directory, so `scripts/` and `agents/` are on disk either way — what
+differs is what the host is told to register. Where `agents/` is not registered, the pipeline's
+`Agent` dispatches fall back to whatever generic sub-agent the host provides, and the per-role
+tool restrictions described above are not in force. Where `commands/` is not registered, there is
+no `/ideas`; ask for the skill by name instead. Claude is the only host any of this has been
+tested on.
+
+Everything below `/ideas` degrades rather than breaking: a host with no sub-agent dispatch, no
+Bash tool or no web search still runs the skill, and the skill is required to name the downgrade
+in one line rather than describing a run it did not have. Those three degrade differently, and
+`references/pipeline.md` says how for each — including what a zip or `.agents/` install gives up
+by not having the scripts: the integrity check that proves no option was dropped, the generated
+report skeleton, and the adjudicator agreement probe. The method survives; the proofs are what
+ship with the plugin.
 
 ## Uninstalling
 
-Marketplace installs (Claude Desktop/Code/Cowork, Cursor, Codex, NanoClaw) are removed through
+Marketplace installs (Claude Desktop/Code/Cowork, Cursor, Codex) are removed through
 the same plugin UI or CLI that installed them. Manual installs are a single directory — delete
 `creative-problem-solving/` from wherever you extracted it.

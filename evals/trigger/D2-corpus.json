@@ -1,0 +1,36 @@
+{
+  "purpose": "D2: isolate WHAT the trigger keys on. D1 showed stuck-language is sufficient (22/22) but not necessary — one prompt fired 5/5 without it. D2 tests whether the operative signal is an assertion that the OBVIOUS ANSWERS ARE KNOWN AND INADEQUATE, as opposed to a report that ATTEMPTED ACTIONS FAILED.",
+  "frozen": "2026-08-22, before any candidate description text was drafted",
+  "shapes": {
+    "failed_actions": "situational detail + a tried-X clause reporting that ATTEMPTED ACTIONS did not work. Predicted: NO fire.",
+    "inadequate_ideas": "situational detail + a clause asserting the KNOWN IDEAS are same-y or inadequate. Predicted: FIRE.",
+    "ideas_terse": "the inadequacy assertion ALONE, no situational detail. Predicted: FIRE. This is the decisive cell — if it fires, the description can key on the assertion in very few characters, which matters because only 255 of the 1024-char budget remain.",
+    "control": "the bare question, no assertion. Known from D1 to be 0/6 on both questions; re-run here as a negative control within the same batch.",
+    "positive_control": "the bare question prefixed with an explicit natural-language invocation. MUST fire. NOTE: the slash-command form (/creative-problem-solving ...) was tested first and does NOT work through the harness — slash commands are handled by the Claude Code client, not the model, so the harness passes the string to the model as literal text (verified: fired=False, skillActivity=0). The slash form still works for a human typing it interactively."
+  },
+  "questions": {
+    "kids": {
+      "failed_actions": "My two kids, 9 and 13, have both started talking to an AI companion app every evening. We've set screen-time limits and tried scheduling more in-person playdates, and neither has changed much. What should a parent do about it?",
+      "inadequate_ideas": "My two kids, 9 and 13, have both started talking to an AI companion app every evening. I've read the standard advice — screen-time limits, more playdates, talk to them about it — and it's the same three suggestions rehashed everywhere. What should a parent do about it?",
+      "ideas_terse": "What should a parent do about kids forming attachments to AI companions? The obvious answers are all the same three suggestions.",
+      "control": "What should a parent do about kids forming attachments to AI companions?",
+      "positive_control": "Use the creative-problem-solving skill. What should a parent do about kids forming attachments to AI companions?"
+    },
+    "relationships": {
+      "failed_actions": "I've been asked to write the opening section of a long-range piece on how the next decade plays out. We ran two workshops and interviewed a dozen people, and neither produced much. What will be the impact of AI and robotics on human relationships?",
+      "inadequate_ideas": "I've been asked to write the opening section of a long-range piece on how the next decade plays out. We've already worked through the obvious ground — companion apps substituting for friendship, automation freeing up time, synthetic media eroding trust — and it reads like everything else on the subject. What will be the impact of AI and robotics on human relationships?",
+      "ideas_terse": "What will be the impact of AI and robotics on human relationships? The obvious answers — companion apps, freed-up time, eroding trust — read like everything else on the subject.",
+      "control": "What will be the impact of AI and Robotics - and the rapid advancement in both - on human relationships?",
+      "positive_control": "Use the creative-problem-solving skill. What will be the impact of AI and Robotics - and the rapid advancement in both - on human relationships?"
+    }
+  },
+  "design": {
+    "n_per_cell": 6,
+    "positive_control_n": 3,
+    "total_runs": 54,
+    "detectable": "0/6 vs 6/6 -> Fisher p=0.002. Large differences only; stated in advance.",
+    "scoring": "skillsInvoked, plus skillActivity>=1 so a load-then-decline is not scored as a fire.",
+    "environment_caveat": "Harness mounts one plugin. The originally observed failures were in a live session advertising 150+ skills, several competing for the same intent. A harness result does not transfer on its own.",
+    "note_on_content": "Prompts are deliberately generic. No occupational, organisational or sector-specific detail belongs in this corpus — it is a public file."
+  }
+}

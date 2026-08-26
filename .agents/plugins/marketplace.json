@@ -10,7 +10,7 @@
         "source": "git-subdir",
         "url": "https://github.com/yaniv-golan/creative-problem-solving.git",
         "path": "./creative-problem-solving",
-        "ref": "main"
+        "ref": "v0.2.0"
       },
       "policy": {
         "installation": "AVAILABLE",

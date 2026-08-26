@@ -22,7 +22,7 @@ records which shortcuts have already been tried and what they cost.
 - [ ] `python3 tools/sync-mirrors.py` run (if anything under the skill directory changed)
 - [ ] `CHANGELOG.md` updated under `## [Unreleased]` (for anything user-visible)
 - [ ] `DESIGN-NOTES.md` updated (for pipeline changes — including what you tried that didn't work)
-- [ ] `SKILL.md` is still under 500 lines
+- [ ] `SKILL.md` is still within the line ceiling `tools/check-repo.py` enforces
 
 ## For pipeline changes only
 

@@ -3,6 +3,16 @@
 Five rounds of A/B testing against a no-skill baseline, published in full — including the
 rounds where the skill lost.
 
+> **Read the date before the numbers.** Everything in this directory measures the pipeline as it
+> stood at 0.1.0: sequential passes in one context, a fast/deep mode gate, a pruned shortlist of
+> options. On **2026-08-23** that was rebuilt — one isolated sub-agent per lens, grounding on
+> every run, every generated option presented inside a family, and stage integrity enforced by
+> `scripts/verify_pipeline.py`. **No eval in here has been re-run against it.** The prompts,
+> instruments and the way of reading a result all transfer; the results describe a previous
+> architecture, and the `correct_mode` field in `evals.json` no longer refers to anything. What is
+> known about the current pipeline is two completed runs and one 50-card blind read, summarised in
+> the root [`README.md`](../README.md#does-it-actually-work) and the changelog.
+
 Publishing eval results for a skill is unusual. Publishing the losses is the point: three
 of the six rules added across the pre-release development builds (then labelled v0.3.0 to
 v0.6.0; nothing was published under them) exist because a plain answer beat the
@@ -17,6 +27,10 @@ evals.json                          the eval definitions: prompts, expected outp
 EXPERIMENT-*.md                     pre-registered designs: metric, arms, and the decision
                                     rule, all fixed before any data was seen
 
+instruments/                        the frozen measuring tools, kept separate from the
+                                    results so a re-measurement uses the same instrument:
+                                    atomiser, judging rubric, caveat gate, deck builder
+
 results/
   iteration-N/benchmark.json        per-assertion grading with quoted evidence,
                                     for both configurations
@@ -25,6 +39,12 @@ results/
   vs-plain-prompt.md                the pipeline against a plain prompt
   minus-both.md                     what removing two mechanisms costs
   experiment-pilot.md               the separation pilot that validated the judge
+  decision-value-stage1.md          the decision-value instrument's stage-1 result
+
+stage1/                             frozen scenarios, adversarial controls and the scorer
+                                    for the decision-value experiment
+trigger/                            trigger corpora — the prompts used to measure whether
+                                    the skill fires when it should
 
 transcripts/
   iteration-N/eval-<id>-<name>/
@@ -42,8 +62,10 @@ transcripts/
 
 The `with_skill` phase artifacts are the working state the skill deliberately keeps *out*
 of the answer — the sharpened brief, the raw pooled candidates, the cluster analysis, the
-diversity report. They're here because they're the only way to check whether the pipeline
-actually ran as specified rather than being narrated.
+diversity report. They're here because they were the only way to check whether the pipeline
+actually ran as specified rather than being narrated. That job has since moved inside the run:
+the current pipeline writes its working state to files as it goes and
+`scripts/verify_pipeline.py` refuses to let an answer be written if the stages do not add up.
 
 ## Results
 
@@ -71,10 +93,13 @@ works.
 Executor and analyzer for iterations 1–5: `claude-opus-5`, one run per configuration. The
 experiments below are five runs per arm — see their own write-ups.
 
-**Eval 1 is defined but not yet run**, and the reason is worth recording rather than leaving
-as a blank. The table above covers the four evals that have been. Entries were added to this
-suite at different times — eval 5 first appears at iteration 5, and eval 1 is newer still — so
-an iteration's row reports the evals that existed when it ran.
+**Eval 1 has now run** (2026-08-18) and returned **+0.60 against a 1.0 threshold — a null**. That
+batch spans four skill hashes; a clean single-build re-measurement scored the same comparison at
+**+0.00 and +1.00 under two blind judges reading the same answers**, so the metric is
+judge-dominated and more runs would not resolve it. The history of getting it to run at all is
+worth recording rather than leaving as a blank. Entries were added to this suite at different
+times — eval 5 first appears at iteration 5, and eval 1 is newer still — so an iteration's row
+reports only the evals that existed when it ran, not all five.
 
 Getting it to run at all took four wordings, and the reason is worth recording. Across **30
 runs**, a design-brief phrasing raised an `AskUserQuestion` before generating **90%** of the
@@ -130,16 +155,23 @@ in this directory. Treat the direction as informative and the exact numbers as n
 
 **A good plain answer is hard to beat on light questions.** The honest question isn't "is
 this output impressive" but "is it better than what you'd get for free, at 2–3× the cost."
-So far: yes on open strategic problems, less clearly on bounded ones. That asymmetry is why
-the deep-mode gate matters more than anything else in the skill.
+So far: yes on open strategic problems, less clearly on bounded ones. That asymmetry used to be
+handled inside the skill by the deep-mode gate. There are no modes now and a full run is about
+forty minutes for anything that reaches it, so the asymmetry has stopped being a gate and become
+a reason to type `/ideas` deliberately — and the multiple is no longer 2–3× but roughly twenty.
 
 ## The eval cases
 
-| # | Name | Correct mode | What it tests |
+The `Mode` column below is the mode each case was *supposed* to select when the skill had modes.
+It is kept because it is what the graded runs were graded against, and because it still names the
+question each case asks — "should this problem get the expensive treatment?" — which the pipeline
+now answers only at the moment someone types `/ideas`.
+
+| # | Name | Mode (historical) | What it tests |
 |---|---|---|---|
-| 1 | `operating-model-deep` | deep | An open strategic problem — does the pipeline earn its cost? **Not yet run.** |
-| 2 | `bounded-product-problem` | fast | A bounded symptom. Deep mode fired here in iteration 1 and cost 6.7× the time for a worse answer than a plain response. |
-| 3 | `negative-trigger-decision` | none | "Postgres or MongoDB for session storage?" The engine should not run at all. |
+| 1 | `operating-model-deep` | deep | An open strategic problem — does the pipeline earn its cost? **Run 2026-08-18: +0.60, did not clear 1.0. Clean re-measurement: +0.00 / +1.00 across two judges — judge-dominated.** |
+| 2 | `bounded-product-problem` | fast | A bounded symptom. Deep mode fired here in iteration 1 and cost 6.7× the time for a worse answer than a plain response. Nothing in the rebuild protects against this; it removed the gate that did. |
+| 3 | `negative-trigger-decision` | none | "Postgres or MongoDB for session storage?" The engine should not run at all. The one case whose answer is unaffected by the rebuild — and it has a deterministic twin in [`../tests/`](../tests/README.md). |
 | 4 | `light-ideation-fast-mode` | fast | Proportionality — does a small question ("all-hands attendance is sliding") get a small answer? |
 | 5 | `holdout-retention` | either — the reasoning is graded, not the mode | Held out from all tuning. Tests whether four iterations of fixes generalise or just fit evals 2/4. |
 
@@ -148,10 +180,35 @@ on everything is worse than no engine, because it converts a one-line answer int
 
 ## Running these yourself
 
-The iteration rounds were produced by a skill-benchmarking harness that runs each eval twice —
-once with the skill available and once without — then grades both responses against the
-assertions using an analyzer model. That harness isn't vendored here and the results above are
-reproducible without it.
+The iteration rounds ran each case twice — once with the skill available, once without — and
+graded both responses against the assertions with an analyzer model. What drove those particular
+runs is not recorded anywhere in this repo, so treat the method as the reproducible part and the
+tooling as unattributed. The v0.1.0 experiments below are the ones that name their runner.
+
+The cases are runnable now either way:
+
+```bash
+cowork-harness run evals/scenarios/eval-2-bounded-product-problem.yaml
+```
+
+Each file in `scenarios/` is generated from `evals.json` by
+`python3 tools/build-eval-scenarios.py`, so the assertions the judge grades are the assertions
+this file records — CI fails if someone edits one without the other. A pinned judge grades every
+assertion as a rubric claim against the answer, the transcript and any files the run wrote.
+
+Three things to know before reading a result:
+
+- **They cost tokens.** The judge is a live model call, so these never run on the token-free
+  replay lane and are not on the PR gate. CI lints them; running them is a deliberate act.
+- **One green is not a measurement.** Answers vary run to run, so the signal is each claim's pass
+  *rate* across three or more reps — `RunResult.assertions[].semanticClaims` carries the
+  per-claim profile. A single all-pass run routinely mislabels a stable miss as intermittent.
+- **Check the skill actually fired.** A rep whose `skillsInvoked` omits the skill answered from
+  the model's priors and is not a valid measurement. Discard it and re-run.
+
+For the control arm, `--ablate-skill` empties every discovery source for one invocation, so the
+same prompt runs on the same model and tier without the skill. Run it *without* the flag for the
+treatment arm — `--ablate-skill --repeat 5` gives five controls and no treatment.
 
 The v0.1.0 experiments were run under
 [`cowork-harness`](https://github.com/yaniv-golan/cowork-harness), whose `--ablate-skill` flag

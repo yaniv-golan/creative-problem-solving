@@ -2,11 +2,11 @@
 
 Read this when a user challenges the approach, or when you're tempted to skip or change a
 phase and want to know what it costs. Full literature review, sources and eval history are in
-`DESIGN-NOTES.md`, which ships with the repository rather than the installed skill —
+`docs/DESIGN-NOTES.md`, which lives in the repository rather than the installed skill —
 that's for maintainers, not runtime.
 
 Papers are named inline where a claim rests on one; the full bibliography with every citation
-is in `DESIGN-NOTES.md`.
+is in `docs/DESIGN-NOTES.md`.
 
 Strength markers: **[strong]** = multiple independent studies or one large controlled one.
 **[moderate]** = one good study or indirect evidence. **[contested]** = disputed.
@@ -18,7 +18,7 @@ Strength markers: **[strong]** = multiple independent studies or one large contr
   Hats, TRIZ, morphological
 - [Mechanisms that do work](#mechanisms-that-do-work) — verbalized sampling, decomposition,
   category negation, move-denial, grounding
-- [Why this doesn't run independent sub-agents](#why-this-doesnt-run-independent-sub-agents)
+- [Why this runs independent sub-agents](#why-this-runs-independent-sub-agents)
 - [Why critique is quarantined to feasibility](#why-critique-is-quarantined-to-feasibility-strong)
 - [Why novelty is reported as a hypothesis](#why-novelty-is-reported-as-a-hypothesis-strong)
 - [Things that look like levers and aren't](#things-that-look-like-levers-and-arent) —
@@ -76,10 +76,15 @@ branded ceremony.
 
 ## Mechanisms that do work
 
-- **Verbalized sampling [strong]** — Zhang et al., *Verbalized Sampling* (arXiv:2510.01171):
-  asking for K candidates *with probabilities* gives 1.6-2.1× the diversity of direct
-  prompting, training-free, no accuracy cost, and the
-  benefit is *larger* on stronger models. Root cause: alignment training biases toward the
+- **Verbalized sampling [strong for the mechanism; not implemented here]** — Zhang et al.,
+  *Verbalized Sampling* (arXiv:2510.01171): asking for K candidates *with probabilities* gives
+  1.6-2.1× the diversity of direct prompting, training-free, no accuracy cost, and the
+  benefit is *larger* on stronger models. **This pipeline does not ask for probabilities.** It
+  reaches the same tail by exhaustion instead — a quota per lens, with the generator told the
+  first several will be obvious and the quota exists to push past them. The measured figure
+  above is against direct prompting, not against that, so it does not transfer; whether scored
+  sampling would add anything here is an open question in `docs/DESIGN-NOTES.md`, to be settled
+  by measurement rather than by citing this row. Root cause: alignment training biases toward the
   modal answer; asking for a distribution routes around it.
 - **Task decomposition [strong]** — nearly closes the human/AI diversity gap; also the fix
   for within-session fixation.
@@ -87,7 +92,7 @@ branded ceremony.
   head-to-head winner *as a standalone strategy against a plain prompt*. Independently
   confirmed: the same work found MCTS and self-correction gave *no* significant creativity
   gain. Scope it honestly — that study never measured the move's marginal contribution inside
-  a pipeline that already denies previous moves, samples a distribution and bans the seed
+  a pipeline that already generates each pass blind under its own constraint and bans the seed
   vocabulary. Measured inside this pipeline, removing it costs −0.6 to −0.8 mechanisms — at or
   below the ±0.5 spread the judge shows on identical text, so the instrument cannot resolve it,
   and a blinded judge found no grouping between the full pipeline and one without the phase.
@@ -95,8 +100,11 @@ branded ceremony.
   here.
 - **Denial of the previous move [strong for the mechanism; measured once here,
   inconclusively]** — forbidding the model the move it just made reliably pushes it into new
-  regions. This is what Phase 1's successive passes implement. The *strength* marker covers
-  denial as a prompting mechanism, not this skill's particular sequential arrangement. That
+  regions. **This pipeline does not implement it**: its passes run blind and in parallel, so
+  there is no previous move for one to be denied. Isolation was compared against the sequential
+  arrangement and no difference was detected, which is why the swap was made — not because
+  denial was shown to be worse. The *strength* marker covers denial as a prompting mechanism,
+  not this skill's retired sequential arrangement. That
   arrangement is the thing that has been ablated here, and the increment did not survive the
   instrument: removing it costs −0.4 alone and −0.6 together with category negation; neither
   clears the instrument's noise floor. Removing both at once rules out the explanation that the
@@ -157,27 +165,35 @@ neither belongs in the answer as a number.
   example because they built prompts from the brief's keywords. That's the direct
   justification for the banned-word list.
 
-## Why this doesn't run independent sub-agents
+## Why this runs independent sub-agents
 
-If a user asks why the passes aren't parallel blind agents, this is the answer. The literature
-on independence is real and is **not** disputed here:
+If a user asks why generation is fanned out rather than run as successive passes in one context,
+this is the answer.
+
+The literature on independence is about **interacting** groups — agents that can see and defer
+to each other:
 
 - 38 human experiments — nominal groups beat interacting groups, r ≈ .57.
 - Flat all-junior agent structures scored 8.08 on diversity vs 4.65 for an interdisciplinary
   expert panel — a 43% drop for the intuitively better team — while quality varied only 6%.
   Deference markers opened ~61% of leader-led sessions; pushback under 1%.
-- Per-agent contribution falls 1.03 (N=3) to 0.47 (N=7) — group size does not buy diversity.
+- Per-agent contribution falls 1.03 (N=3) to 0.47 (N=7).
 
-But **every one of those results is about agents that can see and defer to each other** —
-interaction structure, authority, premature convergence through communication. That is not the
-comparison that matters here. This pipeline runs sequential passes in one context, each
-explicitly told to refuse the previous move, and no agent in it can defer to another because
-there is no other agent. Dispatch was measured directly against that arrangement and no
-difference was detected.
+The first two support isolation and are why generators here never see each other's assignments
+or output. The third argues against adding generators, and **one measurement on this pipeline
+contradicts it**: across four lenses against seven on the same problem, the duplicate rate
+stayed flat and no pair of lenses collapsed into another. One problem, one run per condition —
+enough to stop treating a falloff as settled, not enough to claim there is none.
 
-So: independence is well-evidenced *against interacting groups*, and unevidenced *against
-successive denial*. Say that much if challenged, and no more — the stronger claim is not
-supported.
+**What isolation is NOT evidenced to fix.** Sequential passes with explicit move-denial were
+compared against dispatch and no difference was detected. Isolation's measured benefit here is
+volume, not quality: it makes a quota of raw candidates per angle possible without the
+orchestrator's context filling up. On the one question where output was judged, more options did
+not mean a higher proportion worth acting on — the hit rate fell.
+
+So if challenged: isolation is well-evidenced against interacting groups, weakly evidenced
+against successive denial, and buys reach rather than per-idea quality. Say that much and no
+more.
 
 ## What this skill does not fix
 

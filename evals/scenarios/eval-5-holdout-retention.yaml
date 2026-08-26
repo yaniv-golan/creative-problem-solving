@@ -1,0 +1,41 @@
+# GENERATED from ../evals.json (v8, eval 5) by tools/build-eval-scenarios.py.
+# Edit the assertions THERE and regenerate — a hand-edit here fails CI's --check.
+#
+# Held out from all tuning. Measures whether the accumulated fixes generalise or merely fit
+# evals 2 and 4.
+name: eval-5-holdout-retention
+session: ../sessions/default.yaml
+baseline: desktop-1.37937.1
+fidelity: container
+# The eval prompts are self-contained and several end by telling the model not to ask, so a gate
+# here is a finding rather than something to script an answer for.
+on_unanswered: first
+
+prompt: |
+  We keep losing senior engineers to bigger companies at around the 18-month mark. Comp is already competitive — we benchmark and we match. It's not the money. What can we actually do about this?
+
+assert:
+  - result: success
+  # semantic_matches is LIVE-ONLY: the judge is a model call, so this cannot run on the
+  # token-free replay lane, and `lint` says so. That warning is expected here, not a defect.
+  #
+  # semantic_matches is TOOL-USE BLIND. Its judged corpus is the final message, the transcript
+  # and authored files — never a tool call (harness TOOL_USE_BLIND_KEYS). So a rubric claim about
+  # what the model DID, as opposed to what it said or wrote, is only as good as the trace it left
+  # in text or on disk. Keep the claims here about reader-visible output, and let the hard
+  # assertions above carry anything that depends on a tool call.
+  #
+  # No min_pass. Recipe 5's point is that answers vary run to run, so the signal is each claim's
+  # pass RATE across N>=3 reps, read from RunResult.assertions[].semanticClaims — not one green.
+  # Set min_pass to the reliably-hit core once a baseline profile exists.
+  - semantic_matches:
+      rubric:
+        - "Tests the ruled-out constraint rather than obeying it \u2014 probes whether 'it's not the money' actually holds (e.g. by comparing multi-year total comp, not year-one offers) before setting money aside. Proposing a compensation mechanism is acceptable IF that test supports it; what fails is accepting the premise untested"
+        - "Offers at least one explanation for the 18-month timing specifically, rather than treating this as generic attrition"
+        - "Options differ in mechanism (what changes about the job, the structure, or who decides) rather than being a list of perks and culture initiatives"
+        - "At least one option questions the framing \u2014 whether losing senior engineers at 18 months is necessarily the problem to solve, or whether the real issue sits upstream"
+        - "States what has to be true for the main recommendations, or what evidence would confirm the diagnosis"
+        - "Names who inside the company would actually have to do each thing"
+        - "Does not present unverified claims about named companies or studies as established fact"
+        - "Proportionate and structurally disciplined: no ceremonial headings, no internal process metrics quoted, no self-disqualifying option presented as a live one"
+        - "Gives an actual recommendation of where to start, not just a menu"
