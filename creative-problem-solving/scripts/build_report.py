@@ -271,8 +271,15 @@ def main(wd, out):
                "options": rendered, "skeleton": L},
               open(out + ".manifest.json", "w", encoding="utf-8"), indent=2)
     slots = sum(1 for fid in live for m in fams[fid]["members"] if m not in rejected)
+    # The resolved path, echoed in the same form as the other writing scripts, because a caller
+    # cannot recover it by any other route: a Write result echoes the path it was GIVEN, and on a
+    # host where the file tools and the shell do not share a working directory no relative path is
+    # correct for both -- the same string lands in two places and both writes report success.
+    # This does not fix placement. It makes a misplaced deliverable visible here rather than
+    # inferred later from a delivery step that refuses a file it cannot see.
     print(f"wrote {out}: {len(live)} families, {slots} options presented, "
           f"{len(rejected)} rejected, {len(text)} generated")
+    print(f"  wrote to {os.path.abspath(out)}")
     if slots + len(rejected) != len(text):
         sys.exit(f"FAIL: {slots} presented + {len(rejected)} rejected != {len(text)} generated")
 

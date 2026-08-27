@@ -81,6 +81,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   when it finds nothing, because absence of the block is not a pass signal and had no other way of
   being known.
 
+- **`build_report.py` echoes the resolved path it wrote the report to.** `--out` names the
+  deliverable — the file a reader opens, and the only path anyone would hand to a delivery step —
+  and nothing else in the run can report where it landed. A `Write` result echoes the path it was
+  given, not a resolved one, and on a host where the file tools and the shell do not share a
+  working directory the same relative string names two different places while both writes report
+  success. Same `  wrote to <abs>` form as the four other writing scripts, so one line parses
+  across all five. This does not fix placement; it makes a misplaced deliverable visible at the
+  write rather than inferred later from a delivery step that refuses a file it cannot see.
+
 - **The run hands the reader the report as a file, not only as a message.** Writing a file and
   delivering it are different acts, and which one a path performs depends on the host: the working
   directory a run writes into may be the reader's own, may belong to the session, or may not be

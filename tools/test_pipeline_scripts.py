@@ -1533,6 +1533,33 @@ def t_effective_lead():
           br.effective_lead([], set()) is None, br.effective_lead([], set()))
 
 
+def t_out_path_echo():
+    """The deliverable's resolved path is printed, because nothing else can report it.
+
+    `--out` writes the file a reader is meant to open and the only path anyone would hand to a
+    delivery step. A caller cannot recover where it landed: a Write result echoes the path it was
+    GIVEN, not a resolved one, and on a host where the file tools and the shell do not share a
+    working directory the same relative string names two different places and both writes report
+    success. The four other writing scripts echo their work dir in this same form; this echoes the
+    file, since that is what `--out` names.
+
+    Asserted as an ABSOLUTE path rather than as the string passed in -- echoing the argument back
+    is exactly the non-answer a Write result already gives.
+    """
+    print("\nthe report's resolved path is echoed, not the path as given")
+    d = tempfile.mkdtemp()
+    full_fixture(d, multi=True)
+    rel = os.path.relpath(os.path.join(d, "sub", "report.md"))
+    rc, out = run("build_report.py", d, "--out", rel)
+    want = os.path.abspath(rel)
+    check("a relative --out is echoed resolved", rc == 0 and f"wrote to {want}" in out,
+          out.strip()[-160:])
+    check("...and the echoed path is absolute", os.path.isabs(want) and want in out,
+          out.strip()[-160:])
+    check("...and it is where the file actually is", os.path.exists(want), want)
+    shutil.rmtree(d, True)
+
+
 def t_shard_coverage_check():
     """A pair dealt to an adjudicator that never comes back must fail at the merge, not at the end.
 
@@ -2061,7 +2088,8 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
           t_plan_groups, t_merge_families, t_forced_lead_collision,
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
-          t_shard_coverage_check, t_infeasible_lead_core, t_source_link, t_effective_lead, t_promoted_lead_gate,
+          t_shard_coverage_check, t_infeasible_lead_core, t_source_link, t_effective_lead,
+          t_out_path_echo, t_promoted_lead_gate,
           t_lead_assignment_complete):
     t()
 
