@@ -553,8 +553,10 @@ CLAIMS = {
             "%s/agents/grouper.md" % plugin_name,
             "%s/commands/ideas.md" % plugin_name,
             # The report prints the scope to the reader, above the band that was not checked.
-            # It is the only surface the reader is guaranteed to see, so it is held to the
-            # phrase rather than merely permitted to mention verification.
+            # It is the surface the reader is INSTRUCTED to receive -- not guaranteed to: the
+            # reply check reads the file the run wrote, not the message it sends, which
+            # references/pipeline.md says in as many words. So this is held to the phrase
+            # rather than merely permitted to mention verification.
             "%s/scripts/build_report.py" % plugin_name,
         },
         # Files that must carry the exact scope phrase, not merely mention verification.

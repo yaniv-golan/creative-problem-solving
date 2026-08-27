@@ -9,6 +9,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Two refusals that sent the caller in a circle, and one that stopped halfway.**
+  `verify_pipeline.py` told a caller to re-run `merge_families.py`; `merge_families.py`'s own
+  backstop tells them not to re-run it unchanged. Both are right about their own case and a caller
+  who followed the first into the second was told the opposite of what sent them, so the first now
+  names the branch and points at the action the second gives.
+
+  And a top-13 option that was never checked said only that. The usual cause is a re-merge after
+  ranking, which leaves the ranking stale as well — so verifying just the options it named would
+  have cleared the gate while the report stayed ranked on families that no longer exist. It now
+  says to re-rank first, then verify against the new top 13.
+
 - **A proposed option id that no pool contains now stops the run at the first stage that can see
   it.** Nothing checked that the pair proposer named real options. On one run a fabricated id
   passed sharding, twelve adjudicators, seven groupers, the ranker and every search, and was

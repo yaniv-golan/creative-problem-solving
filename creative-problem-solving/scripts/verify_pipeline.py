@@ -367,7 +367,11 @@ def main(wd):
             f"family past the rule rather than that the grouper mis-split it — merge_families.py "
             f"checks the share before its own lead repair runs, so a merge can introduce what "
             f"this refuses. Re-run merge_families.py over the group-result-*.json shards and "
-            f"re-check; if the family survives unchanged, relocating a member whose separating "
+            f"re-check -- it bounds its own merges by this rule now, so a families.json written "
+            f"before that, or by hand, is what this usually catches. If merge_families.py refuses "
+            f"instead, follow the action IT names and do not re-run it unchanged: it is "
+            f"deterministic and will stop at the same place. If the family survives unchanged, "
+            f"relocating a member whose separating "
             f"pairs are all with one other member is the move that follows the verdicts. Do not "
             f"edit relations.json to agree with the grouping, and do not split a family this "
             f"names without checking that a split can clear both gates — on the run that "
@@ -478,7 +482,15 @@ def main(wd):
                 f"so which file sorts last must not decide that. build_report.py refuses this too")
         by[i] = v; seen_where[i] = os.path.basename(vf_of[id(e)])
     missing = [i for i in top13 if i not in by]
-    if missing: die(f"top-13 option(s) never checked: {missing}")
+    if missing:
+        # Naming only "verify these" would be a partial action: the usual cause is a re-merge
+        # after ranking, which leaves ranked.json describing families that no longer exist.
+        # Verifying the ids this names against a stale ranking greens the gate and leaves the
+        # property false, which is the same defect in a quieter form.
+        die(f"top-13 option(s) never checked: {missing}. If this follows a re-run of "
+            f"merge_families.py, the ranking is stale too -- re-run step 7 to re-rank, then "
+            f"step 8 against the new top 13. Verifying only the options named here would clear "
+            f"this gate while leaving the report ranked on families that no longer exist.")
 
     # THREE STATES. Refuting used to demand the option be cut while another check demanded
     # presented == generated, so a refuted verdict had no legal end state at all. Now:
