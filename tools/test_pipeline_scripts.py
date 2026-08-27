@@ -823,8 +823,16 @@ def t_invention_surfaces():
     check("an unattributed premise does NOT fail the run", rc == 0, out.strip()[:90])
     check("but the echo scan flags it", "ECHO SCAN" in out and "authority" in out,
           out.strip()[:120])
-    check("and the scan says it is candidates, not findings",
-          "not findings" in out, out.strip()[:120])
+    # The status belongs on the header line, not only in the reference: a list of `line N: [...]`
+    # hits reads as a defect list everywhere else a reader has seen one, so the block has to say
+    # what it is before they act on it. Asserted against the exit code in the same breath, because
+    # a header claiming it fails nothing while the run fails is the worse of the two errors.
+    check("and the scan says on its header that it fails nothing",
+          "advisory" in out and "Nothing below fails --check" in out and rc == 0,
+          out.strip()[:160])
+    check("...and does not overclaim that --check passed, since later checks can still exit",
+          "passed" not in out.split("ECHO SCAN")[1].split("\n")[0].lower(),
+          out.split("ECHO SCAN")[1].split("\n")[0][:120])
 
     # No inventions: the scan stays quiet rather than printing an empty heading.
     json.dump({"verbatim_prompt": "An office of 200 people has a 20-minute lunch queue at noon.",
