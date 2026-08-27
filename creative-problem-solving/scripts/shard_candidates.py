@@ -31,6 +31,62 @@ from progress import line as progress_line
 POOL_OVERSHARE = 2.0
 ID_HOG = 12
 
+def read_pools(wd):
+    """Every pool-*.json beside candidates.json, read once, hardened.
+
+    One read. A raw `json.load(open(f))` used to sit beside a `load(f, "items")`, reading the same
+    file twice through two different parsers -- and a generator that fenced its pool in ```json
+    passed load(), which strips the fence, then died on the raw read with a JSONDecodeError naming
+    a line number in a warning helper. Wrapper noise is what robust_json exists to absorb, so
+    nothing reads a model-written file around it.
+    """
+    pools = []
+    for f in sorted(glob.glob(os.path.join(wd, "pool-*.json"))):
+        pool = load_obj(f)
+        if not isinstance(pool.get("items"), list):
+            load(f, "items")  # does not return: dies naming the stage that wrote the file
+        pools.append(pool)
+    return pools
+
+
+def check_ids_are_real(wd, uniq):
+    """Every proposed id must be an option the generator actually wrote.
+
+    A proposer that invents an id corrupts the evidence silently. On the 2026-08-27 run a
+    fabricated `p1-034` passed through twelve adjudicators, seven groupers, the ranker and the
+    searches before verify_pipeline.py refused `relations.json references unknown id` at the last
+    gate -- forty minutes in, on a message that read as a data problem, and the run was rescued by
+    hand-editing three evidence files. This is the first stage that holds both the pools and the
+    candidates, so it is the first stage that CAN see it.
+
+    It stops the run rather than dropping the pairs. Dropping would be quieter and worse: the
+    coverage the run reports would then describe a different pair set than the record shows, and
+    the proposer would have been wrong in a way nobody was told about. Stopping here costs one
+    proposer dispatch, which is the cheapest point on the whole pipeline to pay it.
+    """
+    pools = read_pools(wd)
+    if not pools:
+        # An absent input that quietly disables a check is indistinguishable from a check that
+        # passed, so this is said out loud rather than skipped.
+        print("WARN: no pool-*.json beside candidates.json, so proposed ids were NOT checked "
+              "against the options that exist. A fabricated id will not surface until the last "
+              "gate of the run.")
+        return
+    real = {it.get("id") for p in pools for it in p["items"] if isinstance(it, dict)}
+    unknown = sorted({x for pair in uniq for x in (pair["a"], pair["b"]) if x not in real})
+    if not unknown:
+        print(f"ids ok: {len(uniq)} pair(s) reference only ids that exist in {len(pools)} pool(s)")
+        return
+    shown = ", ".join(unknown[:6]) + ("; …" if len(unknown) > 6 else "")
+    hit = sum(1 for pair in uniq if pair["a"] in unknown or pair["b"] in unknown)
+    sys.exit(f"FAIL: candidates.json references {len(unknown)} id(s) that no pool contains "
+             f"({shown}), across {hit} of {len(uniq)} pair(s). The proposer named options the "
+             f"generator never wrote, so those pairs cannot be adjudicated against anything. "
+             f"Re-dispatch the pair-proposer for the affected pool(s) and tell it to propose only "
+             f"ids present in the pool files it was given. Do not edit the pool files to add the "
+             f"missing ids: that invents an option the run then reports as generated.")
+
+
 def concentration_warnings(wd, uniq):
     """Report a proposer that piled its pairs onto one pool or one option.
 
@@ -54,16 +110,8 @@ def concentration_warnings(wd, uniq):
               f"restatement of the problem.")
 
     sizes = {}
-    for f in sorted(glob.glob(os.path.join(wd, "pool-*.json"))):
-        # One hardened read. A raw `json.load(open(f))` used to sit beside a `load(f, "items")`
-        # here, reading the same file twice through two different parsers -- and a generator that
-        # fenced its pool in ```json passed load(), which strips the fence, then died on the raw
-        # read with a JSONDecodeError naming a line number in this warning helper. Wrapper noise
-        # is what robust_json exists to absorb, so nothing reads a model-written file around it.
-        pool = load_obj(f)
-        if not isinstance(pool.get("items"), list):
-            load(f, "items")  # does not return: dies naming the stage that wrote the file
-        sizes[str(pool.get("pool") or len(sizes) + 1)] = len(pool["items"])
+    for n, pool in enumerate(read_pools(wd)):
+        sizes[str(pool.get("pool") or n + 1)] = len(pool["items"])
     if not sizes:
         # Said out loud rather than skipped in silence: an absent input that quietly disables a
         # check is indistinguishable from a check that passed.
@@ -128,6 +176,7 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
         seen.add(k); uniq.append({"a": a, "b": b})
     if not uniq: sys.exit("FAIL: candidates.json proposed no usable pairs")
 
+    check_ids_are_real(wd, uniq)
     concentration_warnings(wd, uniq)
 
     if nshards is None:

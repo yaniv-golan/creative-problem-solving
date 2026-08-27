@@ -9,6 +9,7 @@ instead of quietly producing a shorter list nobody notices.
 
 Fixtures are synthetic and deliberately so. Real run data belongs to whoever ran it.
 """
+import glob
 import importlib.machinery
 import itertools, json, os, random, shutil, subprocess, sys, tempfile
 from pathlib import Path
@@ -1614,6 +1615,69 @@ def t_band_header_states_what_was_verified():
         shutil.rmtree(wd)
 
 
+def t_fabricated_id_stops_at_the_first_stage():
+    """A proposed id that no pool contains must stop the run where it is cheap to stop it.
+
+    On the 2026-08-27 run a fabricated `p1-034` passed shard_candidates, twelve adjudicators, seven
+    groupers, the ranker and the searches, and was refused only by verify_pipeline.py at the last
+    gate -- `relations.json references unknown id`, forty minutes in, phrased as a data problem.
+    The agent read it as one and rescued the run by hand-editing three evidence files, which is
+    exactly the workaround an error gets when it names no action at the stage that can act.
+
+    shard_candidates is the first stage holding both the pools and the candidates, so it is the
+    first that can see it. It stops rather than dropping the offending pairs: dropping is quieter
+    and worse, because the coverage the run then reports would describe a different pair set than
+    the record shows.
+
+    THREE CASES, because they fail differently: a fabricated id is refused; a clean set passes (or
+    the gate would be refusing everything); and pools missing entirely WARNS rather than passing
+    silently, since an absent input that disables a check looks exactly like a check that passed.
+
+    NEGATIVE CONTROL, run 2026-08-28: case 2 is the control for case 1 -- the same fixture with the
+    id corrected must run to completion. Case 3 is the control for the warning: without it, a run
+    with no pool files would report "ids ok" having compared against nothing.
+    """
+    print("\na fabricated id is refused at the first stage that can see it")
+
+    def build(wd, bad=None, pools=True):
+        ids = [f"p1-{i:03d}" for i in range(1, 9)] + [f"p2-{i:03d}" for i in range(1, 9)]
+        if pools:
+            for n, pref in ((1, "p1"), (2, "p2")):
+                items = [{"id": i, "text": f"option {i}"} for i in ids if i.startswith(pref)]
+                json.dump({"lens": "l", "pool": n, "items": items},
+                          open(os.path.join(wd, f"pool-{n}.json"), "w"))
+        pairs = [{"a": ids[i], "b": ids[i + 1]} for i in range(0, 14, 2)]
+        if bad: pairs.append({"a": ids[0], "b": bad})
+        json.dump({"pairs": pairs}, open(os.path.join(wd, "candidates.json"), "w"))
+
+    # 1. the fabricated id
+    wd = tempfile.mkdtemp(); build(wd, bad="p1-034")
+    rc, out = run("shard_candidates.py", wd, "--probe", 4)
+    check("a fabricated id stops the run", rc != 0, f"rc={rc} — it passed")
+    check("...the message names the id", "p1-034" in out, out[:200])
+    check("...and names an action at the stage that can take it",
+          "Re-dispatch the pair-proposer" in out, out[:200])
+    check("...and forbids the repair that invents an option",
+          "Do not edit the pool files" in out, out[:200])
+    check("...writing no shards", not glob.glob(os.path.join(wd, "cand-*.json")), "shards written")
+    shutil.rmtree(wd)
+
+    # 2. NEGATIVE CONTROL: the same thing with every id real
+    wd = tempfile.mkdtemp(); build(wd)
+    rc, out = run("shard_candidates.py", wd, "--probe", 4)
+    check("NEGATIVE CONTROL: a clean candidate set still runs", rc == 0, out[:300])
+    check("...and says so, so a silent pass is distinguishable", "ids ok:" in out, out[:200])
+    shutil.rmtree(wd)
+
+    # 3. no pools at all -- must warn, not pass quietly
+    wd = tempfile.mkdtemp(); build(wd, pools=False)
+    rc, out = run("shard_candidates.py", wd, "--probe", 4)
+    check("with no pool files the run continues", rc == 0, out[:300])
+    check("...but says the check did not run", "were NOT checked" in out, out[:300])
+    check("...and does not claim ids are ok", "ids ok:" not in out, out[:200])
+    shutil.rmtree(wd)
+
+
 def t_promoted_lead_gate():
     """The option the reader meets must be the option that was checked.
 
@@ -2291,7 +2355,7 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
           t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
           t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
-          t_band_header_states_what_was_verified, t_effective_lead,
+          t_band_header_states_what_was_verified, t_fabricated_id_stops_at_the_first_stage, t_effective_lead,
           t_out_path_echo, t_promoted_lead_gate,
           t_lead_assignment_complete):
     t()

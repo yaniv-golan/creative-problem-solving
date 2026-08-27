@@ -9,6 +9,28 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A proposed option id that no pool contains now stops the run at the first stage that can see
+  it.** Nothing checked that the pair proposer named real options. On one run a fabricated id
+  passed sharding, twelve adjudicators, seven groupers, the ranker and every search, and was
+  refused only at the last gate — forty minutes in, by a message about `relations.json` that read
+  as a data problem. It was read as one, and the run was rescued by hand-editing three evidence
+  files.
+
+  `shard_candidates.py` is the first stage that holds both the pools and the candidates.
+  It now refuses ids that appear in no pool, naming them, naming how many pairs they touch, and
+  naming the action — re-dispatch the proposer for those pools — while ruling out the repair that
+  looks easiest and is worst: adding the missing id to a pool file invents an option the run then
+  reports as generated.
+
+  It stops rather than dropping the offending pairs. Dropping is quieter and worse: the coverage
+  the run reports would then describe a different pair set than its own record shows.
+
+  With no `pool-*.json` beside `candidates.json` the check cannot run, and says so, because an
+  absent input that disables a check is indistinguishable from a check that passed.
+
+  Measured against every recorded dataset that carries pools — 4,518 pairs across seven — the check
+  refuses none of them.
+
 - **The report's unverified band said what the run planned to check, not what it checked.** The
   per-option markers are ungated by rank — an option carries `Checked` or `Proposal` wherever it
   lands — while the header above the band asserted flatly that verification covered the top 13
