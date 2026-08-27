@@ -24,6 +24,7 @@ from robust_json import load, load_obj
 from build_report import effective_lead
 # One definition of the share rule; merge_families.py bounds its merges by the same import.
 from verdicts import JOINING, SEPARATING, SHARE_MAX as SEP_SHARE_MAX, share_breach  # noqa: F401
+from verdicts import relation_of
 
 # The floor, against 48 planted by shard_candidates.py. The two are deliberately not equal:
 # merge_relations drops a probe pair when both copies land with the same adjudicator, and a floor
@@ -96,12 +97,13 @@ def main(wd):
     rpath = os.path.join(wd, "relations.json")
     if not os.path.exists(rpath): die("relations.json missing")
     rel = load(rpath, "relations")
-    ALLOWED = {"duplicate", "implementation_variant", "shared_component", "distinct"}
     for e in rel:
+        # The record contract lives in verdicts.py, so this file cannot drift from the two scripts
+        # that build a partition out of the same records. It checks the ids are present; the pool
+        # membership below is this file's own additional demand.
+        relation_of(e, "relations.json")
         for side in ("a", "b"):
             if e.get(side) not in ids: die(f"relations.json references unknown id {e.get(side)!r}")
-        if e.get("relation") not in ALLOWED:
-            die(f"{e.get('a')}~{e.get('b')}: relation must be one of {sorted(ALLOWED)}, got {e.get('relation')!r}")
         if "text" in e: die("relations.json carries text — it must be an index, not a rewrite")
 
     # The orchestrator never reads the candidate pairs -- the proposer shards them and the
@@ -230,13 +232,12 @@ def main(wd):
             "`implementation_variant` pairs) and hands it to the grouper instead of the full "
             "relations file. Without it the grouper is choosing which relation types join, which "
             "is the judgement call step 6 exists to remove.")
-    JOIN = {"duplicate", "implementation_variant"}
-    want = {frozenset((e["a"], e["b"])) for e in rel if e.get("relation") in JOIN}
+    want = {frozenset((e["a"], e["b"])) for e in rel if e.get("relation") in JOINING}
     got, wrong = set(), []
     for e in load(jpath, "relations"):
         k = frozenset((e.get("a"), e.get("b")))
         got.add(k)
-        if e.get("relation") not in JOIN:
+        if e.get("relation") not in JOINING:
             wrong.append(f"{e.get('a')}~{e.get('b')} = {e.get('relation')}")
     if wrong:
         die(f"joinable.json contains {len(wrong)} pair(s) the adjudicators did not join "

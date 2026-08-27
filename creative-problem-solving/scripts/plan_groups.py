@@ -28,6 +28,7 @@ from robust_json import load
 # The share rule and the verdict vocabulary, defined once in verdicts.py. This file used to
 # carry its own copy of both plus its own share_ok, mirroring verify_pipeline.py by hand.
 from verdicts import JOINING, SEPARATING, share_ok  # noqa: F401
+from verdicts import relation_of
 
 # Disagreement weights. `duplicate` is the strongest evidence of sameness and `distinct` the
 # strongest evidence against, so they outweigh their softer neighbours.
@@ -57,6 +58,19 @@ LEAD_NODES = 20000   # overridable with --lead-budget, which the exhaustion mess
 
 WEIGHT = {"duplicate": 3.0, "implementation_variant": 1.0,
           "shared_component": -1.0, "distinct": -2.0}
+
+# Scoring reads WEIGHT with a .get(..., 0.0) default, so a verdict the vocabulary allows but this
+# table omits does not raise -- it scores zero and the partition quietly changes. The per-record
+# check that used to catch it validated against WEIGHT itself; that check now validates against the
+# vocabulary, so this states the coverage directly. It runs at import, and exits rather than
+# asserting, because `python -O` strips assertions and this is the loud half of a silent failure.
+if set(WEIGHT) != JOINING | SEPARATING:
+    _missing = sorted((JOINING | SEPARATING) - set(WEIGHT))
+    _extra = sorted(set(WEIGHT) - (JOINING | SEPARATING))
+    sys.exit(f"FAIL: plan_groups.py's WEIGHT table disagrees with the verdict vocabulary in "
+             f"verdicts.py — missing {_missing}, unknown {_extra}. Agglomeration scores an "
+             f"unweighted verdict as 0.0 instead of refusing it, so this must be fixed here, not "
+             f"worked around: give every verdict a weight, or take it out of the vocabulary.")
 
 
 
@@ -250,9 +264,7 @@ def main(wd, max_task, split_over):
 
     rel = {}
     for e in load(os.path.join(wd, "relations.json"), "relations"):
-        v = e.get("relation") or e.get("verdict")
-        if v not in WEIGHT: die(f"unknown relation {v!r} for {e.get('a')}~{e.get('b')}")
-        rel[frozenset((e["a"], e["b"]))] = v
+        rel[frozenset((e["a"], e["b"]))] = relation_of(e, "relations.json")
 
     clusters = []
     for comp in positive_components(ids, rel):

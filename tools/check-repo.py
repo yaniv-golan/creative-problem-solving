@@ -488,6 +488,31 @@ for _fn in sorted(f for f in os.listdir(_scripts_dir) if f.endswith(".py") and f
                 if isinstance(_sub, ast.Name) and _sub.id in _WATCHED:
                     _redeclared.append("%s:%d binds %s" % (_fn, _sub.lineno, _sub.id))
 
+# The check above is NAME-based, so it cannot see a copy under a new name -- and both copies that
+# actually existed were exactly that: ALLOWED and JOIN in verify_pipeline.py, set literals equal to
+# the vocabulary, in a file that already imported it. So also compare VALUES: any set literal in a
+# script whose members are exactly JOINING, SEPARATING, or their union is a re-spelling.
+#
+# Dicts are not flagged. merge_relations.py's SEPARATION and plan_groups.py's WEIGHT key the same
+# four verdicts but carry an ordering and a weighting in their values; they are a different fact
+# about the vocabulary, not a copy of it. plan_groups.py asserts its own coverage at import.
+_vocab = {frozenset(_hm.JOINING), frozenset(_hm.SEPARATING),
+          frozenset(_hm.JOINING | _hm.SEPARATING)} if os.path.exists(_hp) else set()
+_respelled = []
+for _fn in sorted(f for f in os.listdir(_scripts_dir) if f.endswith(".py") and f != _home):
+    for _n in ast.walk(ast.parse(read_text("%s/scripts/%s" % (plugin_name, _fn)))):
+        if isinstance(_n, ast.Set):
+            try: _val = frozenset(ast.literal_eval(_n))
+            except Exception: continue
+            if _val in _vocab:
+                _respelled.append("%s:%d" % (_fn, _n.lineno))
+if _respelled:
+    fail("the verdict vocabulary is spelled out again at %s. Import it from %s instead: a set "
+         "literal equal to JOINING, SEPARATING or their union is a copy whatever it is named, and "
+         "the name-based check above cannot see it." % (", ".join(_respelled), _home))
+else:
+    ok("no script re-spells the vocabulary as a set literal")
+
 if _redeclared:
     fail("the share rule is re-declared outside %s: %s. It has one definition so that "
          "merge_families.py's bound and verify_pipeline.py's gate cannot drift apart -- a second "

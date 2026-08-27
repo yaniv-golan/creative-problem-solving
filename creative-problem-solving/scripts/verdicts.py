@@ -12,13 +12,15 @@ between the two breaks it in the shipping direction: merge emits a family the ga
 and the refusal names no action the caller can take. Removing three of the four copies is what
 stops that, not a gate asserting four copies agree.
 
-Deliberately not in scope, because it is a larger change and half-doing it would be worse: the
-vocabulary is also spelled in `verify_pipeline.py`'s function-local ALLOWED set, in
-`merge_relations.py`'s SEPARATION ordering, and in `plan_groups.py`'s WEIGHT signs. Those encode
-the same four verdicts for different purposes; unifying them is a separate piece of work.
+Still spelled elsewhere, and out of scope here because they encode the four verdicts for different
+purposes rather than restating the vocabulary: `merge_relations.py`'s SEPARATION ordering and
+`plan_groups.py`'s WEIGHT signs. Both are dicts whose VALUES carry the meaning, so a check that
+compares set literals against this module cannot see them -- said plainly rather than left to look
+covered.
 """
 
 import itertools
+import sys
 
 JOINING = {"duplicate", "implementation_variant"}
 SEPARATING = {"shared_component", "distinct"}
@@ -61,3 +63,34 @@ def share_breach(members, rel):
 def share_ok(members, rel):
     """True when the family is within the rule. The predicate form, for callers deciding a merge."""
     return share_breach(members, rel) is None
+
+
+def relation_of(entry, where):
+    """The verdict on one relations.json record, or exit naming the file and the pair.
+
+    Three readers of the same file disagreed about what a valid record is. merge_families stored
+    `e.get("relation") or e.get("verdict")` with NO check, so a record missing both keys became
+    None -- and None is in neither JOINING nor SEPARATING, so that pair was silently treated as
+    UNADJUDICATED instead of as a corrupt file. Measured on critique-mf-stateA with every
+    `relation` key stripped: the run exits 0 and writes 143 families instead of 114. The evidence
+    the share rule is computed from quietly shrank, and nothing said so.
+
+    `verdict` is not an accepted spelling. Nothing writes it -- merge_relations.py refuses a
+    verdict-keyed shard, and no pair record in the repository uses it -- so accepting it only let a
+    hand-written file travel two more stages before the last gate refused it, at a point that could
+    no longer name which file was wrong.
+
+    `where` is the filename, because merge_families reads relations.json while merge_relations
+    reads relations-*.json, and a message naming neither sends the caller to the wrong one.
+    """
+    for side in ("a", "b"):
+        if not entry.get(side):
+            sys.exit(f"FAIL: {where}: a relation record with no {side!r} id. It is written by a "
+                     f"script, so re-run the stage that produced it rather than editing it.")
+    v = entry.get("relation")
+    if v not in JOINING | SEPARATING:
+        got = "no 'relation' key" if v is None else repr(v)
+        sys.exit(f"FAIL: {where}: {entry['a']}~{entry['b']} has {got}; it must be one of "
+                 f"{sorted(JOINING | SEPARATING)}. Re-run the stage that wrote {where}; do not "
+                 f"hand-edit it, since every count downstream is derived from it.")
+    return v

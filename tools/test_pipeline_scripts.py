@@ -1678,6 +1678,80 @@ def t_fabricated_id_stops_at_the_first_stage():
     shutil.rmtree(wd)
 
 
+def t_malformed_relation_record_is_refused_not_absorbed():
+    """A relations.json record with no usable verdict must stop the run, not shrink the evidence.
+
+    merge_families read `e.get("relation") or e.get("verdict")` and stored the result with NO
+    check. A record carrying neither key became None, and None is in neither JOINING nor
+    SEPARATING -- so that pair was silently treated as UNADJUDICATED rather than as a corrupt file.
+    The merges and the share rule are computed from exactly those counts.
+
+    That is not a small effect. Measured on critique-mf-stateA with every `relation` key stripped:
+    the old code exited 0 and wrote 143 families where the intact file gives 114, 80 single-member
+    against 47. A run silently lost a third of its grouping and reported success.
+
+    `verdict` was never an accepted spelling. merge_relations refuses a verdict-keyed shard, and no
+    pair record anywhere in the repository uses it, so the fallback only let a hand-written file
+    travel two more stages before the last gate refused it -- by which point the message could no
+    longer say which file was wrong.
+
+    NEGATIVE CONTROLS, run 2026-08-28, and the first is the one that matters: with the old
+    `.get(...) or .get(...)` restored, case 1 EXITS 0 -- so this fixture distinguishes refusal from
+    silence, not merely "a die exists somewhere". Restoring the fallback also makes case 2 pass.
+    """
+    print("\na malformed relation record is refused rather than absorbed")
+    ids = [f"p1-{i:03d}" for i in range(1, 7)]
+
+    def wd_with(records):
+        wd = tempfile.mkdtemp()
+        json.dump({"lens": "l", "pool": 1, "items": [{"id": i, "text": f"o {i}"} for i in ids]},
+                  open(os.path.join(wd, "pool-1.json"), "w"))
+        json.dump({"relations": records}, open(os.path.join(wd, "relations.json"), "w"))
+        return wd
+
+    good = [{"a": ids[i], "b": ids[i + 1], "relation": "distinct"} for i in range(len(ids) - 1)]
+
+    # 1. no verdict key at all -- the silent-None path
+    wd = wd_with(good[:-1] + [{"a": ids[4], "b": ids[5]}])
+    rc, out = run("plan_groups.py", wd, "--shards", 1)
+    check("a record with no relation key stops the run", rc != 0, f"rc={rc} — absorbed silently")
+    check("...naming the file", "relations.json" in out, out[:200])
+    check("...naming the pair", f"{ids[4]}~{ids[5]}" in out, out[:200])
+    check("...and saying which key is missing", "no 'relation' key" in out, out[:200])
+    shutil.rmtree(wd)
+
+    # 2. the 'verdict' spelling, which two scripts used to accept and the last gate refused
+    wd = wd_with(good[:-1] + [{"a": ids[4], "b": ids[5], "verdict": "distinct"}])
+    rc, out = run("plan_groups.py", wd, "--shards", 1)
+    check("the 'verdict' spelling is refused where it enters", rc != 0, f"rc={rc} — accepted")
+    shutil.rmtree(wd)
+
+    # 3. a record missing an id -- used to be a bare KeyError traceback naming no stage
+    wd = wd_with(good[:-1] + [{"b": ids[5], "relation": "distinct"}])
+    rc, out = run("plan_groups.py", wd, "--shards", 1)
+    check("a record with no 'a' id is refused", rc != 0, f"rc={rc}")
+    check("...with a message, not a traceback", "Traceback" not in out, out[:200])
+    shutil.rmtree(wd)
+
+    # 4. CONTROL: the same shape, well formed, still runs -- or the gate refuses everything
+    wd = wd_with(good)
+    rc, out = run("plan_groups.py", wd, "--shards", 1)
+    check("CONTROL: a well-formed relations.json still runs", rc == 0, out[:300])
+    shutil.rmtree(wd)
+
+    # 5. every reader enforces it, not just the first. merge_families reads the same file.
+    wd = wd_with(good[:-1] + [{"a": ids[4], "b": ids[5]}])
+    json.dump({"clusters": [{"cid": "c001", "members": ids}]},
+              open(os.path.join(wd, "clusters.json"), "w"))
+    json.dump({"families": [{"cid": "c001", "label": "f", "lead": ids[0], "members": ids}]},
+              open(os.path.join(wd, "group-result-1.json"), "w"))
+    rc, out = run("merge_families.py", wd)
+    check("merge_families refuses it too, not only the first reader", rc != 0, f"rc={rc}")
+    check("...and does not write families.json",
+          not os.path.exists(os.path.join(wd, "families.json")), "families.json written")
+    shutil.rmtree(wd)
+
+
 def t_promoted_lead_gate():
     """The option the reader meets must be the option that was checked.
 
@@ -2355,7 +2429,8 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
           t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
           t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
-          t_band_header_states_what_was_verified, t_fabricated_id_stops_at_the_first_stage, t_effective_lead,
+          t_band_header_states_what_was_verified, t_fabricated_id_stops_at_the_first_stage,
+          t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
           t_out_path_echo, t_promoted_lead_gate,
           t_lead_assignment_complete):
     t()

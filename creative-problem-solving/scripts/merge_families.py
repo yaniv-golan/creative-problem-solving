@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load
 # One definition of the rule this script exists to obey; see verdicts.py.
 from verdicts import JOINING, SHARE_MAX, share_breach
+from verdicts import relation_of
 from verdicts import share_ok as _share_ok
 
 
@@ -201,7 +202,7 @@ def main(wd, expect):
     rp = os.path.join(wd, "relations.json")
     if os.path.exists(rp):
         for e in load(rp, "relations"):
-            rel[frozenset((e["a"], e["b"]))] = e.get("relation") or e.get("verdict")
+            rel[frozenset((e["a"], e["b"]))] = relation_of(e, "relations.json")
 
     # The same two properties verify_pipeline enforces, checked here so a failure costs one
     # re-dispatch rather than the last gate of a finished run.

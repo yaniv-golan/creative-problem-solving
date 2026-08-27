@@ -7,6 +7,32 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A relations record with no usable verdict was absorbed instead of refused.** `merge_families.py`
+  read `e.get("relation") or e.get("verdict")` and stored the result unchecked, so a record carrying
+  neither key became `None` — and `None` is in neither verdict set, so that pair was silently
+  counted as *unadjudicated* rather than as a corrupt file. The merges and the separating-share
+  rule are computed from exactly those counts. On one recorded grouping with the keys stripped, the
+  run exited 0 and wrote 143 families where the intact file gives 114.
+
+  `verdict` was never a spelling anything produced: `merge_relations.py` refuses a verdict-keyed
+  shard, and no pair record in the repository uses it. Accepting it only let a hand-written file
+  travel two more stages before the last gate refused it, by which point the message could no longer
+  say which file was wrong.
+
+  The record contract now lives once, in `verdicts.py`, and the three scripts that read
+  `relations.json` all route through it. It checks the ids as well as the verdict, so a missing id
+  is a message naming the file and the stage rather than a bare `KeyError` traceback.
+
+  Two things fell out of doing it. `verify_pipeline.py` held the vocabulary twice more as local set
+  literals — one of them in a file already importing it — so `check-repo.py` now also compares set
+  literals by value, since a name-based check cannot see a copy under a new name. And
+  `plan_groups.py` scores with a default, so a verdict the vocabulary allows but its weight table
+  omits would score zero rather than fail; the coverage check that used to catch that indirectly is
+  now stated directly, and exits rather than asserting.
+
+
 ## [0.2.1] — 2026-08-28
 
 ### Fixed
