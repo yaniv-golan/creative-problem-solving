@@ -9,6 +9,27 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Both of `merge_families.py`'s merge paths are bounded, not one of them.** The first pass at
+  this bounded the evidence-scored merge and the no-evidence fallback, and left the pairwise-forced
+  merge — the one that fires when every adjudicated pair between two families joins — unbounded.
+
+  Every cross pair joining does not make the union coherent. Each side can be internally separated
+  while sitting below the ten-pair floor, where the share check passes for want of evidence rather
+  than because the family is sound; the merged family then clears the floor and breaks the rule.
+  Reaching the post-merge backstop that way produced a hard stop at step 6 with no output, on a
+  message that said to re-run with the shards unchanged — which, the script being deterministic, is
+  a guaranteed no-op, and it forbade the only workaround. An unactionable error in the fix for an
+  unactionable error.
+
+  Declining that merge is not a dead end: the leads still collide, the lead search proves no
+  assignment exists, the scored merge refuses the same pair, and the run ends naming a re-run of
+  `plan_groups.py` with more shards. **The backstop now names that action too**, because a caller
+  stopped with no output needs a way forward as well as a diagnosis, even when the diagnosis is
+  that this script has a bug.
+
+  Measured against four recorded groupings: `families.json` is byte-identical with and without the
+  bound, so it costs nothing on data that does not hit the pathological shape.
+
 - **`merge_families.py` can no longer create the violation it just checked for.** The separating-pair
   share rule was enforced against the shards as handed over, and then the script merged families to
   resolve lead collisions. Merging is the one operation that raises that share, and nothing looked

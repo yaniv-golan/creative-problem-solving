@@ -273,6 +273,17 @@ def main(wd, expect):
             # forced only if NO pair of members can serve as leads without joining
             if all(rel.get(frozenset((a, b))) in JOINING
                    for a in fams[i]["members"] for b in fams[j]["members"]):
+                # The share rule binds here too. Every cross pair joining does NOT make the union
+                # coherent: each side can be internally separated below the 10-pair floor, where
+                # share_ok passes trivially, and the merged family then clears the floor and
+                # breaks the rule. Bounding only worst_pinned_pair left this path open, and it
+                # reached the post-merge backstop -- a hard stop with no working action.
+                #
+                # Declining is not a dead end. The leads still collide, so solve_leads proves no
+                # assignment exists, worst_pinned_pair refuses the same merge, and the run ends on
+                # the message that names re-running plan_groups.py with more shards. That is the
+                # repair this state actually needs: shards cut so the verdicts do not support them.
+                if not share_ok(fams[i]["members"] + fams[j]["members"], rel): continue
                 stuck = (i, j); break
         if stuck is None: break
         i, j = stuck
@@ -377,10 +388,16 @@ def main(wd, expect):
     widened = [f for f in fams if not share_ok(f["members"], rel)]
     if widened:
         ex = "; ".join(f"{f['label'][:36]!r} ({len(f['members'])} members)" for f in widened[:3])
+        # Both merge paths are bounded, so reaching this is a bug -- but a caller stopped at step 6
+        # with no output needs a way forward as well as a diagnosis. Saying only "report this" is
+        # the unactionable-error pattern, and it was in this very message until MERGE-A was bounded.
         die(f"{len(widened)} famil(ies) exceed the {SHARE_MAX:.0%} separating share AFTER this "
-            f"script's own merges ({ex}). The merges are supposed to be bounded by that rule, so "
-            f"this is a bug in merge_families.py rather than something the grouping can fix. Do "
-            f"not hand-edit families.json: re-run with the shards unchanged and report this.")
+            f"script's own merges ({ex}). Both merge paths are bounded by that rule, so reaching "
+            f"this is a bug in merge_families.py, not something the shards can be blamed for -- "
+            f"please report it with the group-result-*.json files. To get the run moving: re-run "
+            f"plan_groups.py with more shards so each task is smaller, which changes the families "
+            f"this script is handed. Do not hand-edit families.json, and do not re-run this script "
+            f"unchanged -- it is deterministic and will stop here again.")
 
     order = sorted(range(len(fams)), key=lambda i: (-len(fams[i]["members"]), fams[i]["members"][0]))
     out = [{"id": f"f{n+1:03d}", "label": fams[i]["label"], "members": fams[i]["members"],

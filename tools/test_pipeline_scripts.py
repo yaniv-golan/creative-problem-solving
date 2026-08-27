@@ -1474,6 +1474,67 @@ def t_merge_never_widens_past_the_share_rule():
           mf.worst_pinned_pair(fams, rel2) is not None, "the bound refuses everything")
 
 
+def t_forced_merge_is_bounded_too():
+    """The pairwise-forced merge obeys the share rule, and its refusal names a real action.
+
+    Bounding only worst_pinned_pair left the OTHER merge open. The forced merge at
+    merge_families.py fires when every cross pair between two families joins -- and that does not
+    make the union coherent. Each side can be internally separated while sitting BELOW
+    SHARE_MIN_ADJUDICATED, where share_ok passes trivially for want of evidence; merging then
+    clears the floor and breaks the rule the script had just enforced.
+
+    What made this worth a test rather than a one-line guard: the state it produced was a hard stop
+    at step 6 with no output, on a message that said "re-run with the shards unchanged and report
+    this". The script is deterministic, so that is a guaranteed no-op, and it forbade the only
+    workaround. An unactionable error introduced by the fix for an unactionable error.
+
+    Declining the merge is not a dead end, and that is the half worth asserting: the leads still
+    collide, solve_leads proves no assignment exists, worst_pinned_pair refuses the same merge, and
+    the run ends naming plan_groups.py with more shards -- something the caller can do.
+
+    Costs nothing on real data: measured against four recorded groupings (c6856f21, e948cfc6,
+    4a220c6d, critique-mf-stateA), families.json is byte-identical with and without this bound.
+
+    NEGATIVE CONTROL, run 2026-08-27: removing the `share_ok` guard from the forced-merge arm makes
+    this fixture merge, hit the post-merge backstop, and fail on the message assertion below.
+    """
+    print("\nthe forced merge obeys the share rule and refuses actionably")
+    A = [f"p1-{i:03d}" for i in (1, 2, 3)]
+    B = [f"p2-{i:03d}" for i in (1, 2, 3)]
+    rel = []
+    # Each family internally all-separating, but only 3 pairs -- below the floor, so share_ok is
+    # silent on each half. This is the shape the earlier bound could not see.
+    for fam in (A, B):
+        for x, y in itertools.combinations(fam, 2):
+            rel.append({"a": x, "b": y, "relation": "distinct"})
+    for x in A:                                    # every cross pair joins -> the forced arm fires
+        for y in B:
+            rel.append({"a": x, "b": y, "relation": "implementation_variant"})
+
+    check("the fixture is below the floor on each half, or it proves nothing",
+          len(list(itertools.combinations(A, 2))) < 10, "a half already clears the floor")
+    sep, tot = 6, 15
+    check("...and the union clears the floor and breaks the rule",
+          tot >= 10 and sep / tot > 0.15, f"union is {sep}/{tot} — fixture is vacuous")
+
+    wd = tempfile.mkdtemp()
+    json.dump({"clusters": [{"cid": "c001", "members": A + B}]}, open(f"{wd}/clusters.json", "w"))
+    json.dump({"relations": rel}, open(f"{wd}/relations.json", "w"))
+    json.dump({"families": [{"cid": "c001", "label": "fam A", "lead": A[0], "members": A},
+                            {"cid": "c001", "label": "fam B", "lead": B[0], "members": B}]},
+              open(f"{wd}/group-result-1.json", "w"))
+    rc, out = run("merge_families.py", wd)
+
+    check("it refuses rather than writing a family that breaks the rule",
+          rc != 0 and not os.path.exists(f"{wd}/families.json"),
+          f"rc={rc}, families.json written={os.path.exists(f'{wd}/families.json')}")
+    check("the refusal names an action the caller can take",
+          "plan_groups.py with more shards" in out, f"got: {out[:200]}")
+    check("...and is NOT the internal-bug backstop, which would mean the merge happened",
+          "bug in merge_families.py" not in out, f"reached the post-merge backstop: {out[:200]}")
+    shutil.rmtree(wd)
+
+
 def t_promoted_lead_gate():
     """The option the reader meets must be the option that was checked.
 
@@ -2150,7 +2211,7 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_plan_groups, t_merge_families, t_forced_lead_collision,
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
           t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
-          t_merge_never_widens_past_the_share_rule, t_effective_lead,
+          t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too, t_effective_lead,
           t_out_path_echo, t_promoted_lead_gate,
           t_lead_assignment_complete):
     t()
