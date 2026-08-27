@@ -1430,6 +1430,41 @@ def t_source_link():
           br.source_link("example.org"))
 
 
+def t_effective_lead():
+    """The option a family is presented with, when a refuted lead has been promoted past.
+
+    `verify_pipeline.py` dispatches verification against `members[0]`; the report leads with the
+    first member that was not refuted. The two agree until a lead is refuted, and nothing compared
+    them -- so a refuted lead promotes an option nothing checked, and every gate still passes.
+
+    Recorded instance, preserved at docs/internal/preserved-runs/20260827-run1: family f001 at rank
+    1 promoted p1-005 -> p2-006, which HAD been checked, and family f013 at rank 13 promoted
+    p4-010 -> p2-008, which had not. Both in a shipped report.
+
+    This is the rule stated once so a gate can compare the two without a second implementation of
+    it. The empty case matters as much as the promotion: a family whose every member was refuted
+    has no lead at all, and returning None here is what keeps `live` from handing an empty list to
+    the renderer.
+    """
+    print("\nthe effective lead is the first member that was not refuted")
+    import importlib.machinery as _m
+    br = _m.SourceFileLoader("br_mod2", str(SCRIPTS / "build_report.py")).load_module()
+
+    mem = ["p1-005", "p2-006", "p3-004"]
+    check("with nothing refuted the lead is members[0]",
+          br.effective_lead(mem, set()) == "p1-005", br.effective_lead(mem, set()))
+    check("a refuted lead promotes the next surviving member",
+          br.effective_lead(mem, {"p1-005"}) == "p2-006", br.effective_lead(mem, {"p1-005"}))
+    check("...and promotion skips a run of refuted members rather than stopping at the first",
+          br.effective_lead(mem, {"p1-005", "p2-006"}) == "p3-004",
+          br.effective_lead(mem, {"p1-005", "p2-006"}))
+    # The edge no recorded run exercises: 20260827-run1 has zero fully-rejected families.
+    check("a family with every member refuted has no lead, rather than raising",
+          br.effective_lead(mem, set(mem)) is None, br.effective_lead(mem, set(mem)))
+    check("and an empty family has none either",
+          br.effective_lead([], set()) is None, br.effective_lead([], set()))
+
+
 def t_shard_coverage_check():
     """A pair dealt to an adjudicator that never comes back must fail at the merge, not at the end.
 
@@ -1958,7 +1993,7 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
           t_plan_groups, t_merge_families, t_forced_lead_collision,
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
-          t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
+          t_shard_coverage_check, t_infeasible_lead_core, t_source_link, t_effective_lead,
           t_lead_assignment_complete):
     t()
 

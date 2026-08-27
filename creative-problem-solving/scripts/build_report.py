@@ -53,6 +53,25 @@ def source_link(url):
     return f"[{host or url}]({dest})"
 
 
+def effective_lead(members, rejected):
+    """The option a family is actually presented with: its first member that was not refuted.
+
+    `verify_pipeline.py` targets `members[0]`, and verification is dispatched against that. This
+    returns what the report leads with instead, and the two diverge exactly when a lead is refuted
+    -- at which point the family's face is an option nothing checked.
+
+    Exposed rather than inlined so that a gate comparing the two reads this rule instead of
+    restating it: two implementations of "the lead" is how they came apart in the first place.
+
+    Returns None when every member was refuted. Such a family is not presented at all -- see
+    `live` below, which drops it -- so no caller here ever indexes an empty list.
+    """
+    for m in members:
+        if m not in rejected:
+            return m
+    return None
+
+
 def main(wd, out):
     text, lens_of = {}, {}
     for p in sorted(glob.glob(os.path.join(wd, "pool-*.json"))):
@@ -134,13 +153,14 @@ def main(wd, out):
               "*Not recorded.* The run did not write an `invented` list, so whether anything was "
               "added to the brief is unknown — read the options below without assuming it was not.",
               ""]
-    live = [fid for fid in order if not all(m in rejected for m in fams[fid]["members"])]
+    live = [fid for fid in order if effective_lead(fams[fid]["members"], rejected)]
     dead = [fid for fid in order if fid not in live]
 
     def family_block(rank, fid, lead_prose):
         f = fams[fid]
+        head = effective_lead(f["members"], rejected)
         members = [m for m in f["members"] if m not in rejected]
-        head, rest = members[0], members[1:]
+        rest = [m for m in members if m != head]
         b = [f"### {rank}. {f['label']}", ""]
         b.append(one_line(text[head]))
 

@@ -23,6 +23,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   link at the first parenthesis in a URL and does so silently; a destination holding a paren or a
   space is now bracketed.
 
+- **`build_report.py` states "the family's lead" once, as `effective_lead()`.** The report leads a
+  family with its first member that was not refuted; `verify_pipeline.py` dispatches verification
+  against `members[0]`. The two agree until a lead is refuted, and nothing compared them — so a
+  refuted lead promotes an option nothing checked and every gate still passes. The rule was inlined
+  at the two places `build_report.py` needed it, which is a third and fourth implementation waiting
+  to drift. It is now one named function, so a gate can compare the presented lead against the
+  verified one by reading the rule rather than restating it. Rendering is unchanged: the function
+  returns `None` for a family whose every member was refuted, which is the case `live` already
+  dropped before the renderer could index it.
+
 - **The run hands the reader the report as a file, not only as a message.** Writing a file and
   delivering it are different acts, and which one a path performs depends on the host: the working
   directory a run writes into may be the reader's own, may belong to the session, or may not be
