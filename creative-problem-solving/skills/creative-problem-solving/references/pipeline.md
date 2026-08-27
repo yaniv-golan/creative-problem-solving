@@ -92,10 +92,17 @@ Mint it with the first Bash call, alongside `$CPS`:
 ```
 BASE="$([ -d mnt/outputs ] && echo mnt/outputs || echo outputs)"
 RUN="$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BASE/$RUN/_work"
+mkdir -p "$BASE/$RUN/_work" || { echo "REFUSING: cannot create $BASE/$RUN/_work from $(pwd)"; exit 1; }
 [ -z "$(ls -A "$BASE/$RUN/_work")" ] || { echo "REFUSING: $BASE/$RUN/_work already has files in it"; exit 1; }
-echo "BASE=$BASE RUN=$RUN"
+echo "PWD=$(pwd) BASE=$BASE RUN=$RUN"
 ```
+
+**Run this as the first command in its own call, and read the `PWD=` back.** `$BASE` is relative,
+so it is only meaningful against the directory the shell happened to start in — and each Bash call
+starts wherever the host puts it, not where the last one finished. A probe run after an earlier
+`cd` answers about the wrong place: on the run that produced this paragraph it resolved to a
+read-only location and `mkdir` was the only thing that noticed. If `PWD=` is not where you expect
+the run to live, fix that before generating anything, not after.
 
 **`$RUN` carries no base, and that is the point.** The run is one directory with **two spellings**,
 and which one is correct depends on who is doing the writing:
@@ -112,9 +119,13 @@ doubled path — and **both writes succeed and report success**. The failure is 
 construction, so it is not something a careful run avoids by paying attention.
 
 `$BASE` is computed by the shell for itself, in the same call, because the shell is the only party
-that can answer where the shell is. **Never carry it into a dispatch prompt**, and never build an
-absolute path for a sub-agent: its file tools reject the shell's form, and a `Write` result echoes
-the path it was handed rather than a resolved one, so there is nothing to read back.
+that can answer where the shell is.
+
+**Never carry `$BASE` into a dispatch prompt.** Which spelling a sub-agent's file tools want is
+host-dependent — on some hosts a bare relative path is required, on others an absolute one is — so
+do not assert either. **Check instead of assuming:** after the first dispatch that writes, confirm
+the files landed under `$BASE/$RUN/_work` before continuing. A `Write` result echoes the path it was
+handed rather than a resolved one, so the result tells you nothing; only looking does.
 
 **Echo the line above and keep it.** `BASE=…` in the record is the only thing that makes a wrong
 branch visible; without it a misresolved run looks exactly like a run that wrote nothing.

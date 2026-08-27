@@ -353,12 +353,28 @@ def main(wd):
     if incoherent:
         ex = "; ".join(f"{fid} ({n} members): {s} of {s+j} adjudicated pairs separated = {p:.0%}"
                        for fid, n, s, j, p in incoherent[:4])
-        die(f"{len(incoherent)} famil(ies) hold more contradiction than agreement "
-            f"({ex}{'; …' if len(incoherent) > 4 else ''}). Above {SEP_SHARE_MAX:.0%} the heading "
-            f"is describing a theme rather than a mechanism, and its members were mostly judged "
-            f"to be different interventions — see references/pipeline.md step 6. Split the named "
-            f"famil(ies) by what the options actually do; do not edit relations.json to agree "
-            f"with the grouping.")
+        # THE OLD WORDING WAS FALSE IN BOTH HALVES, AND MEASURABLY SO.
+        #
+        # It said the family holds "more contradiction than agreement" and told the caller to
+        # split it. On the live run that first reached it, the named family was 3 separated of 15
+        # adjudicated -- 80% agreement -- and a brute-force search over every partition of it,
+        # against every lead assignment, found NO arrangement that clears this gate and the lead
+        # gate together. So the instruction was not merely unactionable, it was impossible, and a
+        # caller who trusted it would split a coherent family and still fail.
+        #
+        # What actually produces this state is a merge: merge_families.py measures the share
+        # BEFORE its lead-collision repair merges families, and merging is the one operation that
+        # raises it. So the action that can work is at the grouping stage, not here.
+        die(f"{len(incoherent)} famil(ies) exceed the {SEP_SHARE_MAX:.0%} separating-pair share "
+            f"({ex}{'; …' if len(incoherent) > 4 else ''}). This usually means a merge widened a "
+            f"family past the rule rather than that the grouper mis-split it — merge_families.py "
+            f"checks the share before its own lead repair runs, so a merge can introduce what "
+            f"this refuses. Re-run merge_families.py over the group-result-*.json shards and "
+            f"re-check; if the family survives unchanged, relocating a member whose separating "
+            f"pairs are all with one other member is the move that follows the verdicts. Do not "
+            f"edit relations.json to agree with the grouping, and do not split a family this "
+            f"names without checking that a split can clear both gates — on the run that "
+            f"motivated this wording, none could.")
 
     rkpath = os.path.join(wd, "ranked.json")
     order = load(rkpath, "ranked")

@@ -1111,7 +1111,9 @@ def t_incoherent_family_gate():
         make_tail(d, fams)
         return d
 
-    MSG = "contradiction than agreement"
+    # The gate's own phrasing, which changed once the old wording was measured false: it claimed
+    # the family held more contradiction than agreement, of a family that was 80% agreement.
+    MSG = "separating-pair share"
 
     d = build("blob")
     rc, out = run("verify_pipeline.py", d)
