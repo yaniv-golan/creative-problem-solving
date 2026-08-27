@@ -232,10 +232,36 @@ def main(wd, out):
         # so, with a standing offer to verify on request. That promise used to be made in the
         # skill and kept nowhere -- this band rendered with no label and no offer, and on a run
         # where grouping does little it is most of the report.
+        #
+        # The header states what WAS verified, not what was planned. It used to assert the top 13
+        # flatly, while the per-option markers below it are ungated by rank -- so an option checked
+        # and then ranked below the fold rendered "Checked" underneath a sentence saying nothing
+        # here was checked. That is not hypothetical: the 2026-08-27 preserved run puts three of
+        # them at ranks 15, 18 and 19.
+        #
+        # Three things put a verdict below the fold and only one is a defect: a re-merge that
+        # restaked the ranking after verification; the standing offer two lines down being taken
+        # up; and a verifier simply checking more than it was asked to. The verdict record carries
+        # no rank-at-check-time and no request flag, so this cannot tell them apart -- and it does
+        # not need to. The re-merge case never reaches here: verify_pipeline.py runs first and
+        # refuses a top-13 lead that was never checked. What is left is legitimate, so the honest
+        # move is to count it rather than warn about it.
+        checked_below = sum(1 for fid in rest
+                            if (verdict.get(effective_lead(fams[fid]["members"], rejected), {})
+                                .get("verdict") or "").lower()
+                            in ("confirmed", "no_external_claim"))
         scope = "the lead option of each of the top 13 families"
-        L += ["## The rest, in rank order", "",
-              f"*Not checked by search. Verification covers {scope} only, so the outside-world "
-              f"claims below are unverified — ask me to check any of them and I will.*", ""]
+        if checked_below:
+            n = checked_below
+            L += ["## The rest, in rank order", "",
+                  f"*Mostly not checked by search. Verification covers {scope}, and "
+                  f"{n} option{'s' if n > 1 else ''} below {'were' if n > 1 else 'was'} checked "
+                  f"too — each carries its own marker. Every other outside-world claim below is "
+                  f"unverified — ask me to check any of them and I will.*", ""]
+        else:
+            L += ["## The rest, in rank order", "",
+                  f"*Not checked by search. Verification covers {scope} only, so the outside-world "
+                  f"claims below are unverified — ask me to check any of them and I will.*", ""]
         for fid in rest: L += family_block(rank_of[fid], fid, False)
 
     if rejected:

@@ -9,6 +9,27 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The report's unverified band said what the run planned to check, not what it checked.** The
+  per-option markers are ungated by rank — an option carries `Checked` or `Proposal` wherever it
+  lands — while the header above the band asserted flatly that verification covered the top 13
+  only. An option checked and then ranked below the fold therefore rendered its marker underneath
+  a sentence saying nothing there was checked. The 2026-08-27 run shows three, at ranks 15, 18
+  and 19.
+
+  The header is now counted from the verdicts: it names the scope, then says how many options
+  below the fold were also checked, and reverts to the absolute sentence when none were.
+
+  **No warning accompanies it, deliberately.** Three things put a verdict below the fold and only
+  one is a defect — a re-merge that restaked the ranking after verification, the standing offer to
+  check any option being taken up, and a verifier checking more than it was asked to. The record
+  carries no rank-at-check-time and no request flag, so a warning could not tell them apart and
+  would fire on the two that are working as intended. It does not need to: `verify_pipeline.py`
+  runs before the report and refuses a top-13 lead that nothing checked, so the one case that is a
+  defect stops the run before a reader sees it.
+
+  `references/pipeline.md` now says what that costs: re-running `merge_families.py` after ranking
+  or verification invalidates both, and step 7 and step 8 have to follow it.
+
 - **The separating-pair share rule has one definition.** It was spelled in three scripts and
   implemented four times — `merge_families.py` twice, once as a function and once as an inline
   loop; `plan_groups.py` once; `verify_pipeline.py` once as a hand-rolled loop under its own

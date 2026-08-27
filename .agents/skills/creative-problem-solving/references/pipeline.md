@@ -395,6 +395,12 @@ assumed: a negation round against that structure returned one search-verified op
    and the report is simply shorter than the run paid for. If it names a shard, re-dispatch **only**
    that one.
 
+   **Re-running this after step 7 or 8 invalidates both.** It repairs leads by merging, so the
+   family a lead belongs to can change — which restakes the ranking step 7 produced and the
+   verifications step 8 recorded against it. `verify_pipeline.py` catches the visible half (a
+   top-13 lead nothing checked) and refuses, but it cannot restore the ranking. If you re-run this
+   script after ranking, re-run step 7 and step 8 too, in that order.
+
    **Read the final histogram before moving on.** No script judges this, and it is the one quality
    signal a person can read at a glance. Recorded runs land at roughly half single-member families
    with a largest family in the mid-teens. Far above that on singletons means the run split on

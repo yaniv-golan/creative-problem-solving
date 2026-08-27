@@ -1545,6 +1545,75 @@ def t_forced_merge_is_bounded_too():
     shutil.rmtree(wd)
 
 
+def t_band_header_states_what_was_verified():
+    """The header over the unverified band must describe the verdicts, not the plan.
+
+    build_report emits `*Checked -- <source>*` and `*Proposal -- nothing to verify*` with NO rank
+    gate, while `*Not verified*` is gated on rank <= 13. The band header asserted flatly that
+    verification covered the top 13 only. So an option checked and then ranked below the fold
+    rendered a Checked marker underneath a sentence saying nothing there was checked.
+
+    Observed, not hypothetical: the preserved 2026-08-27 run renders three of them, at ranks 15,
+    18 and 19, under that header.
+
+    Three things put a verdict below the fold and only ONE is a defect: a re-merge that restaked
+    the ranking after verification, the standing "ask me to check any of them" offer being taken
+    up, and a verifier checking more than it was asked to. The record carries no rank-at-check-time
+    and no request flag, so the report cannot separate them -- and it does not have to. The
+    re-merge case cannot reach the report: pipeline.md runs verify_pipeline BEFORE build_report,
+    and it refuses a top-13 lead that was never checked. The rest are legitimate, so the header
+    counts them instead of warning about them.
+
+    NEGATIVE CONTROL, run 2026-08-28: the same fixture with that one verdict removed must render
+    the original absolute sentence. Without it this test would pass on a header that says
+    "N below were checked" unconditionally, which is a different false claim.
+    """
+    print("\nthe band header states what was verified, not what was planned")
+    for below_is_checked in (True, False):
+        wd = tempfile.mkdtemp()
+        _ids, fams = full_fixture(wd, multi=False)
+        order = json.load(open(os.path.join(wd, "ranked.json")))["ranked"]
+        if len(order) < 15:
+            shutil.rmtree(wd)
+            check("the fixture reaches a rest band at all", False,
+                  f"only {len(order)} families — nothing ranks below 13, so the band never renders")
+            return
+        by = {f["id"]: f for f in fams}
+        below_lead = by[order[14]]["members"][0]          # rank 15: below the fold
+
+        vf = os.path.join(wd, "verified-1.json")
+        rec = json.load(open(vf))
+        if below_is_checked:
+            rec["checked"].append({"id": below_lead, "query": "q", "verdict": "confirmed",
+                                   "source_url": "https://example.org/a", "quote": "q"})
+        json.dump(rec, open(vf, "w"))
+
+        out = os.path.join(wd, "r.md")
+        rc, err = run("build_report.py", wd, "--out", out)
+        check(f"build_report runs (below_checked={below_is_checked})", rc == 0, err[:200])
+        body = open(out, encoding="utf-8").read()
+        head = [ln for ln in body.splitlines() if ln.startswith("*Not checked by search")
+                or ln.startswith("*Mostly not checked by search")]
+        check("...and renders exactly one band header", len(head) == 1, f"got {len(head)}")
+
+        if below_is_checked:
+            check("a verdict below the fold is counted in the header",
+                  head and "1 option below was checked" in head[0], f"header reads: {head[:1]}")
+            check("...and the absolute claim is gone",
+                  head and not head[0].startswith("*Not checked by search"),
+                  "header still asserts nothing below was checked")
+        else:
+            check("NEGATIVE CONTROL: with no verdict below the fold the absolute sentence returns",
+                  head and head[0].startswith("*Not checked by search"),
+                  f"header reads: {head[:1]}")
+
+        # The canonical scope phrase must survive both branches -- check-repo.py requires it in
+        # this file's source, and the reader needs it in the output.
+        check("the scope phrase survives",
+              "the lead option of each of the top 13 families" in body, "scope phrase missing")
+        shutil.rmtree(wd)
+
+
 def t_promoted_lead_gate():
     """The option the reader meets must be the option that was checked.
 
@@ -2221,7 +2290,8 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_plan_groups, t_merge_families, t_forced_lead_collision,
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
           t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
-          t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too, t_effective_lead,
+          t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
+          t_band_header_states_what_was_verified, t_effective_lead,
           t_out_path_echo, t_promoted_lead_gate,
           t_lead_assignment_complete):
     t()
