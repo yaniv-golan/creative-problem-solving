@@ -32,7 +32,7 @@ body:
     attributes:
       label: Skill version
       description: From `VERSION`, or the `metadata.version` line in `SKILL.md`.
-      placeholder: "0.2.0"
+      placeholder: "0.2.1"
     validations:
       required: true
 

@@ -7,6 +7,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-08-28
+
 ### Fixed
 
 - **Two refusals that sent the caller in a circle, and one that stopped halfway.**
