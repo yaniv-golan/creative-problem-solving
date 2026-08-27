@@ -7,6 +7,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-08-28
+
 ### Fixed
 
 - **A relations record with no usable verdict was absorbed instead of refused.** `merge_families.py`
@@ -32,21 +34,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   omits would score zero rather than fail; the coverage check that used to catch that indirectly is
   now stated directly, and exits rather than asserting.
 
+- **Two refusals that named no action the caller could take.** The incoherent-family refusal now
+  points at re-running `merge_families.py` — which bounds its own merges by that rule, so a
+  `families.json` written before that, or by hand, is what it usually catches — and defers to that
+  script's own refusal if it fires instead, rather than sending the caller back into a loop.
 
-## [0.2.1] — 2026-08-28
-
-### Fixed
-
-- **Two refusals that sent the caller in a circle, and one that stopped halfway.**
-  `verify_pipeline.py` told a caller to re-run `merge_families.py`; `merge_families.py`'s own
-  backstop tells them not to re-run it unchanged. Both are right about their own case and a caller
-  who followed the first into the second was told the opposite of what sent them, so the first now
-  names the branch and points at the action the second gives.
-
-  And a top-13 option that was never checked said only that. The usual cause is a re-merge after
-  ranking, which leaves the ranking stale as well — so verifying just the options it named would
-  have cleared the gate while the report stayed ranked on families that no longer exist. It now
-  says to re-rank first, then verify against the new top 13.
+  And a top-13 option that was never checked said only that. Naming "verify these" would have been
+  worse than nothing: the usual cause is a re-merge after ranking, so the ranking is stale too, and
+  verifying the named options against it would clear the gate while the report stayed ordered on
+  families that no longer exist. It says re-rank first, then verify the new top 13.
 
 - **A proposed option id that no pool contains now stops the run at the first stage that can see
   it.** Nothing checked that the pair proposer named real options. On one run a fabricated id
@@ -115,47 +111,30 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `verify_pipeline.py`'s local `ALLOWED` set, `merge_relations.py`'s `SEPARATION` ordering and
   `plan_groups.py`'s `WEIGHT` signs. Unifying those is a separate change.
 
-- **Both of `merge_families.py`'s merge paths are bounded, not one of them.** The first pass at
-  this bounded the evidence-scored merge and the no-evidence fallback, and left the pairwise-forced
-  merge — the one that fires when every adjudicated pair between two families joins — unbounded.
+- **`merge_families.py` can no longer create the share violation it checks for.** It measured the
+  separating-pair share against the shards it was handed, then merged families to repair lead
+  collisions — and merging is the one operation that raises that share. Nothing looked again, so
+  the last gate in `verify_pipeline.py` could be handed a grouping breaking a rule this same script
+  had already enforced, on a refusal that named no action which fixes it.
 
-  Every cross pair joining does not make the union coherent. Each side can be internally separated
-  while sitting below the ten-pair floor, where the share check passes for want of evidence rather
-  than because the family is sound; the merged family then clears the floor and breaks the rule.
-  Reaching the post-merge backstop that way produced a hard stop at step 6 with no output, on a
-  message that said to re-run with the shards unchanged — which, the script being deterministic, is
-  a guaranteed no-op, and it forbade the only workaround. An unactionable error in the fix for an
-  unactionable error.
+  On a recorded run that produced a six-member family at 3 separated of 15, and the run shipped
+  with the gate red, because working around it was the only move left.
 
-  Declining that merge is not a dead end: the leads still collide, the lead search proves no
-  assignment exists, the scored merge refuses the same pair, and the run ends naming a re-run of
-  `plan_groups.py` with more shards. **The backstop now names that action too**, because a caller
-  stopped with no output needs a way forward as well as a diagnosis, even when the diagnosis is
-  that this script has a bug.
+  All three merge paths are bounded now: the evidence-scored one, the no-evidence fallback, and the
+  pairwise-forced arm that fires when every adjudicated pair between two families joins. That last
+  one matters most and is the least obvious — each side can be internally separated while sitting
+  below the ten-pair floor, where the share check passes for want of evidence rather than because
+  the family is sound, and the union then clears the floor and breaks the rule.
 
-  Measured against four recorded groupings: `families.json` is byte-identical with and without the
-  bound, so it costs nothing on data that does not hit the pathological shape.
+  Refusing a merge is not a dead end: the leads still collide, the lead search proves no assignment
+  exists, and the run ends naming a re-run of `plan_groups.py` with more shards — something the
+  caller can act on. A post-merge re-check backstops all three and names that same action, because
+  a caller stopped at step 6 with no output needs a way forward as well as a diagnosis, even when
+  the diagnosis is a bug in this script.
 
-- **`merge_families.py` can no longer create the violation it just checked for.** The separating-pair
-  share rule was enforced against the shards as handed over, and then the script merged families to
-  resolve lead collisions. Merging is the one operation that raises that share, and nothing looked
-  again — so the last gate in `verify_pipeline.py` could be handed a grouping breaking a rule this
-  same script had already enforced, and its refusal named no action that fixes it.
-
-  On a recorded run this produced a six-member family at 3 separated of 15, and the run shipped
-  with that gate red because working around it was the only thing left to do. Both merge paths are
-  now bounded by the rule: the evidence-scored one and the no-evidence fallback, which merged the
-  two smallest families unconditionally and was the more dangerous of the two — it is reached
-  exactly when there are no verdicts to steer by. If no admissible merge exists, the script says
-  the shards are cut in a way the verdicts do not support and names re-running `plan_groups.py`
-  with more shards, which is an action the caller can take.
-
-  A post-merge re-check backstops both, and blames itself: reaching it means the bound has a bug,
-  so it says so rather than asking the caller to repair a grouping the script chose.
-
-  Measured across four recorded groupings: the one that was broken loses its violation with the
-  same 123 families and 13 of 275 options re-routed locally; the other three produce
-  byte-identical `families.json`.
+  Measured against four recorded groupings: the broken one loses its violation at the same 123
+  families with 13 of 275 options re-routed locally, and the other three produce byte-identical
+  `families.json`.
 
 - **`SKILL.md` is read by a model, and now reads like it.** The file carried prose that explained
   the author's choices rather than telling the reader what to do — why a section sits where it
@@ -179,7 +158,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   the phase that writes the answer — along with the pruning steps and the gotchas list. They are
   now `references/report.md`, `references/pruning.md` and `references/gotchas.md`, each required
   where it is required and each pointed to from a body section that survives. `SKILL.md` drops from
-  35,218 to 21,660 characters.
+  34,511 to 20,186 characters.
 
   It is still over the limit, and the parts still at risk are named rather than papered over:
   what remains above the cap is Phase 0, the lens table and the pass template, all of which are
@@ -221,16 +200,6 @@ project adheres to [Semantic Versioning](https://semver.org/).
   a report claiming a verified top thirteen and carrying twelve. `verify_pipeline.py` now refuses
   that, naming the family and both options, and asks for a verifier on the promoted one. The two
   scripts read one shared definition of the lead rather than two, which is how they came apart.
-
-- **The `ECHO SCAN` block says what it is.** `--check` prints a list of lines whose wording came
-  from what Phase 0 invented rather than from the reader, and contributes nothing to the exit code
-  — but nothing said so where anyone acting on the output would see it, leaving a hit readable
-  either as a failure to edit away or as noise to ignore. Both are wrong. The block now carries its
-  status on its own header line, and step 10 says what separates a real leak from the ordinary
-  words that dominate it: whether the line tells the reader something about themselves they did not
-  say. Two things stated precisely rather than conveniently — a printed block does not mean
-  `--check` passed, because two checks run after it; and the scan prints nothing at all when it has
-  nothing to report, so its absence is not a pass either.
 
 - **The grouping wait is described as it now is.** The heartbeat told the reader to expect "twenty
   to thirty minutes of silence" while families were formed. Measured: the grouper dispatches take
@@ -280,15 +249,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   returns `None` for a family whose every member was refuted, which is the case `live` already
   dropped before the renderer could index it.
 
-- **The ECHO SCAN block states its own status.** The scan is advisory by design — the reasoning is
-  in `_echo_scan`'s docstring, and it is the same doctrine as the warn-only concentration and
-  verdict-mix bands. What it never said is that it is advisory, in the place a reader meets it: a
-  list of `line N: [...]` hits reads as a defect list in every other tool they use, so a hit was
-  available to be read either as something to edit away or as noise to ignore. The header now says
-  `advisory. Nothing below fails --check.` — scoped deliberately, since two checks that can exit
-  non-zero run after the scan, so it cannot claim the run passed. It also says the scan is silent
-  when it finds nothing, because absence of the block is not a pass signal and had no other way of
-  being known.
+- **The ECHO SCAN block states its own status.** The scan is advisory by design — the same doctrine
+  as the warn-only concentration and verdict-mix bands. What it never said is that it is advisory,
+  in the place a reader meets it: a list of `line N: [...]` hits reads as a defect list in every
+  other tool, so a hit was available to be read either as something to edit away or as noise to
+  ignore. Both readings are wrong. The header now says `advisory. Nothing below fails --check.` —
+  scoped deliberately, because two checks that can exit non-zero run after the scan, so a printed
+  block cannot claim the run passed. It also says the scan is silent when it finds nothing, since
+  absence of the block is not a pass signal and had no other way of being known.
+
+  Step 10 now also says what separates a real leak from the ordinary words that dominate the list:
+  whether the line tells the reader something about themselves they did not say.
 
 - **`build_report.py` echoes the resolved path it wrote the report to.** `--out` names the
   deliverable — the file a reader opens, and the only path anyone would hand to a delivery step —
