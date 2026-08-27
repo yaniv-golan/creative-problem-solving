@@ -1391,6 +1391,45 @@ def t_cross_cluster_merge():
 
 
 
+def t_source_link():
+    """A source renders as its domain, and a destination that would end the link early is bracketed.
+
+    The whole point of this function is that a reader weighs the domain, not a hundred characters
+    of percent-encoded path set mid-sentence. Two of its branches had never been reached by a test
+    or by any recorded run, which is how a rendering bug ships: it produces a link that goes
+    SOMEWHERE, just not where it says, and nothing about the output looks wrong.
+
+    A parenthesis or a space in the URL ends `](...)` at the wrong character, silently. Pointy
+    brackets fix that -- except for a URL already holding a bracket, which cannot be delimited at
+    all, so it degrades to bare text on the reasoning that a name with no link beats a link to the
+    wrong place.
+
+    NEGATIVE CONTROL, run 2026-08-27: removing the `any(c in url for c in "() \t")` guard makes the
+    paren and space cases render `](https://...(...))`, and the two assertions below fail.
+    """
+    print("\na source renders as its domain, with destinations that would break the link bracketed")
+    import importlib.machinery as _m
+    br = _m.SourceFileLoader("br_mod", str(SCRIPTS / "build_report.py")).load_module()
+
+    check("a plain url renders as its bare domain",
+          br.source_link("https://www.iaa.gov.il/en/airports/") == "[iaa.gov.il](https://www.iaa.gov.il/en/airports/)",
+          br.source_link("https://www.iaa.gov.il/en/airports/"))
+    # The branch no run had reached: a paren in the path ends the markdown link early.
+    paren = "https://en.wikipedia.org/wiki/Bookshop_(retail)"
+    check("a parenthesis in the path is bracketed rather than ending the link",
+          br.source_link(paren) == f"[en.wikipedia.org](<{paren}>)", br.source_link(paren))
+    space = "https://example.org/a report.pdf"
+    check("...and so is a space", br.source_link(space) == f"[example.org](<{space}>)",
+          br.source_link(space))
+    # A url already holding a pointy bracket cannot be delimited, so it must not be linked at all.
+    check("a url holding a bracket degrades to bare text rather than a wrong link",
+          br.source_link("https://example.org/a<b") == "example.org",
+          br.source_link("https://example.org/a<b"))
+    check("a bare hostname with no scheme still renders",
+          br.source_link("example.org") == "[example.org](example.org)",
+          br.source_link("example.org"))
+
+
 def t_shard_coverage_check():
     """A pair dealt to an adjudicator that never comes back must fail at the merge, not at the end.
 
@@ -1919,7 +1958,7 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
           t_plan_groups, t_merge_families, t_forced_lead_collision,
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
-          t_shard_coverage_check, t_infeasible_lead_core,
+          t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
           t_lead_assignment_complete):
     t()
 
