@@ -24,7 +24,7 @@ abstract: >-
   designs, the inconclusive ablations, and the rounds where the skill lost to a plain
   prompt.
 license: MIT
-version: 0.2.1
+version: 0.3.0
 date-released: "2026-08-24"
 keywords:
   - agent-skills

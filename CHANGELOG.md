@@ -7,7 +7,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.2.1] — 2026-08-28
+## [0.3.0] — 2026-08-28
+
+### Added
+
+- **The run hands the reader the report as a file, not only as a message.** Writing a file and
+  delivering it are different acts, and which one a path performs depends on the host: the working
+  directory a run writes into may be the reader's own, may belong to the session, or may not be
+  somewhere they can reach at all. Step 10 now says to present the report as well as sending its
+  contents, described as an outcome rather than by naming a tool, because the tool differs by host
+  and naming one makes the instruction wrong on the others.
 
 ### Fixed
 
@@ -269,13 +278,6 @@ project adheres to [Semantic Versioning](https://semver.org/).
   success. Same `  wrote to <abs>` form as the four other writing scripts, so one line parses
   across all five. This does not fix placement; it makes a misplaced deliverable visible at the
   write rather than inferred later from a delivery step that refuses a file it cannot see.
-
-- **The run hands the reader the report as a file, not only as a message.** Writing a file and
-  delivering it are different acts, and which one a path performs depends on the host: the working
-  directory a run writes into may be the reader's own, may belong to the session, or may not be
-  somewhere they can reach at all. Step 10 now says to present the report as well as sending its
-  contents, described as an outcome rather than by naming a tool, because the tool differs by host
-  and naming one makes the instruction wrong on the others.
 
 - **The `outputs/` paragraph says which host it describes.** It promised a directory in "whatever
   directory you invoked it from" that is never cleaned up, with advice to gitignore it — true from
