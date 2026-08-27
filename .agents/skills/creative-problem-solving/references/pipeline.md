@@ -505,6 +505,18 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     families missing, comparing against a manifest the build step wrote beside the report, and
     fails if that manifest is absent rather than passing without it.
 
+    **It also prints an `ECHO SCAN` block, and that block is advisory — `--check` exits zero with
+    hits in it.** They are not failures and there is nothing to fix. Each hit is a line of your
+    prose containing a word that entered through Phase 0's inventions and is not in the reader's
+    own wording — the pressures and constraints the run added to push the passes past the obvious
+    answer. The scan cannot tell an invented premise being *used* from one being *asserted to the
+    reader as their own situation*, and only the second is a defect. So read the lines it names,
+    and change one only if it tells the reader something about themselves they did not tell you.
+    Expect hits whenever Phase 0 invented anything: this is a list of places to look, and zero
+    hits is not the target. **Do not edit option text to empty the block** — the options are the
+    checked artifact, the scan is a reading aid, and silencing it costs you the thing it was
+    pointing at.
+
     **The file is the answer, and the reply is the file.** Emit its contents as your reply. Do
     not compose a second, shorter version: everything in the report has been through the checks
     above, and a summary written afterwards has been through none of them. In the run that
