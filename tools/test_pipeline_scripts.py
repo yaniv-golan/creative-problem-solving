@@ -1415,6 +1415,65 @@ def t_cross_cluster_merge():
 
 
 
+def t_merge_never_widens_past_the_share_rule():
+    """A merge may not create the violation the pre-merge check just cleared.
+
+    merge_families measures the separating share against the shards it is handed, and then merges
+    families to repair lead collisions. Merging is the one operation that raises that share, and
+    nothing re-checked -- so the script could hand verify_pipeline a grouping breaking the rule
+    this same script had already enforced.
+
+    That is not theoretical. On the 2026-08-27 live run it produced a six-member family at 3
+    separated of 15, verify_pipeline refused at the last gate, and the run SHIPPED anyway with the
+    gate red, because the refusal named no action that works. Measured against that run's shards:
+    1 violation before, 0 after, and families.json is byte-identical on the two other runs with
+    shards preserved -- so the bound re-routes the one bad merge and changes nothing else.
+
+    Two separate things are asserted here because they fail differently: the bound (a merge that
+    would widen past the rule is not chosen) and the backstop (if one somehow is, the script says
+    so instead of writing it).
+
+    NEGATIVE CONTROL, run 2026-08-27: removing the `share_ok(a + b, rel)` guard from
+    worst_pinned_pair puts the violation back and the first assertion fails.
+
+    METHOD NOTE, because this cost most of a day: an earlier attempt measured "the bound does not
+    work" by inserting the guard without defining share_ok, running with stderr discarded, and then
+    reading a families.json that a `cp` had staged rather than the run had written. The script had
+    died on NameError. Assert on what the run WROTE, and never silence stderr while measuring.
+    """
+    print("\na merge may not widen a family past the share rule")
+    import importlib.machinery as _m
+    mf = _m.SourceFileLoader("mf_share", str(SCRIPTS / "merge_families.py")).load_module()
+
+    # Two 3-member families, joined so a merge is attractive, whose union is 4 of 15 separated.
+    A = [f"p1-{i:03d}" for i in (1, 2, 3)]
+    B = [f"p2-{i:03d}" for i in (1, 2, 3)]
+    rel = {}
+    for x, y in itertools.combinations(A, 2): rel[frozenset((x, y))] = "implementation_variant"
+    for x, y in itertools.combinations(B, 2): rel[frozenset((x, y))] = "implementation_variant"
+    cross = [(x, y) for x in A for y in B]
+    for x, y in cross[:5]: rel[frozenset((x, y))] = "implementation_variant"
+    for x, y in cross[5:]: rel[frozenset((x, y))] = "distinct"
+
+    check("the union really does breach the rule, or this fixture proves nothing",
+          not mf.share_ok(A + B, rel), "union is within the share rule — fixture is vacuous")
+    check("...while each family alone is fine",
+          mf.share_ok(A, rel) and mf.share_ok(B, rel), "a half already breaches")
+
+    fams = [{"members": A, "label": "fam-A", "cid": "c001"},
+            {"members": B, "label": "fam-B", "cid": "c001"}]
+    pair = mf.worst_pinned_pair(fams, rel)
+    check("the merge that would widen past the rule is not chosen",
+          pair is None, f"chose {pair} — the bound did not hold")
+
+    # And the same instance with the separating pairs removed must still merge, or the bound is
+    # refusing everything rather than refusing the wrong thing.
+    rel2 = dict(rel)
+    for x, y in cross[5:]: rel2[frozenset((x, y))] = "implementation_variant"
+    check("...and a merge that stays inside the rule is still chosen",
+          mf.worst_pinned_pair(fams, rel2) is not None, "the bound refuses everything")
+
+
 def t_promoted_lead_gate():
     """The option the reader meets must be the option that was checked.
 
@@ -2090,7 +2149,8 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
           t_plan_groups, t_merge_families, t_forced_lead_collision,
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
-          t_shard_coverage_check, t_infeasible_lead_core, t_source_link, t_effective_lead,
+          t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
+          t_merge_never_widens_past_the_share_rule, t_effective_lead,
           t_out_path_echo, t_promoted_lead_gate,
           t_lead_assignment_complete):
     t()

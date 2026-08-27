@@ -96,6 +96,23 @@ def solve_leads(fams, rel, budget=None):
     return assign, True
 
 
+def share_ok(members, rel):
+    """The separating-pair share rule, in one place because three callers now need it.
+
+    It was written inline as a pre-merge check, and the merges that follow could raise the share
+    the check had just measured -- so the script could hand verify_pipeline a grouping violating
+    the rule this script had already enforced. That reached a reader: a live run refused at the
+    last gate on a family a merge had widened, and shipped anyway because the refusal named no
+    action that worked.
+    """
+    s = j = 0
+    for a, b in itertools.combinations(members, 2):
+        v = rel.get(frozenset((a, b)))
+        if v in SEPARATING: s += 1
+        elif v in JOINING: j += 1
+    return not (s + j >= SHARE_MIN_ADJUDICATED and s / (s + j) > SHARE_MAX)
+
+
 def worst_pinned_pair(fams, rel):
     """The two families most tightly bound by the verdicts, so merging them follows the evidence.
 
@@ -110,11 +127,22 @@ def worst_pinned_pair(fams, rel):
         tot = len(a) * len(b)
         jn = sum(1 for x in a for y in b if rel.get(frozenset((x, y))) in JOINING)
         if not jn: continue
+        # A merge is the only operation here that can raise a family's separating share, and the
+        # share was measured before this loop runs. Refuse the ones that would break it: the
+        # search then finds a different escape rather than handing the last gate a violation it
+        # names no working action for.
+        if not share_ok(a + b, rel): continue
         key = (-jn / tot, -jn, min(a), min(b))
         if best is None or key < best[0]: best = (key, i, j)
-    if best is None:                      # no joining evidence anywhere: merge the two smallest
+    if best is None:
+        # No joining evidence anywhere, so fall back to the two smallest -- but the share rule
+        # still binds. This fallback used to merge unconditionally, which put the bound above
+        # back at the one moment it matters most: the case with no evidence to steer by.
         order = sorted(range(len(fams)), key=lambda i: (len(fams[i]["members"]), fams[i]["members"][0]))
-        return tuple(sorted(order[:2]))
+        for i, j in itertools.combinations(order, 2):
+            if share_ok(fams[i]["members"] + fams[j]["members"], rel):
+                return tuple(sorted((i, j)))
+        return None                       # nothing can be merged without breaking the rule
     return best[1], best[2]
 
 
@@ -328,11 +356,31 @@ def main(wd, expect):
                 f"({ex}). Re-run merge_families.py with --lead-budget set higher than "
                 f"{LEAD_NODES}; if it still exhausts, the partition is too large to settle here "
                 f"and plan_groups.py should be re-run with more shards so each task is smaller.")
-        i, j = worst_pinned_pair(fams, rel)
+        pair = worst_pinned_pair(fams, rel)
+        if pair is None:
+            die(f"{len(fams)} families still collide on their leads, and every merge that would "
+                f"resolve a collision would push a family past the {SHARE_MAX:.0%} separating "
+                f"share -- so there is no repair available at this stage. This means the shards "
+                f"were cut in a way the adjudicated verdicts do not support. Re-run "
+                f"plan_groups.py with more shards so each task is smaller, then re-run this "
+                f"script; do not hand-edit families.json.")
+        i, j = pair
         fams[i]["members"] = fams[i]["members"] + fams[j]["members"]
         fams[i]["label"] = f"{fams[i]['label']}; {fams[j]['label']}"
         fams.pop(j); forced_merged += 1
     merged_back += forced_merged
+
+    # The pre-merge check above measured the shards as given; everything since has merged. This is
+    # the same rule applied to what is actually about to be written, and with the bound in
+    # worst_pinned_pair it should never fire -- which is why it names that as the bug rather than
+    # asking the caller to repair a grouping the script chose.
+    widened = [f for f in fams if not share_ok(f["members"], rel)]
+    if widened:
+        ex = "; ".join(f"{f['label'][:36]!r} ({len(f['members'])} members)" for f in widened[:3])
+        die(f"{len(widened)} famil(ies) exceed the {SHARE_MAX:.0%} separating share AFTER this "
+            f"script's own merges ({ex}). The merges are supposed to be bounded by that rule, so "
+            f"this is a bug in merge_families.py rather than something the grouping can fix. Do "
+            f"not hand-edit families.json: re-run with the shards unchanged and report this.")
 
     order = sorted(range(len(fams)), key=lambda i: (-len(fams[i]["members"]), fams[i]["members"][0]))
     out = [{"id": f"f{n+1:03d}", "label": fams[i]["label"], "members": fams[i]["members"],

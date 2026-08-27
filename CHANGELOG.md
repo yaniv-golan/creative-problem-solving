@@ -9,6 +9,27 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **`merge_families.py` can no longer create the violation it just checked for.** The separating-pair
+  share rule was enforced against the shards as handed over, and then the script merged families to
+  resolve lead collisions. Merging is the one operation that raises that share, and nothing looked
+  again — so the last gate in `verify_pipeline.py` could be handed a grouping breaking a rule this
+  same script had already enforced, and its refusal named no action that fixes it.
+
+  On a recorded run this produced a six-member family at 3 separated of 15, and the run shipped
+  with that gate red because working around it was the only thing left to do. Both merge paths are
+  now bounded by the rule: the evidence-scored one and the no-evidence fallback, which merged the
+  two smallest families unconditionally and was the more dangerous of the two — it is reached
+  exactly when there are no verdicts to steer by. If no admissible merge exists, the script says
+  the shards are cut in a way the verdicts do not support and names re-running `plan_groups.py`
+  with more shards, which is an action the caller can take.
+
+  A post-merge re-check backstops both, and blames itself: reaching it means the bound has a bug,
+  so it says so rather than asking the caller to repair a grouping the script chose.
+
+  Measured across four recorded groupings: the one that was broken loses its violation with the
+  same 123 families and 13 of 275 options re-routed locally; the other three produce
+  byte-identical `families.json`.
+
 - **`SKILL.md` is read by a model, and now reads like it.** The file carried prose that explained
   the author's choices rather than telling the reader what to do — why a section sits where it
   does, what a rule is really about, where a contract lives and why. None of it changes what a run
