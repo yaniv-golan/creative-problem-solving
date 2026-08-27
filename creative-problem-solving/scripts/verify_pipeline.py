@@ -28,6 +28,17 @@ from build_report import effective_lead
 # equal to the plant would turn one such drop into a failure at the last gate of a long run.
 PROBE_FLOOR = 40
 
+# The share rule lives here at module scope so a gate can IMPORT it and compare against
+# merge_families.py, which is the only reason its bound clears this file's check. While these sat
+# inside main() no gate could reach them, and the two files agreed only by coincidence.
+#
+# They are still three copies (plan_groups.py holds the sets too). check-repo.py asserts all three
+# agree; a single shared definition would be the stronger fix and is a design change, not this one.
+SEPARATING = {"distinct", "shared_component"}
+JOINING = {"duplicate", "implementation_variant"}
+SEP_SHARE_MAX = 0.15
+SEP_SHARE_MIN_ADJUDICATED = 10
+
 def die(msg):
     print(f"FAIL: {msg}"); sys.exit(1)
 
@@ -250,8 +261,6 @@ def main(wd):
         die(f"joinable.json invents {len(extra)} pair(s) not in relations.json, e.g. "
             f"{[ '~'.join(sorted(x)) for x in list(extra)[:4] ]}")
 
-    SEPARATING = {"distinct", "shared_component"}
-    JOINING = {"duplicate", "implementation_variant"}
     rel_of = {frozenset((e["a"], e["b"])): e.get("relation") for e in rel}
 
     # NO TWO FAMILIES MAY LEAD WITH THE SAME MOVE.
@@ -337,8 +346,6 @@ def main(wd):
     #
     # The minimum exists because a 4-member family with 3 of 6 pairs separating is 50% on almost
     # no evidence; below the minimum the finding stays a warning, above it the run stops.
-    SEP_SHARE_MAX = 0.15
-    SEP_SHARE_MIN_ADJUDICATED = 10
     incoherent = []
     for f in fams:
         mem = f.get("members") or []

@@ -9,6 +9,7 @@ instead of quietly producing a shorter list nobody notices.
 
 Fixtures are synthetic and deliberately so. Real run data belongs to whoever ran it.
 """
+import importlib.machinery
 import itertools, json, os, random, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
@@ -1511,11 +1512,18 @@ def t_forced_merge_is_bounded_too():
         for y in B:
             rel.append({"a": x, "b": y, "relation": "implementation_variant"})
 
+    # Derived from the script, not restated. These two numbers decide whether this fixture proves
+    # anything at all: if the rule is retuned and the guard is not, the test goes on passing while
+    # the shape it names stops existing. check-repo.py asserts this import is here.
+    from_share_rule = importlib.machinery.SourceFileLoader(
+        "mf_rule", str(SCRIPTS / "merge_families.py")).load_module()
+    FLOOR, CEIL = from_share_rule.SHARE_MIN_ADJUDICATED, from_share_rule.SHARE_MAX
+
     check("the fixture is below the floor on each half, or it proves nothing",
-          len(list(itertools.combinations(A, 2))) < 10, "a half already clears the floor")
+          len(list(itertools.combinations(A, 2))) < FLOOR, "a half already clears the floor")
     sep, tot = 6, 15
     check("...and the union clears the floor and breaks the rule",
-          tot >= 10 and sep / tot > 0.15, f"union is {sep}/{tot} — fixture is vacuous")
+          tot >= FLOOR and sep / tot > CEIL, f"union is {sep}/{tot} — fixture is vacuous")
 
     wd = tempfile.mkdtemp()
     json.dump({"clusters": [{"cid": "c001", "members": A + B}]}, open(f"{wd}/clusters.json", "w"))

@@ -9,6 +9,22 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The share rule was spelled in four places and compared in none.** `merge_families.py` bounds its
+  merges by that rule for one reason: so what it writes clears `verify_pipeline.py`'s gate. The two
+  files held the numbers separately and agreed by coincidence — `verify_pipeline.py`'s copy was
+  function-local, where no gate could reach it — so retuning either would have broken the bound in
+  the shipping direction: a merge writes a family the gate then refuses, naming no action.
+
+  The constants are now module-scoped, and `check-repo.py` asserts the ceiling, the floor and both
+  verdict sets agree across `merge_families.py`, `verify_pipeline.py` and `plan_groups.py`, which
+  holds the sets a third time. Sets are compared as sets: two of the files spell them in different
+  literal order, so a text comparison would fail on files that agree.
+
+  The fourth copy was in the test that guards all this. `test_pipeline_scripts.py`'s forced-merge
+  fixture restated the floor and ceiling to prove itself non-vacuous — the one assertion that
+  decides whether the fixture tests anything — so a retune would have left it passing while the
+  shape it names no longer existed. It derives them from the script now, and a check enforces that.
+
 - **Both of `merge_families.py`'s merge paths are bounded, not one of them.** The first pass at
   this bounded the evidence-scored merge and the no-evidence fallback, and left the pairwise-forced
   merge — the one that fires when every adjudicated pair between two families joins — unbounded.
