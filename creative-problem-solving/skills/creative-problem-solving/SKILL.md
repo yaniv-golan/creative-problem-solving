@@ -24,6 +24,12 @@ The sentence to hold onto: *structure that makes the next idea harder to reach f
 structure that decorates a single sweep produces longer output that scores better and isn't
 better.*
 
+## When not to use this
+
+Problems with one correct answer, debugging, executing an already-chosen idea, or anything
+where the user wants a decision rather than options. Running a four-phase divergence engine
+on "which of these two should I pick" is the same mistake in the opposite direction.
+
 ## Reference files
 
 - `references/pipeline.md` — the operative stages: sub-agent per stage, the file each writes,
@@ -119,11 +125,6 @@ person does not help — a project's CI is theirs. Grammar does not help either:
 under a supposition does not carry the supposition with it, so by the time it reaches the reader it
 is simply a statement about their situation.
 
-That is not a style rule. It is the difference between a premise that can leak as scenario
-pressure and one that leaks as testimony the reader never gave — and the second kind is
-unrecoverable, because nothing downstream can tell an invented fact about the reader from
-something they actually said.
-
 Record what you added, separately from what you were told, in `references/pipeline.md`
 step 0c.
 
@@ -162,16 +163,14 @@ thing you were asked about.
 The core mechanic: **no pass reuses another's move, because no pass sees another.** A single
 sweep produces variations on one starting point however many headings you put on it. Blind
 passes cannot drift toward a shared context, and that does not rely on any of them honouring an
-instruction. What it is measured to buy is reach — against passes told in sequence to deny the
-last move, no difference was found.
+instruction.
 
 **Generate the passes in isolated sub-agents. This is required, not preferred.**
 
 **The stages, and what each writes, are in `references/pipeline.md`. Read it now, before
 generating.** It is not background: it names the sub-agent type for each stage, the file each
 one produces, and the scripts that refuse to let an answer be written when those files do not
-add up. You cannot run what follows without it. Everything from here to Phase 4 describes *why*
-the pipeline is shaped as it is; the reference describes *how* to run it.
+add up. You cannot run what follows without it.
 
 Pick the lenses from `references/lenses.md` before any generating, one per sub-agent — **every
 lens that genuinely attacks this problem differently**, not a fixed number. The file lists nine.
@@ -238,8 +237,7 @@ repeated five times is five copies of one starting point.
 
 **What a pass returns is specified once, in `references/pipeline.md` step 3** — quota, option
 shape, and the instruction that the first several will be obvious and the quota exists to push
-past them. Stated there and not here on purpose: two copies of one contract drift, and this one
-already had. The "do not self-critique" clause is the method's, not the format's — refinement
+past them. The "do not self-critique" clause is the method's, not the format's — refinement
 regresses ideas toward the prototype, so pruning waits for Phase 3.
 
 ### Constraint lenses
@@ -283,20 +281,10 @@ the method.
 
 ## Phase 2 — Category negation
 
-**This pipeline does not run this phase.** It was measured against the family structure the
-grouping stage already produces and returned one search-verified option in seven, which did not
-justify the round. Kept here because the move is well-evidenced in general and the reasoning for
-dropping it is specific to this architecture; `docs/DESIGN-NOTES.md` carries both.
-
-1. Pool everything from Phase 1 into one list.
-2. Have the model **categorise its own pooled output** into 4-6 named clusters, and name
-   what each cluster assumes.
-3. Generate again: *"Every one of these ideas falls into [clusters]. Generate 5 more that
-   fall into none of them, and name the cluster each one creates."*
-
-If the new round lands back inside the existing clusters, that's real information about
-the problem space — report it rather than hiding it. A second negation pass is optional;
-stop after two, gains plateau.
+**Not run by this pipeline.** Measured against the family structure the grouping stage already
+produces, it returned one search-verified option in seven. The move is well-evidenced in general
+and the reason for dropping it is specific to this architecture; `docs/DESIGN-NOTES.md` has both,
+and the phase numbering keeps its place so a run does not read the gap as something it skipped.
 
 ---
 
@@ -321,17 +309,10 @@ ran 2-3x the length of a plain answer and roughly half of that was apparatus.
 
 **Read `references/report.md` before writing anything the user sees.** It carries the rest of this
 phase — the shape of an option, what to do when the answer becomes a document, and the honesty rule
-about what was and was not checked. That material is required, not optional depth; it lives in a
-reference so that it arrives whole rather than being cut off in a long conversation.
+about what was and was not checked. That material is required, not optional depth.
 
 ## Gotchas
 
 The failure modes this pipeline has actually produced — framework theater, temperature, premature
 convergence and the rest — are in **`references/gotchas.md`**, with what each one costs. Read it
 when something is going wrong, or once before your first run.
-
-## When not to use this
-
-Problems with one correct answer, debugging, executing an already-chosen idea, or anything
-where the user wants a decision rather than options. Running a four-phase divergence engine
-on "which of these two should I pick" is the same mistake in the opposite direction.

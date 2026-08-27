@@ -9,6 +9,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **`SKILL.md` is read by a model, and now reads like it.** The file carried prose that explained
+  the author's choices rather than telling the reader what to do — why a section sits where it
+  does, what a rule is really about, where a contract lives and why. None of it changes what a run
+  does, and all of it was spending a budget that only exists because the reader is a model. Removed
+  where it justified, kept where it instructs: the phenomenology stays, because telling a model it
+  will not notice itself padding is an instruction about its own behaviour, and so does the
+  evidence about named frameworks, without which the classic methods come back as a menu.
+
+  `## Phase 2` was the clearest case — most of a screen documenting a phase this pipeline does not
+  run, for a reader that cannot act on it, with `DESIGN-NOTES.md` already carrying the reasoning.
+
+  **`## When not to use this` moved to the top.** A rule about whether to run at all was the last
+  thing in the file, which is after the method it governs and, on a long conversation, after the
+  point where the file stops. Every section heading now survives that cut, and the only text past
+  it is a pointer to a reference the surviving list already names.
+
+
 - **Three sections that a long conversation was silently dropping now live in reference files that
   arrive whole.** A skill body is truncated at a fixed length, and past that cut sat Phase 4 —
   the phase that writes the answer — along with the pruning steps and the gotchas list. They are
