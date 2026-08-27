@@ -90,16 +90,39 @@ Every file this pipeline writes goes under a directory belonging to **this run**
 Mint it with the first Bash call, alongside `$CPS`:
 
 ```
-RUN="outputs/$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$RUN/_work"
-[ -z "$(ls -A "$RUN/_work")" ] || { echo "REFUSING: $RUN/_work already has files in it"; exit 1; }
-echo "$RUN"
+BASE="$([ -d mnt/outputs ] && echo mnt/outputs || echo outputs)"
+RUN="$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$BASE/$RUN/_work"
+[ -z "$(ls -A "$BASE/$RUN/_work")" ] || { echo "REFUSING: $BASE/$RUN/_work already has files in it"; exit 1; }
+echo "BASE=$BASE RUN=$RUN"
 ```
 
-**Then write that path out in full everywhere it is used**, exactly as with `$CPS` — in later Bash
-calls and, more importantly, in every dispatch prompt. A sub-agent inherits no shell, so a
-generator told to write `$RUN/_work/pool-3.json` writes a file named `$RUN` in the wrong place, or
-nothing at all. Give agents the concrete path: `outputs/20260824-171304/_work/pool-3.json`.
+**`$RUN` carries no base, and that is the point.** The run is one directory with **two spellings**,
+and which one is correct depends on who is doing the writing:
+
+- **Scripts, under Bash** — `"$BASE/$RUN/_work"`. Always. Every `python3 "$CPS/scripts/…"` call
+  below takes this form.
+- **Sub-agents, through their file tools** — `$RUN/_work/pool-3.json`, bare, with no base at all.
+
+**They are not interchangeable, and neither is a shortcut for the other.** On some hosts the shell
+and the file tools do not share a working directory: the shell starts at the session root while the
+file tools start in the directory the reader can see. There, one string used for both writes to two
+different places — a script's output into a directory nothing surfaces, and a sub-agent's into a
+doubled path — and **both writes succeed and report success**. The failure is silent by
+construction, so it is not something a careful run avoids by paying attention.
+
+`$BASE` is computed by the shell for itself, in the same call, because the shell is the only party
+that can answer where the shell is. **Never carry it into a dispatch prompt**, and never build an
+absolute path for a sub-agent: its file tools reject the shell's form, and a `Write` result echoes
+the path it was handed rather than a resolved one, so there is nothing to read back.
+
+**Echo the line above and keep it.** `BASE=…` in the record is the only thing that makes a wrong
+branch visible; without it a misresolved run looks exactly like a run that wrote nothing.
+
+**Then write the concrete path out in full everywhere it is used**, exactly as with `$CPS`. A
+sub-agent inherits no shell, so a generator told to write `$RUN/_work/pool-3.json` literally writes
+a file named `$RUN` in the wrong place, or nothing at all. Give agents the resolved bare path:
+`20260824-171304/_work/pool-3.json`.
 
 Why per-run rather than a single fixed `outputs/_work`: every stage file has a fixed name — `pool-*.json`,
 `cand-*.json`, `verified-*.json` — and every validator globs for them. Two runs in one working
@@ -245,7 +268,7 @@ assumed: a negation round against that structure returned one search-verified op
 
    Then split it with one Bash call:
 
-   `python3 "$CPS/scripts/shard_candidates.py" "$RUN/_work"`
+   `python3 "$CPS/scripts/shard_candidates.py" "$BASE/$RUN/_work"`
 
    That drops repeated proposals, deals the rest into balanced shards, and plants the
    agreement probe — 48 pairs dealt to a *second* shard so two adjudicators judge them without
@@ -279,7 +302,7 @@ assumed: a negation round against that structure returned one search-verified op
    Ids only, no text. Every pair in the shard returns exactly once. Then merge them with one
    Bash call, rather than reading them and retyping the merge:
 
-   `python3 "$CPS/scripts/merge_relations.py" "$RUN/_work"`
+   `python3 "$CPS/scripts/merge_relations.py" "$BASE/$RUN/_work"`
 
    It writes `relations.json` with one verdict per pair, and `agreement.json` with how the
    double-judged pairs came out. Where two adjudicators disagreed it keeps the verdict that
@@ -313,7 +336,7 @@ assumed: a negation round against that structure returned one search-verified op
 
    **Then plan the groups:**
 
-   `python3 "$CPS/scripts/plan_groups.py" "$RUN/_work"`
+   `python3 "$CPS/scripts/plan_groups.py" "$BASE/$RUN/_work"`
 
    It writes `clusters.json` and one `group-task-N.json` per dispatch, and prints a histogram. It
    is deterministic — the same relations always give the same partition, byte for byte — and it
@@ -353,7 +376,7 @@ assumed: a negation round against that structure returned one search-verified op
 
    **Then reassemble:**
 
-   `python3 "$CPS/scripts/merge_families.py" "$RUN/_work" --expect N`
+   `python3 "$CPS/scripts/merge_families.py" "$BASE/$RUN/_work" --expect N`
 
    with N the number of task files. It writes `families.json`, repairs any leads that collide, and
    refuses a shard that dropped an option, invented one, or claimed an option from a cluster it did
@@ -473,7 +496,7 @@ assumed: a negation round against that structure returned one search-verified op
    `no_external_claim` carrying one.
 
 9. **Verify integrity before writing a word of the answer.** Run:
-   `python3 "$CPS/scripts/verify_pipeline.py" "$RUN/_work"`
+   `python3 "$CPS/scripts/verify_pipeline.py" "$BASE/$RUN/_work"`
    It fails if any option is in no family or in two, if a family is empty or unlabelled, if the
    ranking omits or invents a family, if any index file carries text, if a proposed pair was
    never adjudicated, if the shards were concatenated rather than merged, if the agreement probe
@@ -487,7 +510,7 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
 
 10. **Build the report, then fill in the judgement.** Run
 
-    `python3 "$CPS/scripts/build_report.py" "$RUN/_work" --out "$RUN/report.md"`
+    `python3 "$CPS/scripts/build_report.py" "$BASE/$RUN/_work" --out "$BASE/$RUN/report.md"`
 
     It writes every family in rank order, every option on its own line, and the refuted ones in
     their own band — then fails if presented plus rejected does not equal generated. **You do not
@@ -497,7 +520,7 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     What it leaves you is `{{...}}` placeholders for the parts only you can write: the assumption
     line, one sentence on each of the top 3, and the closing read. Edit those into the file, then:
 
-    `python3 "$CPS/scripts/build_report.py" --check "$RUN/report.md"`
+    `python3 "$CPS/scripts/build_report.py" --check "$BASE/$RUN/report.md"`
 
     It refuses a report with a placeholder left, with its family headings removed, or with the
     options collapsed inside a `<details>` block — every option still in the file and none of
@@ -536,7 +559,7 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
 
     Write the reply you intend to send to a file first and check it:
 
-    `python3 "$CPS/scripts/build_report.py" --check-reply "$RUN/reply.md" --against "$RUN/report.md"`
+    `python3 "$CPS/scripts/build_report.py" --check-reply "$BASE/$RUN/reply.md" --against "$BASE/$RUN/report.md"`
 
     It refuses a reply that does not contain the report's rendered options. That is a containment
     test, not a formatting one: a covering note above the content is fine, a summary instead of
@@ -545,11 +568,15 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     against summarising, not proof the reader got anything.
 
     **Then present the report file to the reader**, as well as sending its contents. Describe the
-    outcome rather than naming a tool — the tool differs by host and a name that is right on one
-    is wrong or absent on another. Writing the file is not the same as delivering it: whether
-    `$RUN` is somewhere the reader can open depends on where the host put your working directory,
-    and on some hosts it is not reachable at all. The reader should end with something they can
-    open and keep, not only a long message.
+    outcome rather than naming a tool — the tool differs by host and a name that is right on one is
+    wrong or absent on another. Writing the file is not the same as delivering it. The reader should
+    end with something they can open and keep, not only a long message.
+
+    **If presenting it is refused, the file is in the wrong place, not the wrong format.** A
+    surfacing tool can generally only present what already sits in the directory the reader sees —
+    the one `$BASE` names. Copy it there with a Bash call and present the copy; the shell can name
+    both locations relative to its own working directory, which is exactly what it is for. Do not
+    conclude the host cannot deliver files.
 
 ## Reporting the list
 

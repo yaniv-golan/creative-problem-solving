@@ -9,6 +9,22 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The run directory has two spellings, and the pipeline now uses the right one in each place.**
+  A run was minted as one relative path and handed to every writer. On hosts where the shell and a
+  sub-agent's file tools do not share a working directory that path is correct for neither: a
+  script writes into a directory nothing surfaces, a sub-agent writes into a doubled one, and both
+  writes succeed and report success — so a run whose whole tree went somewhere unreachable looks
+  identical to one that worked. `$RUN` is now the bare run identifier, scripts are invoked against
+  `"$BASE/$RUN"` with the base resolved by the shell for itself, and sub-agents receive the bare
+  form their file tools need. The resolved base is echoed into the run record, because a
+  misresolved run is otherwise indistinguishable from one that wrote nothing. Three build checks
+  hold the two spellings apart.
+
+  Delivery gets the same correction: a surfacing tool can generally only present what already sits
+  in the directory the reader sees, so a refusal means the file is in the wrong place rather than
+  the wrong format, and the remedy is to copy it there and present the copy.
+
+
 - **The option a family is presented with must be the option that was checked.** Verification is
   dispatched against a family's first member; the report leads with its first member that was not
   refuted. Those coincide until a lead is refuted, and then the family's face is an option nothing
@@ -44,6 +60,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   pair — a decision `merge_families.py` makes exhaustively, on a file that script owns. On the
   recorded run that wording produced seven rounds of hand-editing `families.json` while the solver
   built for it ran once. It now says to re-run the script, and not to edit derived files.
+
+- **`--check-reply`'s limit is stated where it is used.** It compares the reply file against the
+  report file, so copying one to the other satisfies it, and it never sees the message actually
+  sent. It is a floor against summarising, not evidence the reader received anything.
 
 ### Changed
 
@@ -107,13 +127,6 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `computer_links_resolve`, rather than assuming a written file was a delivered one. A path
   assertion would test a different thing on each host; this tests the property the reader cares
   about, that what they are handed opens.
-
-### Fixed
-
-- **`--check-reply`'s limit is stated where it is used.** It compares the reply file against the
-  report file, so copying one to the other satisfies it, and it never sees the message actually
-  sent. It is a floor against summarising, not evidence the reader received anything.
-
 ## [0.2.0] - 2026-08-27
 
 ### Added

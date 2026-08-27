@@ -397,6 +397,49 @@ for sname in skill_names:
 
 
 # --------------------------------------------------------------------------
+# 4b. The run directory's two spellings never cross
+#
+# The run is ONE directory with two spellings, because on some hosts the shell and the file tools
+# do not share a working directory. A script invoked under Bash needs "$BASE/$RUN"; a sub-agent
+# writing through its file tools needs bare "$RUN". Use either where the other belongs and the
+# write still succeeds -- into a directory nothing surfaces, or into a doubled path -- so nothing
+# fails and the run looks normal. That is why this is a build check and not a runtime one.
+print("\nthe run directory's two spellings")
+
+_pipeline_rel = "%s/skills/%s/references/pipeline.md" % (plugin_name, skill_names[0])
+_pipe = read_text(_pipeline_rel)
+
+# RUN= must carry no base. `RUN="outputs/$(date …)"` is the original defect: correct for neither
+# family, and silently wrong for both in opposite directions.
+_run_assign = re.findall(r'^RUN="([^"]*)"', _pipe, re.M)
+if not _run_assign:
+    fail("%s: no RUN= assignment found; the two-spelling rule cannot be checked" % _pipeline_rel)
+elif any("/" in v for v in _run_assign):
+    fail("%s: RUN= carries a base (%s). It must be the bare run identifier: the base belongs to "
+         "$BASE, which only the shell can resolve, and a sub-agent must never receive one."
+         % (_pipeline_rel, ", ".join(_run_assign)))
+else:
+    ok("%s: RUN= is a bare identifier" % _pipeline_rel)
+
+# Every bundled-script invocation takes "$BASE/$RUN". A bare "$RUN" here writes where the shell is,
+# which on a split host is not where the reader looks.
+_script_calls = re.findall(r'python3 "\$CPS/scripts/[a-z_]+\.py"([^`\n]*)', _pipe)
+_bare = [c.strip() for c in _script_calls if "$RUN" in c and "$BASE/$RUN" not in c]
+if _bare:
+    fail("%s: %d script invocation(s) pass $RUN without $BASE — %s. A script runs under the shell "
+         "and needs the shell's spelling." % (_pipeline_rel, len(_bare), "; ".join(_bare[:3])))
+else:
+    ok("%s: all %d script invocation(s) use \"$BASE/$RUN\"" % (_pipeline_rel, len(_script_calls)))
+
+# And the branch must be printed, or a wrong resolution is invisible.
+if "BASE=$BASE" in _pipe:
+    ok("%s: the resolved base is echoed into the run record" % _pipeline_rel)
+else:
+    fail("%s: $BASE is never echoed. A misresolved run is indistinguishable from one that wrote "
+         "nothing, so the branch has to appear in the record." % _pipeline_rel)
+
+
+# --------------------------------------------------------------------------
 # 5. Referenced files exist
 # --------------------------------------------------------------------------
 print("\nreferenced files exist")
