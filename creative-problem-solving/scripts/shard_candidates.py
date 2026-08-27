@@ -185,6 +185,11 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
           + f" across {nshards} shards {[len(s) for s in shards]}"
             f" (dispatch one adjudicator per shard); "
             f"{planted} planted twice as the agreement probe")
+    # Say where the bytes actually went, resolved. A caller cannot get this from a Write
+    # result -- that echoes the path it was given -- and the shell's working directory is not
+    # the file tools'. On a surface where those differ, a relative path in the summary names
+    # a place the reader may not be able to reach, and the run looks identical either way.
+    print(f"  wrote to {os.path.abspath(wd)}")
 
 if __name__ == "__main__":
     a = sys.argv[1:]

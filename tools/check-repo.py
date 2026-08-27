@@ -38,6 +38,21 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 # than a surprise. Raising it again is a decision, not a formality -- every line here is read on
 # every run.
 SKILL_MD_MAX_LINES = 600
+# THE BUDGET THAT ACTUALLY BITES IS CHARACTERS, NOT LINES.
+#
+# A session that compacts truncates each skill's body at a fixed CHARACTER count and writes the
+# truncation back, so the tail cannot be recovered by a later compaction -- only by re-reading the
+# file from disk. A separate, shared budget across every skill the user has invoked can empty a
+# skill outright for the rest of the session; being over this one inflates what we take from that
+# one. Measured 2026-08-27: SKILL.md at 34,291 characters against a cap near 19,900, while the
+# line check passed at 534/600. A gate counting lines against a character budget cannot see the
+# failure it exists to catch.
+#
+# Deliberately a WARNING, not a failure. The constants are one release from moving -- they were
+# mis-stated twice in a single day by the people measuring them -- so a hard gate here would fail
+# the build on someone else's release note. It reports the multiple so the number is visible in
+# every run rather than rediscovered.
+SKILL_MD_COMPACTION_CHARS = 19900
 # Claude's skill loader truncates very long descriptions.
 DESCRIPTION_MAX_CHARS = 1024
 
@@ -51,11 +66,26 @@ REPO_ONLY = ["DESIGN-NOTES.md"]
 MIRROR_EXTRA = ["LICENSE"]
 
 failures = []
+warnings = []
 checks_run = 0
 
 
 def fail(msg):
     failures.append(msg)
+
+
+def warn(msg):
+    """Reported and counted, but does not fail the build.
+
+    For a limit this repo does not own and cannot pin. A hard gate on a constant that belongs to
+    someone else's release turns their routine change into our red build, and a red build nobody
+    can act on is one that gets switched off -- the same reasoning as the warn-only concentration
+    and verdict-mix bands in the pipeline scripts.
+    """
+    global checks_run
+    checks_run += 1
+    warnings.append(msg)
+    print("  [warn] " + msg)
 
 
 def ok(label):
@@ -352,6 +382,18 @@ for sname in skill_names:
         fail("%s is %d lines, platform limit is %d" % (rel, n_lines, SKILL_MD_MAX_LINES))
     else:
         ok("%s: %d/%d lines, frontmatter valid" % (rel, n_lines, SKILL_MD_MAX_LINES))
+
+    n_chars = len(text)
+    if n_chars > SKILL_MD_COMPACTION_CHARS:
+        cut = text[:SKILL_MD_COMPACTION_CHARS]
+        warn("%s is %d characters, %.2fx the ~%d that survives a compaction — everything after "
+             "line %d is dropped, and the truncation is written back so only re-reading the file "
+             "from disk recovers it. Move whole sections into references/ (read on demand, not "
+             "carried in this budget) rather than trimming prose."
+             % (rel, n_chars, n_chars / SKILL_MD_COMPACTION_CHARS, SKILL_MD_COMPACTION_CHARS,
+                cut.count("\n") + 1))
+    else:
+        ok("%s: %d/%d characters, survives compaction" % (rel, n_chars, SKILL_MD_COMPACTION_CHARS))
 
 
 # --------------------------------------------------------------------------
@@ -739,4 +781,8 @@ if failures:
         print("  - " + line)
     sys.exit(1)
 
-print("all %d checks passed" % checks_run)
+if warnings:
+    print("all %d checks passed, with %d warning%s"
+          % (checks_run, len(warnings), "" if len(warnings) == 1 else "s"))
+else:
+    print("all %d checks passed" % checks_run)

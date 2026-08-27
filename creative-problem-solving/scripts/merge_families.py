@@ -349,6 +349,11 @@ def main(wd, expect):
           f"{split} cluster(s) were split by a grouper; {moved_leads} lead(s) moved and "
           f"{merged_back} over-split famil(ies) merged back ({cross_merged} across clusters) "
           f"to keep families distinct")
+    # Say where the bytes actually went, resolved. A caller cannot get this from a Write
+    # result -- that echoes the path it was given -- and the shell's working directory is not
+    # the file tools'. On a surface where those differ, a relative path in the summary names
+    # a place the reader may not be able to reach, and the run looks identical either way.
+    print(f"  wrote to {os.path.abspath(wd)}")
 
 
 if __name__ == "__main__":

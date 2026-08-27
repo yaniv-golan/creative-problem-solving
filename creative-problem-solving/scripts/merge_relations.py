@@ -133,6 +133,8 @@ def main(wd):
                       f"{' vs '.join(sorted({e['relation'] for e in v}))} -> kept {kept}")
     else:
         print("agreement probe: NONE — no pair was judged twice, so this run measured nothing")
+    # Say where the bytes actually went, resolved -- see the note in shard_candidates.py.
+    print(f"  wrote to {os.path.abspath(wd)}")
 
     # WHAT THE AGREEMENT PROBE CANNOT SEE.
     #

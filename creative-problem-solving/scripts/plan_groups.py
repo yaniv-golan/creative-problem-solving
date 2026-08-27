@@ -330,6 +330,11 @@ def main(wd, max_task, split_over):
           f"(largest {sizes[0]}, {singles} single-member, {100*singles/len(out):.0f}%); "
           f"{len(packed)} grouping task(s), largest {max(sum(len(x) for x in t) for t in packed)} options; "
           f"{len(big)} cluster(s) over {split_over} members to check for themes")
+    # Say where the bytes actually went, resolved. A caller cannot get this from a Write
+    # result -- that echoes the path it was given -- and the shell's working directory is not
+    # the file tools'. On a surface where those differ, a relative path in the summary names
+    # a place the reader may not be able to reach, and the run looks identical either way.
+    print(f"  wrote to {os.path.abspath(wd)}")
 
 
 if __name__ == "__main__":
