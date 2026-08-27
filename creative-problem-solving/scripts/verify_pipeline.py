@@ -22,22 +22,14 @@ from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, load_obj
 from build_report import effective_lead
+# One definition of the share rule; merge_families.py bounds its merges by the same import.
+from verdicts import JOINING, SEPARATING, SHARE_MAX as SEP_SHARE_MAX, share_breach  # noqa: F401
 
 # The floor, against 48 planted by shard_candidates.py. The two are deliberately not equal:
 # merge_relations drops a probe pair when both copies land with the same adjudicator, and a floor
 # equal to the plant would turn one such drop into a failure at the last gate of a long run.
 PROBE_FLOOR = 40
 
-# The share rule lives here at module scope so a gate can IMPORT it and compare against
-# merge_families.py, which is the only reason its bound clears this file's check. While these sat
-# inside main() no gate could reach them, and the two files agreed only by coincidence.
-#
-# They are still three copies (plan_groups.py holds the sets too). check-repo.py asserts all three
-# agree; a single shared definition would be the stronger fix and is a design change, not this one.
-SEPARATING = {"distinct", "shared_component"}
-JOINING = {"duplicate", "implementation_variant"}
-SEP_SHARE_MAX = 0.15
-SEP_SHARE_MIN_ADJUDICATED = 10
 
 def die(msg):
     print(f"FAIL: {msg}"); sys.exit(1)
@@ -349,14 +341,12 @@ def main(wd):
     incoherent = []
     for f in fams:
         mem = f.get("members") or []
-        s = j = 0
-        for x in range(len(mem)):
-            for y in range(x + 1, len(mem)):
-                r = rel_of.get(frozenset((mem[x], mem[y])))
-                if r in SEPARATING: s += 1
-                elif r in JOINING: j += 1
-        if s + j >= SEP_SHARE_MIN_ADJUDICATED and s / (s + j) > SEP_SHARE_MAX:
-            incoherent.append((f.get("id"), len(mem), s, j, s / (s + j)))
+        # Was a hand-rolled double-range loop applying the threshold inline -- a second
+        # implementation of merge_families.py's rule, which exists to satisfy this gate.
+        breach = share_breach(mem, rel_of)
+        if breach:
+            s, j, share = breach
+            incoherent.append((f.get("id"), len(mem), s, j, share))
     if incoherent:
         ex = "; ".join(f"{fid} ({n} members): {s} of {s+j} adjudicated pairs separated = {p:.0%}"
                        for fid, n, s, j, p in incoherent[:4])

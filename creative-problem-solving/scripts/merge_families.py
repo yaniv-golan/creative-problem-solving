@@ -15,11 +15,10 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load
+# One definition of the rule this script exists to obey; see verdicts.py.
+from verdicts import JOINING, SHARE_MAX, share_breach
+from verdicts import share_ok as _share_ok
 
-JOINING = {"duplicate", "implementation_variant"}
-SEPARATING = {"shared_component", "distinct"}
-SHARE_MAX = 0.15
-SHARE_MIN_ADJUDICATED = 10
 
 
 def die(msg):
@@ -105,12 +104,7 @@ def share_ok(members, rel):
     last gate on a family a merge had widened, and shipped anyway because the refusal named no
     action that worked.
     """
-    s = j = 0
-    for a, b in itertools.combinations(members, 2):
-        v = rel.get(frozenset((a, b)))
-        if v in SEPARATING: s += 1
-        elif v in JOINING: j += 1
-    return not (s + j >= SHARE_MIN_ADJUDICATED and s / (s + j) > SHARE_MAX)
+    return _share_ok(members, rel)
 
 
 def worst_pinned_pair(fams, rel):
@@ -213,12 +207,10 @@ def main(wd, expect):
     # re-dispatch rather than the last gate of a finished run.
     bad = []
     for f in fams:
-        s = j = 0
-        for a, b in itertools.combinations(f["members"], 2):
-            v = rel.get(frozenset((a, b)))
-            if v in SEPARATING: s += 1
-            elif v in JOINING: j += 1
-        if s + j >= SHARE_MIN_ADJUDICATED and s / (s + j) > SHARE_MAX:
+        # Was a second inline copy of the rule, in the same file as share_ok above.
+        breach = share_breach(f["members"], rel)
+        if breach:
+            s, j, _ = breach
             bad.append((f["label"][:40], len(f["members"]), s, s + j))
     if bad:
         ex = "; ".join(f"'{lb}' ({n} members): {s} of {t} separated" for lb, n, s, t in bad[:3])

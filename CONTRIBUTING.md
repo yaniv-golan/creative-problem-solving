@@ -39,9 +39,10 @@ creative-problem-solving/          ← plugin scope. ships to plugin installs, N
                         pipeline.
     agents/             six sub-agent definitions, one per role. Each carries a tool set
                         and its role invariants and nothing per-run.
-    scripts/            eight stdlib-only Python scripts. shard_candidates,
+    scripts/            nine stdlib-only Python scripts. shard_candidates,
                         merge_relations, plan_groups, merge_families, progress,
-                        build_report, verify_pipeline, and robust_json (shared loader).
+                        build_report, verify_pipeline, robust_json (shared loader),
+                        and verdicts (the verdict vocabulary and the share rule).
 
 .agents/skills/creative-problem-solving/   ← generated mirror of the SKILL only.
                                              never edit by hand.

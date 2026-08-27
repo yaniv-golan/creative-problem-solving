@@ -1516,14 +1516,16 @@ def t_forced_merge_is_bounded_too():
     # anything at all: if the rule is retuned and the guard is not, the test goes on passing while
     # the shape it names stops existing. check-repo.py asserts this import is here.
     from_share_rule = importlib.machinery.SourceFileLoader(
-        "mf_rule", str(SCRIPTS / "merge_families.py")).load_module()
+        "share_rule", str(SCRIPTS / "verdicts.py")).load_module()
     FLOOR, CEIL = from_share_rule.SHARE_MIN_ADJUDICATED, from_share_rule.SHARE_MAX
 
     check("the fixture is below the floor on each half, or it proves nothing",
           len(list(itertools.combinations(A, 2))) < FLOOR, "a half already clears the floor")
     sep, tot = 6, 15
     check("...and the union clears the floor and breaks the rule",
-          tot >= FLOOR and sep / tot > CEIL, f"union is {sep}/{tot} — fixture is vacuous")
+          tot >= FLOOR and sep / tot > CEIL,
+          f"union is {sep}/{tot}={sep/tot:.0%} but the rule is now {CEIL:.0%} over {FLOOR} pairs — "
+          f"this fixture no longer constructs a breach, so it proves nothing. Re-shape it.")
 
     wd = tempfile.mkdtemp()
     json.dump({"clusters": [{"cid": "c001", "members": A + B}]}, open(f"{wd}/clusters.json", "w"))

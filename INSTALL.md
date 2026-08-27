@@ -135,7 +135,7 @@ Download [`creative-problem-solving.zip`](https://github.com/yaniv-golan/creativ
 
 Two payloads, depending on the path you took above.
 
-**The zip, and the `.agents/skills/` mirror — 9 files, all prose:** `SKILL.md`, six
+**The zip, and the `.agents/skills/` mirror — nine files, all prose:** `SKILL.md`, six
 `references/` documents, `LICENSE`, `VERSION`. No executable code at all. The two are held to
 the same payload by `tools/sync-mirrors.py`. Any host on the Agent Skills standard gets this,
 and it is the whole method *and* the whole pipeline — `references/pipeline.md` carries the
@@ -145,11 +145,11 @@ without one runs it as sequential passes in a single context and says so in a li
 
 **The plugin — the above plus the machinery the pipeline runs on:** `commands/ideas.md`, six
 sub-agent definitions in `agents/` (one per pipeline role, each carrying only the tools its role
-needs), and eight stdlib-only Python scripts in `scripts/`. The pipeline runs six of them through
+needs), and nine stdlib-only Python scripts in `scripts/`. The pipeline runs six of them through
 your host's Bash tool to shard the candidate pairs, merge the adjudicators' verdicts, partition
 the options into clusters, reassemble those into families, build the report, and check the
-finished run's integrity before a word of the answer is written — the other two are a shared JSON
-loader and a progress-line builder the six import. They
+finished run's integrity before a word of the answer is written — the other three are a shared JSON
+loader, a progress-line builder and the shared verdict vocabulary the six import. They
 read and write JSON under one directory — except the report builder, which writes the report in
 Markdown to the `--out` path it is given, deliberately outside that directory — make no network
 calls and spawn no subprocesses.

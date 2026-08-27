@@ -27,8 +27,8 @@ Two install paths deliver different payloads, and the difference matters here.
   tool as `python3 "$CPS/scripts/<name>.py"`, where `$CPS` is the plugin root it resolves once at
   step 0 from the path it read `references/pipeline.md` at: `shard_candidates.py`,
   `merge_relations.py`, `plan_groups.py`, `merge_families.py`, `verify_pipeline.py` and
-  `build_report.py`. `robust_json.py` and `progress.py` are imported by those rather than
-  invoked; `progress.py` also runs standalone if you point it at a working directory yourself.
+  `build_report.py`. `robust_json.py`, `progress.py`
+  and `verdicts.py` are imported by those rather than invoked; `progress.py` also runs standalone if you point it at a working directory yourself.
 
   They are stdlib-only, make no network calls and spawn no subprocesses. On filesystem scope, be
   precise: each takes a working directory and reads and writes JSON inside it, with one

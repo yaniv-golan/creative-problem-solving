@@ -9,21 +9,29 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **The share rule was spelled in four places and compared in none.** `merge_families.py` bounds its
-  merges by that rule for one reason: so what it writes clears `verify_pipeline.py`'s gate. The two
-  files held the numbers separately and agreed by coincidence — `verify_pipeline.py`'s copy was
-  function-local, where no gate could reach it — so retuning either would have broken the bound in
-  the shipping direction: a merge writes a family the gate then refuses, naming no action.
+- **The separating-pair share rule has one definition.** It was spelled in three scripts and
+  implemented four times — `merge_families.py` twice, once as a function and once as an inline
+  loop; `plan_groups.py` once; `verify_pipeline.py` once as a hand-rolled loop under its own
+  `SEP_`-prefixed constants. They agreed by coincidence.
 
-  The constants are now module-scoped, and `check-repo.py` asserts the ceiling, the floor and both
-  verdict sets agree across `merge_families.py`, `verify_pipeline.py` and `plan_groups.py`, which
-  holds the sets a third time. Sets are compared as sets: two of the files spell them in different
-  literal order, so a text comparison would fail on files that agree.
+  That is worse here than duplication usually is. `merge_families.py` bounds its merges by this
+  rule for exactly one reason: so what it writes clears `verify_pipeline.py`'s gate. A drift
+  between them breaks that in the shipping direction — merge emits a family the gate refuses, and
+  the refusal names no action the caller can take.
 
-  The fourth copy was in the test that guards all this. `test_pipeline_scripts.py`'s forced-merge
-  fixture restated the floor and ceiling to prove itself non-vacuous — the one assertion that
-  decides whether the fixture tests anything — so a retune would have left it passing while the
-  shape it names no longer existed. It derives them from the script now, and a check enforces that.
+  `scripts/verdicts.py` now holds the verdict vocabulary, the two constants and the one comparison
+  against them; the three scripts import it. A check refuses any re-declaration of those names, at
+  any scope and under either spelling — the copy this replaced was function-local, where a
+  module-scope check sees nothing.
+
+  The refactor is measured, not asserted: `clusters.json` is byte-identical across five recorded
+  datasets, `families.json` byte-identical on the one dataset that runs the merge, and the retired
+  loop and its replacement agree on verdict and counts across 4,000 random families straddling
+  the floor and the threshold.
+
+  Still spelled by hand elsewhere, and deliberately out of scope: the same four verdicts appear as
+  `verify_pipeline.py`'s local `ALLOWED` set, `merge_relations.py`'s `SEPARATION` ordering and
+  `plan_groups.py`'s `WEIGHT` signs. Unifying those is a separate change.
 
 - **Both of `merge_families.py`'s merge paths are bounded, not one of them.** The first pass at
   this bounded the evidence-scored merge and the no-evidence fallback, and left the pairwise-forced

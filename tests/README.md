@@ -349,7 +349,7 @@ not on the list.
 
 ## Unit tests for the pipeline scripts
 
-The scenarios above need a sandboxed agent, a token and ~40 minutes. The six scripts in
+The scenarios above need a sandboxed agent, a token and ~40 minutes. The six invoked scripts in
 `creative-problem-solving/scripts/` do not, and they carry the invariants a run cannot recover
 from — a lost option, a pair judged twice with different verdicts, a heartbeat that never fires.
 

@@ -22,6 +22,7 @@ Exit code 0 if everything passes, 1 otherwise.  No third-party dependencies.
 import filecmp
 import json
 import os
+import ast
 import importlib.machinery
 import re
 import subprocess
@@ -441,70 +442,59 @@ else:
 
 
 # --------------------------------------------------------------------------
-# 4b. The share rule agrees across every module that spells it
+# 4b. The share rule has exactly one definition, and nothing re-declares it
 # --------------------------------------------------------------------------
-# merge_families.py bounds its merges by this rule for ONE reason: so that what it writes clears
-# verify_pipeline.py's gate. The two files held the numbers separately, agreeing by coincidence,
-# and nothing compared them -- so tuning either would have broken the bound in the shipping
-# direction: merge writes a family the gate then refuses, with no action the caller can take.
+# It used to have four: merge_families.py twice (a function and an inline loop), plan_groups.py
+# once, verify_pipeline.py once under a SEP_ prefix. An earlier gate asserted the NUMBERS agreed;
+# it could not see the loops, and it compared only two of the three modules that held them.
 #
-# plan_groups.py holds the verdict sets a third time, and test_pipeline_scripts.py's vacuity guard
-# is a fourth copy of the numbers. Three copies asserted equal is weaker than one definition
-# imported thrice; that is a design change and this is the gate until then.
-print("\nthe share rule agrees across every module that spells it")
+# Now verdicts.py defines it and everyone imports. This gate exists so that stays true, and it is
+# written against the shape that actually occurred: the copy it replaced was FUNCTION-LOCAL, where
+# a module-scope check sees nothing, and it was spelled under a different prefix. So: at any scope,
+# under either spelling, these names may only be bound by an import from verdicts.
+print("\nthe share rule has one definition")
 
-_share_mods = {}
-for _m, _fn in (("merge_families", "merge_families.py"), ("verify_pipeline", "verify_pipeline.py"),
-                ("plan_groups", "plan_groups.py")):
-    _path = os.path.join(REPO, plugin_name, "scripts", _fn)
-    _share_mods[_m] = importlib.machinery.SourceFileLoader("_chk_" + _m, _path).load_module()
+_WATCHED = {"JOINING", "SEPARATING", "SHARE_MAX", "SHARE_MIN_ADJUDICATED",
+            "SEP_SHARE_MAX", "SEP_SHARE_MIN_ADJUDICATED"}
+_scripts_dir = os.path.join(REPO, plugin_name, "scripts")
+_home = "verdicts.py"
 
-# Names differ by file; the RULE does not. Absent is a failure, not a skip -- these were
-# function-local in verify_pipeline.py until 2026-08-27, where no gate could see them, and a
-# getattr default here would have compared a default to itself and gone green.
-_num = {"merge_families": ("SHARE_MAX", "SHARE_MIN_ADJUDICATED"),
-        "verify_pipeline": ("SEP_SHARE_MAX", "SEP_SHARE_MIN_ADJUDICATED")}
-_seen = {}
-for _m, (_max, _min) in _num.items():
-    for _attr in (_max, _min):
-        if not hasattr(_share_mods[_m], _attr):
-            fail("%s.py does not expose %s at module scope, so no gate can compare it. It was "
-                 "function-local once and the two files agreed only by coincidence." % (_m, _attr))
-        else:
-            _seen.setdefault("max" if _attr is _max else "min", []).append(
-                (_m, _attr, getattr(_share_mods[_m], _attr)))
-
-for _kind, _vals in sorted(_seen.items()):
-    _distinct = {v for _, _, v in _vals}
-    if len(_distinct) != 1:
-        fail("the share %s disagrees across modules: %s. merge_families.py's bound exists to "
-             "satisfy verify_pipeline.py's gate, so a drift here breaks it silently."
-             % (_kind, ", ".join("%s.%s=%r" % t for t in _vals)))
-    else:
-        ok("share %s agrees across %d module(s): %r" % (_kind, len(_vals), _distinct.pop()))
-
-# Sets compared AS SETS: merge_families.py and verify_pipeline.py spell them in different literal
-# order, so a text comparison would fail on files that agree.
-for _name in ("JOINING", "SEPARATING"):
-    _vals = [(_m, getattr(_mod, _name, None)) for _m, _mod in sorted(_share_mods.items())]
-    _absent = [_m for _m, v in _vals if v is None]
-    if _absent:
-        fail("%s is not exposed at module scope by: %s" % (_name, ", ".join(_absent)))
-        continue
-    if len({frozenset(v) for _, v in _vals}) != 1:
-        fail("%s disagrees across modules: %s" % (_name, ", ".join("%s=%r" % t for t in _vals)))
-    else:
-        ok("%s agrees across %d module(s)" % (_name, len(_vals)))
-
-# The test's vacuity guard is the fourth copy, and it is the one that decides whether the
-# forced-merge fixture proves anything. If it drifts, the test still passes and stops testing.
-_tp = read_text("tools/test_pipeline_scripts.py")
-if "from_share_rule" not in _tp and re.search(r"sep / tot > 0\.15", _tp):
-    fail("tools/test_pipeline_scripts.py hard-codes the share ceiling in its vacuity guard "
-         "instead of importing it. That guard is what proves the forced-merge fixture is not "
-         "vacuous, so a drift there makes the test pass while testing nothing.")
+_hp = os.path.join(_scripts_dir, _home)
+if not os.path.exists(_hp):
+    fail("%s/scripts/%s does not exist, so the share rule has no home" % (plugin_name, _home))
 else:
-    ok("the forced-merge fixture derives the share rule rather than restating it")
+    _hm = importlib.machinery.SourceFileLoader("_chk_verdicts", _hp).load_module()
+    _lacks = [n for n in ("JOINING", "SEPARATING", "SHARE_MAX", "SHARE_MIN_ADJUDICATED",
+                          "share_counts", "share_breach", "share_ok") if not hasattr(_hm, n)]
+    if _lacks:
+        fail("%s does not expose %s. Importers resolve these by name, so a rename here is a "
+             "silent breakage at every call site." % (_home, ", ".join(_lacks)))
+    else:
+        ok("%s defines the rule and exposes it" % _home)
+
+_redeclared = []
+for _fn in sorted(f for f in os.listdir(_scripts_dir) if f.endswith(".py") and f != _home):
+    _tree = ast.parse(read_text("%s/scripts/%s" % (plugin_name, _fn)))
+    _from_home = set()
+    for _n in ast.walk(_tree):
+        if isinstance(_n, ast.ImportFrom) and _n.module == "verdicts":
+            _from_home.update((a.asname or a.name) for a in _n.names)
+    for _n in ast.walk(_tree):
+        _targets = []
+        if isinstance(_n, ast.Assign): _targets = _n.targets
+        elif isinstance(_n, (ast.AnnAssign, ast.AugAssign)): _targets = [_n.target]
+        for _t in _targets:
+            for _sub in ast.walk(_t):
+                if isinstance(_sub, ast.Name) and _sub.id in _WATCHED:
+                    _redeclared.append("%s:%d binds %s" % (_fn, _sub.lineno, _sub.id))
+
+if _redeclared:
+    fail("the share rule is re-declared outside %s: %s. It has one definition so that "
+         "merge_families.py's bound and verify_pipeline.py's gate cannot drift apart -- a second "
+         "copy restores exactly the failure that removing them fixed."
+         % (_home, "; ".join(_redeclared[:4])))
+else:
+    ok("no script re-declares the share rule at any scope")
 
 
 # --------------------------------------------------------------------------
@@ -726,7 +716,8 @@ else:
 # the count and its enumeration sit in one sentence and check each other. That one is asserted
 # here against the real payload rather than trusted.
 print("\nstated payload counts are true")
-WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight"}
+WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight",
+         9: "nine", 10: "ten"}   # a missing entry silently demands a digit in prose written in words
 skill_root = os.path.join(REPO, plugin_name, "skills", skill_names[0])
 n_refs = len([f for f in os.listdir(os.path.join(skill_root, "references"))
               if f.endswith(".md")])

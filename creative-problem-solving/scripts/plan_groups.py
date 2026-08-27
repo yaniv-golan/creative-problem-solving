@@ -25,6 +25,9 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load
+# The share rule and the verdict vocabulary, defined once in verdicts.py. This file used to
+# carry its own copy of both plus its own share_ok, mirroring verify_pipeline.py by hand.
+from verdicts import JOINING, SEPARATING, share_ok  # noqa: F401
 
 # Disagreement weights. `duplicate` is the strongest evidence of sameness and `distinct` the
 # strongest evidence against, so they outweigh their softer neighbours.
@@ -54,13 +57,7 @@ LEAD_NODES = 20000   # overridable with --lead-budget, which the exhaustion mess
 
 WEIGHT = {"duplicate": 3.0, "implementation_variant": 1.0,
           "shared_component": -1.0, "distinct": -2.0}
-JOINING = {"duplicate", "implementation_variant"}
-SEPARATING = {"shared_component", "distinct"}
 
-# Mirrors the gate in verify_pipeline.py. Checked here so the partition satisfies it by
-# construction rather than being refused at the last step of a long run.
-SHARE_MAX = 0.15
-SHARE_MIN_ADJUDICATED = 10
 
 
 def die(msg):
@@ -94,13 +91,6 @@ def positive_components(ids, rel):
     return [sorted(c) for c in g.values()]
 
 
-def share_ok(members, rel):
-    s = j = 0
-    for a, b in itertools.combinations(members, 2):
-        v = rel.get(frozenset((a, b)))
-        if v in SEPARATING: s += 1
-        elif v in JOINING: j += 1
-    return not (s + j >= SHARE_MIN_ADJUDICATED and s / (s + j) > SHARE_MAX)
 
 
 def pair_weight(ca, cb, rel):
