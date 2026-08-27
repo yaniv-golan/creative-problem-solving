@@ -505,17 +505,27 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     families missing, comparing against a manifest the build step wrote beside the report, and
     fails if that manifest is absent rather than passing without it.
 
-    **It also prints an `ECHO SCAN` block, and that block is advisory — `--check` exits zero with
-    hits in it.** They are not failures and there is nothing to fix. Each hit is a line of your
-    prose containing a word that entered through Phase 0's inventions and is not in the reader's
-    own wording — the pressures and constraints the run added to push the passes past the obvious
-    answer. The scan cannot tell an invented premise being *used* from one being *asserted to the
-    reader as their own situation*, and only the second is a defect. So read the lines it names,
-    and change one only if it tells the reader something about themselves they did not tell you.
-    Expect hits whenever Phase 0 invented anything: this is a list of places to look, and zero
-    hits is not the target. **Do not edit option text to empty the block** — the options are the
-    checked artifact, the scan is a reading aid, and silencing it costs you the thing it was
-    pointing at.
+    **It also prints an `ECHO SCAN` block, and that block is advisory: the scan contributes
+    nothing to the exit code.** It is not a list of failures. Note the narrower claim — two more
+    checks run after it and can still fail the file, so a printed block does not mean `--check`
+    passed, only that nothing in the block is why it would not.
+
+    Each hit is a line of your prose carrying a word that entered through Phase 0's inventions and
+    is not in the reader's own wording — the pressures the run added to push the passes past the
+    obvious answer. The scan cannot tell an invented premise being *used* from one *asserted to the
+    reader as their own situation*, and only the second is a defect. So read the lines it names and
+    change one only if it tells the reader something about themselves they did not tell you. Most
+    hits are ordinary words and mean nothing.
+
+    **The block appears only when there are hits — its absence is not a pass.** The scan prints
+    nothing when the run invented nothing, when every invented word also appears in the reader's
+    prompt, and when no line matches; those three are indistinguishable from outside. On every
+    recorded run Phase 0 invented something and the scan had candidates to report, so silence on a
+    run that invented something is more likely to mean the scan did not run than that the prose is
+    clean. Check `_work/brief.json` rather than reading quiet as clean.
+
+    **Do not edit option text to empty the block** — the options are the checked artifact, the scan
+    is a reading aid, and silencing it costs you the thing it was pointing at.
 
     **The file is the answer, and the reply is the file.** Emit its contents as your reply. Do
     not compose a second, shorter version: everything in the report has been through the checks

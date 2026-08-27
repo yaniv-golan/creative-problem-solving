@@ -18,13 +18,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   scripts read one shared definition of the lead rather than two, which is how they came apart.
 
 - **The `ECHO SCAN` block says what it is.** `--check` prints a list of lines whose wording came
-  from what Phase 0 invented rather than from the reader, and exits zero — but nothing said so
-  where anyone acting on the output would see it, leaving a hit readable either as a failure to
-  edit away or as noise to ignore. Both are wrong. Step 10 now states that it is advisory, that
-  hits are expected on any run that invented anything, that zero hits is not the target, and what
-  separates a real leak from the ordinary words that dominate it: whether the line tells the reader
-  something about themselves they did not say. It also says not to edit option text to empty the
-  block — the options are the checked artifact and the scan is a reading aid.
+  from what Phase 0 invented rather than from the reader, and contributes nothing to the exit code
+  — but nothing said so where anyone acting on the output would see it, leaving a hit readable
+  either as a failure to edit away or as noise to ignore. Both are wrong. The block now carries its
+  status on its own header line, and step 10 says what separates a real leak from the ordinary
+  words that dominate it: whether the line tells the reader something about themselves they did not
+  say. Two things stated precisely rather than conveniently — a printed block does not mean
+  `--check` passed, because two checks run after it; and the scan prints nothing at all when it has
+  nothing to report, so its absence is not a pass either.
 
 - **The grouping wait is described as it now is.** The heartbeat told the reader to expect "twenty
   to thirty minutes of silence" while families were formed. Measured: the grouper dispatches take
