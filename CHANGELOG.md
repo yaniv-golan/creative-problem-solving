@@ -70,6 +70,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   returns `None` for a family whose every member was refuted, which is the case `live` already
   dropped before the renderer could index it.
 
+- **The ECHO SCAN block states its own status.** The scan is advisory by design — the reasoning is
+  in `_echo_scan`'s docstring, and it is the same doctrine as the warn-only concentration and
+  verdict-mix bands. What it never said is that it is advisory, in the place a reader meets it: a
+  list of `line N: [...]` hits reads as a defect list in every other tool they use, so a hit was
+  available to be read either as something to edit away or as noise to ignore. The header now says
+  `advisory. Nothing below fails --check.` — scoped deliberately, since two checks that can exit
+  non-zero run after the scan, so it cannot claim the run passed. It also says the scan is silent
+  when it finds nothing, because absence of the block is not a pass signal and had no other way of
+  being known.
+
 - **The run hands the reader the report as a file, not only as a message.** Writing a file and
   delivering it are different acts, and which one a path performs depends on the host: the working
   directory a run writes into may be the reader's own, may belong to the session, or may not be

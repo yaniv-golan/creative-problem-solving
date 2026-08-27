@@ -313,9 +313,14 @@ def _echo_scan(body, man, brief, label):
         found = sorted(w for w in suspect if re.search(rf"\b{re.escape(w)}", line.lower()))
         if found: hits.append((ln, found))
     if not hits: return
-    print(f"\nECHO SCAN ({label}) — candidates for a human read, not findings.")
+    # The status has to be on the header line, because that is the half a reader meets first and
+    # a list of file:line hits reads as a defect list in every other tool they use. Scoped to what
+    # is true at this point: the scan contributes nothing to the exit code. It deliberately does
+    # NOT say "--check passed" -- two checks that can still exit non-zero run after this one.
+    print(f"\nECHO SCAN ({label}) — advisory. Nothing below fails --check.")
     print("  Words below entered through Phase 0's inventions and are not in the reader's own")
-    print("  prompt. A hit is a line to look at, not a defect.")
+    print("  prompt. A hit is a line to look at, not a defect. The scan is silent when it finds")
+    print("  nothing, so no news here is not a result either — see references/pipeline.md step 10.")
     for ln, found in hits[:20]:
         print(f"    line {ln}: {found}")
     if len(hits) > 20: print(f"    … and {len(hits) - 20} more")
