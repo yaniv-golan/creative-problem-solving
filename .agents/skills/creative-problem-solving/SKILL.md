@@ -24,6 +24,32 @@ The sentence to hold onto: *structure that makes the next idea harder to reach f
 structure that decorates a single sweep produces longer output that scores better and isn't
 better.*
 
+## Reference files
+
+**Read this section first, and note where it sits.** It is near the top on purpose: a long skill
+body can be cut short before it reaches the end, and this is the part you cannot afford to lose,
+because it is the only place that says which of the files below you are required to read.
+
+- `references/pipeline.md` — the operative stages: sub-agent per stage, the file each writes,
+  the scripts that check them. **Required reading before Phase 1**, not optional depth.
+- `references/lenses.md` — longer worked prompts for each lens, plus the demoted ones
+  (SCAMPER, Six Thinking Hats) and why. **Optional**: the Phase 1 table carries both moves for
+  every lens. Read it when a lens isn't landing, not as routine.
+- `references/evidence.md` — what the research supports, and how strongly. Read if the user
+  challenges the approach, or before skipping/changing a phase.
+
+**If this file looks like it ends early, it did.** A long conversation can truncate a skill body,
+and when that happens the text says so where it was cut. If you see that marker, or if a phase
+referred to elsewhere is simply not here, **re-read this file from disk before continuing** rather
+than working from what is left — the missing part is likely Phase 4, which is how the answer gets
+written. Note the limit of that advice: it works because truncation announces itself. A skill can
+also be dropped from a conversation entirely, and that leaves no trace at all, so this is a guard
+against the visible failure and not against every one.
+
+`docs/DESIGN-NOTES.md` is for humans maintaining this — full literature review, sources, and eval
+history. It is deliberately **not** in the installed skill; it lives in the repository, at
+<https://github.com/yaniv-golan/creative-problem-solving>. Don't read it at runtime.
+
 ## Grounding
 
 Every run is grounded in two places.
@@ -517,17 +543,3 @@ value rested on being first should die on prior art.
 Problems with one correct answer, debugging, executing an already-chosen idea, or anything
 where the user wants a decision rather than options. Running a four-phase divergence engine
 on "which of these two should I pick" is the same mistake in the opposite direction.
-
-## Reference files
-
-- `references/lenses.md` — longer worked prompts for each lens, plus the demoted ones
-  (SCAMPER, Six Thinking Hats) and why. **Optional**: the Phase 1 table carries both moves for
-  every lens. Read it when a lens isn't landing, not as routine.
-- `references/pipeline.md` — the operative stages: sub-agent per stage, the file each writes,
-  the scripts that check them. **Required reading before Phase 1**, not optional depth.
-- `references/evidence.md` — what the research supports, and how strongly. Read if the user
-  challenges the approach, or before skipping/changing a phase.
-
-`docs/DESIGN-NOTES.md` is for humans maintaining this — full literature review, sources, and eval
-history. It is deliberately **not** in the installed skill; it lives in the repository, at
-<https://github.com/yaniv-golan/creative-problem-solving>. Don't read it at runtime.

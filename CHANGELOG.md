@@ -9,6 +9,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The skill says where its own reference files are, before it can be cut off from saying it.** A
+  long conversation truncates a skill body at a fixed length, and the section naming
+  `references/pipeline.md` as required reading was the last one in the file — so exactly when the
+  operative stages were most needed, the pointer to them was the first thing gone. It now sits
+  directly under the opening, and says why it is there. The skill also now tells its reader what to
+  do about the cut: truncation leaves a marker where it happened, so if that marker appears, or a
+  phase referred to elsewhere is simply absent, re-read the file from disk rather than working from
+  what is left. The limit of that advice is stated with it — it works because truncation announces
+  itself, and a skill dropped from a conversation entirely leaves no trace to notice.
+
+
 - **The run directory has two spellings, and the pipeline now uses the right one in each place.**
   A run was minted as one relative path and handed to every writer. On hosts where the shell and a
   sub-agent's file tools do not share a working directory that path is correct for neither: a
