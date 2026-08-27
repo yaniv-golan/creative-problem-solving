@@ -9,6 +9,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Three sections that a long conversation was silently dropping now live in reference files that
+  arrive whole.** A skill body is truncated at a fixed length, and past that cut sat Phase 4 —
+  the phase that writes the answer — along with the pruning steps and the gotchas list. They are
+  now `references/report.md`, `references/pruning.md` and `references/gotchas.md`, each required
+  where it is required and each pointed to from a body section that survives. `SKILL.md` drops from
+  35,218 to 21,660 characters.
+
+  It is still over the limit, and the parts still at risk are named rather than papered over:
+  what remains above the cap is Phase 0, the lens table and the pass template, all of which are
+  instructions executed in place — moving them would change what a run reads by default, which is
+  a behaviour decision and not a size one.
+
+
 - **The skill says where its own reference files are, before it can be cut off from saying it.** A
   long conversation truncates a skill body at a fixed length, and the section naming
   `references/pipeline.md` as required reading was the last one in the file — so exactly when the

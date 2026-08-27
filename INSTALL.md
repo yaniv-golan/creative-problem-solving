@@ -135,7 +135,7 @@ Download [`creative-problem-solving.zip`](https://github.com/yaniv-golan/creativ
 
 Two payloads, depending on the path you took above.
 
-**The zip, and the `.agents/skills/` mirror — six files, all prose:** `SKILL.md`, three
+**The zip, and the `.agents/skills/` mirror — 9 files, all prose:** `SKILL.md`, six
 `references/` documents, `LICENSE`, `VERSION`. No executable code at all. The two are held to
 the same payload by `tools/sync-mirrors.py`. Any host on the Agent Skills standard gets this,
 and it is the whole method *and* the whole pipeline — `references/pipeline.md` carries the
