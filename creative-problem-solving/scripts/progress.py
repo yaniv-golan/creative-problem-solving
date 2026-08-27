@@ -55,18 +55,22 @@ def line(wd):
     # than asserting something false about a file that is not finished yet.
     # placed == n is the invariant verify_pipeline enforces at the end. Until it holds, the
     # grouping is still in flight and any family count would understate what was generated.
-    # Before grouping this is also the only warning the reader gets about the wait. Grouping is one
-    # sub-agent call over every option in the run, and nothing can print from inside a single
-    # dispatch, so the alternative to saying it here is saying nothing for half an hour -- which is
-    # indistinguishable from a hung run to the person watching.
+    # Before grouping this is also the only warning the reader gets about the wait, and nothing can
+    # print from inside a dispatch, so the alternative to saying it here is silence that is
+    # indistinguishable from a hung run. The figure has to be honest about what it measures:
+    # the grouper dispatches themselves were 74 s on the run this was recalibrated against
+    # (six of them, 38.7-73.6 s each), and about two minutes on the run after. What used to make
+    # this step long was repair -- the same run spent seven rounds on it -- and that is what the
+    # 0.2.0 rebuild removed. Quoting the old "twenty to thirty minutes" told the reader to expect
+    # a wait the pipeline no longer has, which reads as a hang when it does not happen.
     if not fams or placed != n:
         return (f"{n} options so far, from {L} separate {angle} "
                 f"({', '.join(lenses[:4])}{'…' if L > 4 else ''}). "
                 f"Nothing is dropped for being similar to another — grouping never deletes. "
                 f"The only way out is a search that refutes one, and those are reported too. "
-                f"Grouping them into families is next: it is the longest step in the run, it "
-                f"produces no output while it works, and twenty to thirty minutes of silence "
-                f"there is normal.")
+                f"Grouping them into families is next: it produces no output while it works, so "
+                f"expect a couple of minutes of silence there — longer if the first grouping needs "
+                f"repairing, which the run will say.")
 
     def spread(f): return len({m.split("-")[0] for m in (f.get("members") or [])})
     top = max(fams, key=spread)

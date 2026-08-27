@@ -7,6 +7,34 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The option a family is presented with must be the option that was checked.** Verification is
+  dispatched against a family's first member; the report leads with its first member that was not
+  refuted. Those coincide until a lead is refuted, and then the family's face is an option nothing
+  verified — while every count still closes, so nothing downstream notices. A recorded run shipped
+  a report claiming a verified top thirteen and carrying twelve. `verify_pipeline.py` now refuses
+  that, naming the family and both options, and asks for a verifier on the promoted one. The two
+  scripts read one shared definition of the lead rather than two, which is how they came apart.
+
+- **The grouping wait is described as it now is.** The heartbeat told the reader to expect "twenty
+  to thirty minutes of silence" while families were formed. Measured: the grouper dispatches take
+  about a minute, and roughly two minutes end to end. What used to make that step long was repair,
+  which this release removed — so the old figure had readers waiting for a hang that no longer
+  happens.
+
+- **Two statements about the pipeline's own guarantees, corrected rather than the guarantees
+  changed.** `merge_families.py` re-checks both grouping rules against the shards it is handed, and
+  then repairs colliding leads by merging — which is the one operation that can raise a family's
+  separated share. The reference said a violation therefore costs one re-dispatch; it can reach the
+  last gate, and now says so. And the reporting section asserted that the option a family leads with
+  is the one that was verified, which is the defect above stated as fact.
+
+- **The lead-collision refusal names an action the caller can take.** It said to merge each named
+  pair — a decision `merge_families.py` makes exhaustively, on a file that script owns. On the
+  recorded run that wording produced seven rounds of hand-editing `families.json` while the solver
+  built for it ran once. It now says to re-run the script, and not to edit derived files.
+
 ### Changed
 
 - **A verified option's source renders as its domain, not a raw `<sup>` tag.** Each of the top

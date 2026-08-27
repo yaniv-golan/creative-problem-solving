@@ -21,6 +21,7 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, load_obj
+from build_report import effective_lead
 
 # The floor, against 48 planted by shard_candidates.py. The two are deliberately not equal:
 # merge_relations drops a probe pair when both copies land with the same adjudicator, and a floor
@@ -284,9 +285,11 @@ def main(wd):
         die(f"{len(dupe_leads)} pair(s) of families lead with options that were adjudicated as the "
             f"same intervention ({ex}{'; …' if len(dupe_leads) > 5 else ''}). Two families leading "
             f"with `duplicate` or `implementation_variant` options are one family with two "
-            f"variants — see references/pipeline.md step 6. Merge each named pair, keeping the "
-            f"stronger option as the lead and nesting the other as a variant; do not edit "
-            f"relations.json to agree with the grouping.")
+            f"variants — see references/pipeline.md step 6. Re-run merge_families.py over the "
+            f"group-result-*.json shards: it solves lead assignment exhaustively and merges the "
+            f"pairs nothing can separate, which is the decision being described here. If it "
+            f"refuses, re-dispatch the grouper it names. Do not hand-edit families.json or "
+            f"relations.json — both are derived, and an edit is overwritten on the next run.")
 
     # WITHIN-FAMILY CONTRADICTIONS ARE REPORTED, NOT REFUSED.
     #
@@ -474,6 +477,40 @@ def main(wd):
     # is untouched, so a rejected option keeps its family membership and its text. What changes
     # is only where it appears in the answer: in the rejected band, with what refuted it.
     rejected = sorted(i for i, v in by.items() if v == "refuted")
+
+    # THE OPTION THE READER MEETS MUST BE THE OPTION THAT WAS CHECKED.
+    #
+    # Verification is dispatched against members[0] and the check above confirms those were
+    # checked. The report does not lead with members[0]: build_report.py leads with the first
+    # member that was NOT refuted. The two coincide until a lead is refuted, and then the family's
+    # face is an option nothing verified, while every count still adds up.
+    #
+    # Measured on the run that motivated this (docs/internal/preserved-runs/20260827-run1): four
+    # options were refuted, two top-13 families promoted a replacement, and one of them -- f013,
+    # lead p4-010 refuted, p2-008 promoted -- appears in no verified-*.json. That report went out
+    # claiming a verified top 13 and carrying twelve. The label was honest ("not verified"), so no
+    # reader was misled; the GUARANTEE was silently false, which is what this refuses.
+    #
+    # `effective_lead` is imported from build_report.py rather than restated. Two implementations
+    # of "the lead" is how they came apart, and a third would be the same mistake with a gate
+    # attached.
+    promoted_unchecked = []
+    for f_id in order[:13]:
+        f = by_id.get(f_id)
+        if not f: continue
+        members = f.get("members") or []
+        eff = effective_lead(members, set(rejected))
+        if eff is None: continue          # fully refuted: not presented at all, so nothing to check
+        if eff != (members[0] if members else None) and eff not in by:
+            promoted_unchecked.append((f_id, members[0], eff))
+    if promoted_unchecked:
+        ex = "; ".join(f"{fid}: lead {old} refuted, promoted {new_}" for fid, old, new_ in promoted_unchecked)
+        die(f"{len(promoted_unchecked)} top-13 famil(ies) will be presented with an option that was "
+            f"never checked ({ex}). Refuting a lead promotes the next surviving member, and "
+            f"verification targeted the refuted one. Re-dispatch a verifier for the promoted "
+            f"option(s) named above, write the verdict to the next free verified-<k>.json, and "
+            f"re-run this script. Do not edit families.json to reorder the members: the promotion "
+            f"is build_report.py's and reordering hides the gap rather than closing it.")
     unclear = [i for i in top13 if by[i] == "unclear" and i not in rejected]
     no_claim = [i for i in top13 if by[i] == "no_external_claim"]
 

@@ -393,8 +393,11 @@ assumed: a negation round against that structure returned one search-verified op
    holding one grouping fixed and adding adjudications alone took it from zero such pairs to three.
    The *share* survives that growth where a count does not, because both of its terms grow together.
 
-   `plan_groups.py` satisfies both by construction and `merge_families.py` re-checks them, so a
-   violation costs one re-dispatch instead of the last gate of a finished run.
+   `plan_groups.py` satisfies both by construction. `merge_families.py` re-checks both against the
+   shards it is given — but it then repairs colliding leads by merging families, and merging is the
+   one operation that can raise a family's separated share. The share half is therefore measured
+   *before* the step that can break it, and a violation introduced by that repair reaches the last
+   gate rather than costing one re-dispatch. The lead half does survive the merges.
 
    **Nothing is deleted at any point.** A wrong merge is unrecoverable — the reader never learns the
    option existed. A wrong grouping costs them a line of reading. The counts must match, and the
@@ -535,9 +538,12 @@ leaves, and how the presented list should read.
 - **The next 10** — one line each.
 - **The rest, in rank order** — one line each.
 
-The script orders families by rank and leads each with **its first member** — the grouper put the strongest there, and it is
-the one that was verified, so leading with a different one presents an unchecked option as the
-family's face. Then list the others as variants, one line each,
+The script orders families by rank and leads each with **its first member that was not refuted** —
+the grouper put the strongest first, and a refuted option cannot be a family's face. Note what that
+means: verification is dispatched against `members[0]`, so when a lead is refuted the option the
+reader meets is not the option that was checked. `verify_pipeline.py` refuses that rather than
+letting it ship silently, but the two are chosen by different rules and only one of them is
+verified by construction. Then list the others as variants, one line each,
 naming what differs — *"same, but the trigger is a missed milestone rather than a capital cap"*.
 Where a family drew members from several different lenses, say so: how many passes proposed it is a signal
 about the mechanism, not noise.

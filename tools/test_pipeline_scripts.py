@@ -552,6 +552,20 @@ def t_three_states_and_report():
             e.update(verdict="refuted", source_url="https://example.org/x", quote="does not hold")
     json.dump(v, open(os.path.join(d, "verified-1.json"), "w"))
 
+    # Refuting the lead promotes the next surviving member, and THAT is the option the report
+    # will lead with. This fixture used to stop here and assert rc == 0 -- which encoded the
+    # promoted-lead defect as expected behaviour, because the promotion was never checked. The
+    # gate now refuses that, so the fixture has to do what a real run must: verify the option the
+    # reader will actually meet.
+    promoted = next(m for m in {f["id"]: f for f in fams}[order[0]]["members"] if m != lead)
+    rc, out = run("verify_pipeline.py", d)
+    check("an unchecked promotion is refused", rc != 0 and "never checked" in out, out.strip()[:120])
+    check("...naming the family and both options",
+          promoted in out and lead in out, out.strip()[:160])
+
+    v = json.load(open(os.path.join(d, "verified-1.json")))
+    v["checked"].append({"id": promoted, "verdict": "no_external_claim"})
+    json.dump(v, open(os.path.join(d, "verified-1.json"), "w"))
     rc, out = run("verify_pipeline.py", d)
     check("a refuted option no longer deadlocks", rc == 0, out.strip()[:100])
     check("and is reported as rejected", "rejected=1" in out, out.strip()[:100])
@@ -1391,6 +1405,52 @@ def t_cross_cluster_merge():
 
 
 
+def t_promoted_lead_gate():
+    """The option the reader meets must be the option that was checked.
+
+    Verification is dispatched against `members[0]`; the report leads with the first member that
+    was NOT refuted. They coincide until a lead is refuted, and then the family's face is an option
+    nothing verified while every count still closes -- generated == presented + rejected, top-13
+    all checked, arithmetic clean.
+
+    REAL INSTANCE, in docs/internal/preserved-runs/20260827-run1 (gitignored, so this fixture is
+    synthetic): four options refuted; two top-13 families promoted a replacement; f001 promoted
+    p2-006 which HAD been checked, and f013 promoted p2-008 which appears in no verified-*.json.
+    That report went out claiming a verified top 13 and carrying twelve. f001 is the control and
+    f013 is the defect, and both shapes are reproduced below.
+
+    The fully-refuted family is the branch NO recorded run exercises -- 20260827-run1 has none --
+    so it is synthetic here by necessity, and that is why it is worth asserting: `effective_lead`
+    returns None there, and the gate must skip rather than index an empty list.
+
+    NEGATIVE CONTROL, run 2026-08-27: making the gate compare against `members[0]` instead of
+    `effective_lead` -- i.e. reintroducing the second implementation of "the lead" -- passes the
+    f013 case and the whole point is lost.
+    """
+    print("\nthe presented lead must be the checked lead")
+    import importlib.machinery as _m
+    br = _m.SourceFileLoader("br_g", str(SCRIPTS / "build_report.py")).load_module()
+
+    # f013's shape: lead refuted, replacement never checked.
+    check("a promoted replacement that was never checked is the defect",
+          br.effective_lead(["p4-010", "p2-008"], {"p4-010"}) == "p2-008",
+          br.effective_lead(["p4-010", "p2-008"], {"p4-010"}))
+    # f001's shape: lead refuted, replacement checked -- must remain legal.
+    check("a promoted replacement that WAS checked is fine",
+          br.effective_lead(["p1-005", "p2-006"], {"p1-005"}) == "p2-006",
+          br.effective_lead(["p1-005", "p2-006"], {"p1-005"}))
+    # The branch no run has ever produced.
+    check("a fully refuted family yields None rather than raising",
+          br.effective_lead(["p1-001", "p1-002"], {"p1-001", "p1-002"}) is None,
+          br.effective_lead(["p1-001", "p1-002"], {"p1-001", "p1-002"}))
+    check("...and an empty family too",
+          br.effective_lead([], set()) is None, br.effective_lead([], set()))
+    # A run of refuted members: stop-at-first would return the wrong option.
+    check("promotion skips a RUN of refuted members",
+          br.effective_lead(["a", "b", "c"], {"a", "b"}) == "c",
+          br.effective_lead(["a", "b", "c"], {"a", "b"}))
+
+
 def t_source_link():
     """A source renders as its domain, and a destination that would end the link early is bracketed.
 
@@ -1993,7 +2053,7 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
           t_plan_groups, t_merge_families, t_forced_lead_collision,
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
-          t_shard_coverage_check, t_infeasible_lead_core, t_source_link, t_effective_lead,
+          t_shard_coverage_check, t_infeasible_lead_core, t_source_link, t_effective_lead, t_promoted_lead_gate,
           t_lead_assignment_complete):
     t()
 
