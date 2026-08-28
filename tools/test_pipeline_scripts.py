@@ -2615,6 +2615,37 @@ def t_merged_labels_replace_concatenation():
         shutil.rmtree(d, True)
 
 
+def t_slots_path_is_named_in_both_spellings():
+    """The CHEAP HALF of guarding where `slots.json` goes. Named as such on purpose.
+
+    This reads prose to answer a question about a run, which is the instrument this repo warns
+    about: it passes whenever pipeline.md says the right thing, and a run is free to write the
+    file somewhere else anyway — which is exactly what happened on 2026-08-28, with the whole of
+    step 10 in front of the model.
+
+    The stronger check does not exist, and that was established rather than assumed:
+    `user_visible_artifact` and `file_exists` take a literal path, no globs (measured — even
+    `outputs/*/report.md` fails against a run whose report.md is right there), and the run
+    directory carries a timestamp, so no scenario can name the path statically. The harness's
+    `undelivered_deliverables` line DOES see it, and is warn-only by design. So the real detector
+    is a warning a maintainer has to read, and `ideas-command.yaml` deliberately does not set
+    `allow_undelivered_deliverables`, which would silence it.
+    """
+    print("\nthe slots.json path is named, in both spellings")
+    md = (ROOT / "creative-problem-solving" / "skills" / "creative-problem-solving"
+          / "references" / "pipeline.md").read_text(encoding="utf-8")
+    check("the shell form is passed to --fill", '--slots-json "$BASE/$RUN/_work/slots.json"' in md,
+          "the script is handed a path the shell can resolve")
+    check("the file-tool form is named too", "$RUN/_work/slots.json" in md,
+          "a file tool needs the bare path; Step 0b says no single string serves both")
+    check("...and the two are distinguished, not conflated",
+          "both spellings" in md.lower() or "two spellings" in md.lower(),
+          "naming one form and not the other is how the write lands in another namespace")
+    check("overwriting is allowed and deleting is refused",
+          "never delete it" in md and "outputs/" in md,
+          "outputs/ is delete-denied; an rm there fails the run and EPERMs on a real session")
+
+
 def t_slots_fill_and_deletion():
     """The judgement reaches the file, or something says so.
 
@@ -2841,7 +2872,8 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_out_path_echo, t_promoted_lead_gate,
           t_lead_assignment_complete, t_cps_resolver,
           t_merged_labels_replace_concatenation, t_slots_fill_and_deletion,
-          t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage):
+          t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage,
+          t_slots_path_is_named_in_both_spellings):
     t()
 
 print()

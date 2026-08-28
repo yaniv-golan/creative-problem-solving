@@ -31,7 +31,17 @@ prompt: "/creative-problem-solving:ideas Our four independent bookshops are losi
 
 assert:
   - result: success
+  # NOT SET, deliberately: `allow_undelivered_deliverables`. The harness warns when the run leaves
+  # a file outside every user-visible root, and that warning is the ONLY thing that can see where
+  # `slots.json` lands — `user_visible_artifact` and `file_exists` take literal paths with no glob
+  # support (measured: even `outputs/*/report.md` fails against a run whose report.md is present),
+  # and the run directory is a timestamp, so no assertion here can name the path. Suppressing the
+  # warn would blind the one detector there is. It is warn-only, so read it.
+  #
   # Post-hoc, not a cap: it cannot stop spend, only report that spend changed shape.
+  # On a cassette lane this goes vacuous — the schema says it asserts "the frozen recording's cost,
+  # not fresh spend", so under replay it compares a constant to a constant and cannot fail. If
+  # cassettes are ever adopted, this assertion has to move to the live lane or go.
   - max_cost_usd: 40
   # THE REPLY MUST CARRY THE REPORT, NOT A SUMMARY OF IT.
   # `pipeline.md` step 10: "The file is the answer, and the reply is the file… Do not compose a
