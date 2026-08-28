@@ -2442,8 +2442,17 @@ def t_cps_resolver():
     src = blocks[0].replace('cps_resolve "<the path you read this file at>" || true', "")
 
     TAIL = "/skills/creative-problem-solving/references/pipeline.md"
-    def resolve(read_at, roots):
+    def resolve(read_at, roots, split=False):
+        """`split=True` models a host-loop shell: HOME under /sessions/, read path outside it.
+
+        The resolver decides "different namespace" from the shell's own location versus the shape
+        of the read path — never by stat-ing a path from the other side. So a fixture that wants
+        the split case has to set HOME, not just hand over a non-existent read path: a ghost path
+        under /var/folders with a /var/folders shell is a MIS-DERIVED path, which is a different
+        situation and now gets a different answer.
+        """
         env = dict(os.environ, CPS_SEARCH_ROOTS=roots)
+        if split: env["HOME"] = "/sessions/fake-session"
         r = subprocess.run(["sh", "-c", src + f'\ncps_resolve "{read_at}"\n'],
                            capture_output=True, text=True, env=env)
         return r.returncode, r.stdout + r.stderr
@@ -2473,21 +2482,21 @@ def t_cps_resolver():
         # plugin at /sessions/<id>/mnt/.remote-plugins/plugin_<id>/, and the first is not stat-able.
         ghost = os.path.join(base, "not-in-this-filesystem", "plugin_XYZ")
         sh = mk("B", "sess", "s1", "mnt", ".remote-plugins", "plugin_XYZ"); scripts(sh)
-        rc, out = resolve(ghost + TAIL, os.path.join(base, "B", "sess"))
+        rc, out = resolve(ghost + TAIL, os.path.join(base, "B", "sess"), split=True)
         check("split namespace resolves on the id join", rc == 0 and "id join" in out and sh in out,
               out.strip()[:120])
         check("...and names the branch, not only the path", "branch 2" in out, out.strip()[:120])
 
         # A skill mount carries the name and no scripts/; matching on the sentinel must ignore it.
         mk("B", "sess", "s1", "mnt", ".claude", "skills", "creative-problem-solving")
-        rc, out = resolve(ghost + TAIL, os.path.join(base, "B", "sess"))
+        rc, out = resolve(ghost + TAIL, os.path.join(base, "B", "sess"), split=True)
         check("a skill mount does not shadow the plugin", rc == 0 and sh in out, out.strip()[:120])
 
         # Two copies and nothing to choose between them: refuse rather than take the first.
         for v in ("0.2.0", "0.3.0"):
             scripts(mk("C", "sess", "s1", "mnt", ".local-plugins", "c", "cps", v))
         ghost_c = os.path.join(base, "not-in-this-filesystem", "nomatch")
-        rc, out = resolve(ghost_c + TAIL, os.path.join(base, "C", "sess"))
+        rc, out = resolve(ghost_c + TAIL, os.path.join(base, "C", "sess"), split=True)
         check("two copies with nothing to choose between them are REFUSED",
               rc == 2 and "nothing distinguishes" in out, out.strip()[:140])
         check("...and both candidates are printed", out.count("verify_pipeline.py") >= 2,
@@ -2496,7 +2505,7 @@ def t_cps_resolver():
         # ...but the basename settles it when it can. Under a marketplace install that basename
         # is the VERSION, and matching it picks the same version.
         ghost_v = os.path.join(base, "not-in-this-filesystem", "0.3.0")
-        rc, out = resolve(ghost_v + TAIL, os.path.join(base, "C", "sess"))
+        rc, out = resolve(ghost_v + TAIL, os.path.join(base, "C", "sess"), split=True)
         check("a basename that matches one copy disambiguates it",
               rc == 0 and "0.3.0" in out and "0.2.0" not in out, out.strip()[:140])
 
@@ -2520,9 +2529,18 @@ def t_cps_resolver():
         check("a visible scriptless install takes the documented fallback",
               rc == 1 and "REFUSING" not in out and "fallback" in out, out.strip()[:150])
 
+        # A read path that does not exist while the shell is NOT in a separate namespace is
+        # MIS-DERIVED, and resolving it to whatever else is on the disk is the version-skew bug:
+        # a machine with 0.1.0 and 0.3.0 both cached reaches exactly this.
+        lone = mk("F", "installed"); scripts(lone)
+        rc, out = resolve(os.path.join(base, "F", "typo") + TAIL, os.path.join(base, "F"))
+        check("a mis-derived read path does not silently bind to another install",
+              rc == 2 and "should have resolved" in out, out.strip()[:150])
+        check("...and names the copy it declined to use", lone in out, out.strip()[:150])
+
         # INVISIBLE read path and nothing found: the shape cannot be judged at all, so refusing is
         # the only honest answer. Calling this "scriptless" is the guess that started all of this.
-        rc, out = resolve(os.path.join(base, "gone", "plugin_X") + TAIL, empty)
+        rc, out = resolve(os.path.join(base, "gone", "plugin_X") + TAIL, empty, split=True)
         check("an invisible read path with no hits REFUSES rather than assuming scriptless",
               rc == 2 and "not visible from this shell" in out, out.strip()[:150])
         check("...and names the roots it searched", empty in out, out.strip()[:150])

@@ -100,8 +100,19 @@ cps_resolve() {                    # $1 = the path you read THIS file at
     return 1
   fi
 
+  # $CAND is not visible. That has TWO causes wanting different answers, and `[ -d ]` alone
+  # cannot tell them apart: the path belongs to another filesystem, or it is simply wrong.
+  # Decide it without ever stat-ing a path from the other side — the shell's own location and the
+  # read path's shape are enough. Under Cowork's host loop the shell sits under /sessions/ and the
+  # file tools report a host path that does not; under its VM loop BOTH are under /sessions/, so
+  # a missing directory there really is missing.
+  SPLIT=0
+  case "$PWD" in /sessions/*) SPLIT=1 ;; esac
+  case "$HOME" in /sessions/*) SPLIT=1 ;; esac
+  case "$CAND" in /sessions/*) SPLIT=0 ;; esac
+
   # Branch 2 — the shell searches for itself, because only the shell can answer where the shell
-  # is. Reached when $CAND is invisible, i.e. the namespaces differ. Match on the SENTINEL FILE,
+  # is. Match on the SENTINEL FILE,
   # never on a directory name: skills are separately mounted at .claude/<...>/<sanitized skill
   # name>, which carries no scripts/, so a name match can succeed and still land somewhere
   # useless — the original failure with a green tick on it.
@@ -120,9 +131,26 @@ cps_resolve() {                    # $1 = the path you read THIS file at
   BR="2: search"; [ -n "$EXACT" ] && { HITS="$EXACT"; BR="2: id join on $PID"; }
 
   N=$(printf '%s\n' "$HITS" | grep -c . || true)
-  if [ "$N" -eq 1 ]; then
+  if [ "$N" -eq 1 ] && [ "$SPLIT" = 1 ]; then
     CPS=$(dirname "$(dirname "$HITS")"); echo "CPS=$CPS (branch $BR)"; return 0
   fi
+  if [ "$N" -eq 1 ]; then
+    # One hit, but the namespaces are NOT split — so the read path should have existed and did
+    # not. Something else is on this disk and it is very likely a different version. Resolving to
+    # it would run one version's scripts against another version's instructions, silently. That
+    # is not hypothetical: a machine with 0.1.0 and 0.3.0 both cached reaches exactly this.
+    echo "REFUSING: the path you read this file at does not exist for this shell:"
+    echo "  $CAND"
+    echo "  ...and this shell is not in a separate namespace, so that path should have resolved."
+    echo "  A copy WAS found at $HITS — but it is a different install, quite possibly a"
+    echo "  different version, and binding it to these instructions is the skew this step exists"
+    echo "  to prevent. Check the path, or set CPS by hand."
+    return 2
+  fi
+  # Kept even though a `find` on Cowork returns one hit per session: that is suppressed by
+  # per-session uid isolation, which stops `find` descending into a concurrent session's mounts —
+  # NOT by construction. A method that enumerates rather than descends (reading /proc/mounts, for
+  # instance) sees other sessions' plugin mounts, and this is live for it.
   if [ "$N" -gt 1 ]; then
     echo "REFUSING: $N copies of $SENTINEL and nothing distinguishes them:"; echo "$HITS"
     echo "  Taking the first would silently run one version's scripts against another's"
