@@ -2663,6 +2663,22 @@ def t_slots_fill_and_deletion():
               out.strip()[:140])
         check("...and actually substituted", "real text" in open(rep).read(), "")
 
+        # A file tool that wrote into the other namespace leaves NO file. Reporting that as bad
+        # JSON sends the caller to inspect something that is not there, at the last step of a
+        # forty-minute run.
+        rc, out = run("build_report.py", "--fill", rep, "--slots-json",
+                      os.path.join(d, "nope.json"))
+        check("a missing slots file says it is missing, not malformed",
+              rc != 0 and "does not exist" in out and "not readable JSON" not in out,
+              out.strip()[:140])
+        check("...and points at the namespace split that causes it", "namespace" in out,
+              out.strip()[:140])
+        open(os.path.join(d, "bad.json"), "w").write("{not json")
+        rc, out = run("build_report.py", "--fill", rep, "--slots-json",
+                      os.path.join(d, "bad.json"))
+        check("CONTROL: a file that exists but is malformed still says so",
+              rc != 0 and "not readable JSON" in out, out.strip()[:140])
+
         # Deletion: no {{ remains, headings and options intact, and the missing words vanish
         # against a 22,000-word floor.
         body = open(rep).read()

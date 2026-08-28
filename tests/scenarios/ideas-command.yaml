@@ -18,13 +18,35 @@ fidelity: container
 on_unanswered: first
 # A full run is tens of minutes across roughly eighteen dispatches — far longer than the other
 # scenarios here, which is why this one sets its own budget.
-timeout_ms: 5400000
+# Bounded against the one completed observation: 1634.5 s / $23.8071 on 2026-08-28, a burn of
+# $0.0146/s. 46 minutes and $40 are the SAME bound at that rate — an earlier draft paired 60
+# minutes with $40, which reds on cost fifteen minutes before the clock it was set beside and makes
+# the last quarter of the allowed time unreachable. Headroom is 1.5x one completed run and one
+# censored lower bound (a run killed, unfinished, at 1800 s), which is thin; raise both together
+# when there are more runs, and never one alone.
+timeout_ms: 2760000
 
 # Leading slash is load-bearing: mid-sentence slashes are not expanded by the agent binary.
 prompt: "/creative-problem-solving:ideas Our four independent bookshops are losing footfall, we cannot match online on price, and author events and a loyalty card are already spent. What else could we be?"
 
 assert:
   - result: success
+  # Post-hoc, not a cap: it cannot stop spend, only report that spend changed shape.
+  - max_cost_usd: 40
+  # THE REPLY MUST CARRY THE REPORT, NOT A SUMMARY OF IT.
+  # `pipeline.md` step 10: "The file is the answer, and the reply is the file… Do not compose a
+  # second, shorter version." Nothing enforced it. On 2026-08-28 the run shipped a 2,155-character
+  # summary while `--check-reply` passed — because one Bash call did `cp report.md reply.md` and
+  # checked the copy, which that same page predicts satisfies the gate by construction.
+  #
+  # This is the only assertion that reads the surface the defect lives on: `transcript_contains`
+  # sees top-level assistant text, i.e. what the reader was actually sent. The marker is a band
+  # heading `build_report.py` emits and a summary drops.
+  #
+  # Negative control, run on the kept 2026-08-28 run dir before this was added: the marker is in
+  # `report.md` and NOT in that run's sent message, so this assertion reds it. Note what was
+  # rejected — "Assumption I ran with" appears in BOTH, so the obvious marker passes vacuously.
+  - transcript_contains: "## The rest, in rank order"
   # The command routed INTO the skill. This is the whole point of the scenario: a run where the
   # command expands to prose the model then answers directly would still be `success`, and this
   # is the only assertion that separates those two outcomes.

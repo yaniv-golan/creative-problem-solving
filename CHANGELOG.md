@@ -9,6 +9,33 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The reply must now carry the report, and a copy no longer satisfies the check.** Step 10 has
+  always said "the file is the answer, and the reply is the file… do not compose a second, shorter
+  version", and has always admitted `--check-reply` cannot see the message actually sent — so
+  `cp report.md reply.md` satisfies it by construction. On 2026-08-28 a live run did exactly that
+  and sent 2,155 characters of fresh summary instead of the 76,246-byte report, with every check
+  green. The page now says the copy is not the step, and `ideas-command.yaml` asserts a band
+  heading appears in the **sent message** — the one surface the script cannot reach. Verified
+  against the kept run: the marker is in the report and absent from that reply, so the assertion
+  reds it. (The obvious marker, the assumption line, appears in both and would have passed
+  vacuously.)
+- **An edit after `--check` now requires re-running it.** The echo scan exists to prompt an edit,
+  and the same run edited `report.md` six seconds after `--check` passed — so the green certified a
+  file that no longer existed when it was sent. The edit was correct; the missing re-check was not.
+- **`slots.json` has a named home, in both spellings.** The `--fill` step said to write it and
+  never said where, so a run put it in the session scratchpad — outside every directory the reader
+  can see, and reclaimed at session end. It is now `$RUN/_work/slots.json` for the file tool that
+  writes it and `"$BASE/$RUN/_work/slots.json"` for the script that reads it, because no single
+  string is correct for both. It must be overwritten, never deleted: `outputs/` is delete-denied,
+  and on a real Cowork session an `rm` there fails outright.
+- **A missing `slots.json` says it is missing.** `--fill` reported every failure as malformed JSON,
+  so a file that landed in the other namespace sent the caller to inspect something that was not
+  there — at the last step of a forty-minute run.
+- **The shard-budget warning names a remedy, and the pipeline now tells the model to apply it.**
+  `shard_candidates.py` warns when the agreement probe caps shards below what the pair count wants,
+  and says to raise `--probe`. Nothing instructed the model to act on it, so a run took 12 shards
+  at ~137 pairs each — 9% over budget — and passed the warning to the reader instead. Every other
+  `WARN:` here is for the reader to judge; this one is for the run to fix.
 - **A merged family's heading names one mechanism again.** When two families had to be merged —
   which happens when the adjudicators leave no way to give them distinct leads — `merge_families.py`
   joined their labels with `"; "`, and `build_report.py` prints the label as the `###` heading. One
@@ -58,6 +85,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **`tools/run-live.sh`** — runs the live lane detached, with the harness's exit code written to
+  its own file rather than read through a pipe. Both halves are failures this repo has had: a
+  status read through `grep` reported a pass on a run that exited 1, and a 27-minute scenario was
+  killed at 30 minutes by a tracked background runner. Tested against a fake harness on the CI
+  gate, including that a silent launch leaves no status file.
 - **`build_report.py --slots` and `--fill`.** The build now prints every `{{...}}` token verbatim,
   and `--fill` refuses a key matching no placeholder. The failure this removes is a fill loop keyed
   on remembered names: a mistyped key matches nothing, is skipped in silence, and the judgement never
@@ -71,6 +103,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **`ideas-command` is bounded in time and cost.** `timeout_ms` drops from 90 to 46 minutes and
+  `max_cost_usd: 40` is added — the same bound at the observed burn of $0.0146/s, where 60 minutes
+  paired with $40 would red on cost fifteen minutes before the clock. Both rest on one completed
+  run (1634.5 s, $23.8071) plus one censored lower bound, so raise them together or not at all.
+  Validated with `verify-run` against the kept run dir, free: $20 reds, $40 greens.
 - **CI pins `cowork-harness` 2.5.0**, up from 2.3.0. The two had drifted apart: `doctor` reports
   the agent image and egress-proxy digests matching what 2.5.0 pins, so running the older CLI
   against those images was the worse mismatch. Verified by running all four commands CI takes from

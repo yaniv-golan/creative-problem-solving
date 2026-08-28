@@ -228,7 +228,8 @@ prefer a shape a model actually produced over one you invented.
 guard fired (a stall heuristic, a host-path leak, an unanswered gate), so the exit code cannot
 tell you which. The envelope can — every `verdict.failures[]` entry carries a `kind`
 (`assertion` | `guard` | `staleness` | `cassette-format` | `coverage`). Requires
-`cowork-harness` 2.3.0:
+`cowork-harness` 2.5.0, the version CI pins — the envelope itself landed in 2.3.0, but keep one
+version across the repo rather than two that need reconciling:
 
 ```bash
 cowork-harness --dotenv .env run tests/scenarios --output-format json > run.json

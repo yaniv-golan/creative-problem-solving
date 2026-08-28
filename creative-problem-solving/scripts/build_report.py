@@ -516,10 +516,19 @@ def fill(path, slots_path):
     printed instead, and --check is what finally insists on them.
     """
     body = open(path, encoding="utf-8-sig").read()
+    # Missing and malformed are different problems with different fixes, and collapsing them
+    # reports the wrong one: a `Write` that landed in another namespace is announced as bad JSON,
+    # which sends the caller to inspect a file that is not there. That lands at the last step of a
+    # forty-minute run, where an unactionable error is most expensive.
+    if not os.path.exists(slots_path):
+        sys.exit(f"FAIL: {slots_path} does not exist. If a file tool wrote it, it may have landed "
+                 f"in that tool's namespace rather than the shell's — see references/pipeline.md "
+                 f"step 0b. Write it at the bare path $RUN/_work/slots.json and pass this script "
+                 f"the $BASE/-prefixed form.")
     try:
         slots = json.load(open(slots_path, encoding="utf-8-sig"))
     except Exception as exc:
-        sys.exit(f"FAIL: {slots_path} is not readable JSON: {exc}")
+        sys.exit(f"FAIL: {slots_path} exists but is not readable JSON: {exc}")
     if not isinstance(slots, dict) or not slots:
         sys.exit(f"FAIL: {slots_path} must be a non-empty JSON object mapping each {{{{...}}}} "
                  f"token, verbatim, to the text that replaces it.")

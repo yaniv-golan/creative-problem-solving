@@ -343,6 +343,17 @@ assumed: a negation round against that structure returned one search-verified op
 
    `python3 "$CPS/scripts/shard_candidates.py" "$BASE/$RUN/_work"`
 
+   **If it warns that the shards are over budget, act on it — it names the remedy and this is the
+   one WARN that has one.** `Raise --probe to lift the ceiling, or --shards to override
+   deliberately` means what it says: the agreement probe caps how many shards can be cross-checked,
+   so a large pool gets fewer, bigger shards than the 126-pair budget wants. Re-run the command
+   with `--probe` raised (the ceiling is a quarter of it) rather than accepting the excess. On
+   2026-08-28 a run took 12 shards at ~137 pairs each, 9% over, and passed the warning on to the
+   reader instead — every other WARN in this pipeline is for the reader to judge, and this one is
+   for you to fix before continuing.
+
+   `python3 "$CPS/scripts/shard_candidates.py" "$BASE/$RUN/_work"`
+
    That drops repeated proposals, deals the rest into balanced shards, and plants the
    agreement probe — 48 pairs dealt to a *second* shard so two adjudicators judge them without
    seeing each other, sampled so that every adjudicator is cross-checked rather than only the
@@ -644,8 +655,21 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
 
     ```
     # slots.json: {"<token, verbatim>": "<the text that replaces it>", ...}
-    python3 "$CPS/scripts/build_report.py" --fill "$BASE/$RUN/report.md" --slots-json slots.json
+    python3 "$CPS/scripts/build_report.py" --fill "$BASE/$RUN/report.md" \
+            --slots-json "$BASE/$RUN/_work/slots.json"
     ```
+
+    **Write `slots.json` with your file tools at the bare path `$RUN/_work/slots.json`, and pass
+    the script the `$BASE/`-prefixed form above.** Two spellings of one file, per Step 0b — you
+    write it, a script reads it, and on a split-namespace host no single string is right for both.
+    Left unsaid, this lands outside every directory the reader can see: on the run that produced
+    this paragraph it went to the session scratchpad, which is reclaimed at session end.
+
+    **Overwrite it if you fill in more than one pass; never delete it.** Nothing under `outputs/`
+    is deleted (Step 0b) and the harness enforces that — an in-place overwrite is fine, an `rm`
+    fails the run, and on a real Cowork session `unlink` there fails outright. It is also worth
+    keeping: it is the judgement you applied, in the form you applied it, beside the run it
+    belongs to.
 
     It refuses any key that matches no placeholder, and prints what is still outstanding. A
     partial fill is fine — filling some by hand and the rest from a file is normal. **The shape
@@ -686,6 +710,11 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     **Do not edit option text to empty the block** — the options are the checked artifact, the scan
     is a reading aid, and silencing it costs you the thing it was pointing at.
 
+    **Any edit after `--check` means running `--check` again.** The scan exists to prompt an edit,
+    so this is the ordinary path and not an exception. On the run that produced this line the
+    sequence was fill, check, *edit*, deliver — so the green certified a file that no longer
+    existed by the time it was sent. The edit itself was right; the missing re-check is the defect.
+
     **The file is the answer, and the reply is the file.** Emit its contents as your reply. Do
     not compose a second, shorter version: everything in the report has been through the checks
     above, and a summary written afterwards has been through none of them. In the run that
@@ -702,6 +731,14 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     the content is not. Note what it does **not** check: it reads the file you wrote, not the
     message you send, so `cp report.md reply.md` satisfies it by construction. It is a floor
     against summarising, not proof the reader got anything.
+
+    **So `cp report.md reply.md` is not the step, and running it is how this gate goes hollow.**
+    Write into `reply.md` the message you are actually going to send, then check that. If what you
+    intend to send is the report's contents — which is the answer — then send the report's
+    contents, and the copy is redundant rather than clever. This is not hypothetical: on
+    2026-08-28 a run copied the file, passed the check, and sent 2,155 characters of fresh summary
+    instead. `tests/scenarios/ideas-command.yaml` now asserts a band heading appears in the sent
+    message, because that is the one surface this script cannot reach.
 
     **Then present the report file to the reader**, as well as sending its contents. Describe the
     outcome rather than naming a tool — the tool differs by host and a name that is right on one is

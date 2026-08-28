@@ -8,7 +8,7 @@ gate tells you what it asserts; only calling it tells you whether it runs.
 
   python3 tools/test_hooks.py
 """
-import os, subprocess, sys, tempfile
+import os, shutil, subprocess, sys, tempfile, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAILED = []
@@ -91,12 +91,63 @@ def main():
     check("without the hook installed, the trailer survives (control)",
           body is not None and "Claude-Session" in body, repr(body))
 
+    t_run_live()
+
     print()
     if FAILED:
         print("FAILED (%d): %s" % (len(FAILED), ", ".join(FAILED)))
         return 1
     print("all hook tests passed")
     return 0
+
+
+def t_run_live():
+    """tools/run-live.sh must detach, log, and report the harness's OWN exit code.
+
+    Driven against a fake `cowork-harness` on PATH rather than the real one, so the test costs
+    nothing and can assert an exact status. The failure it guards is specific: the script exists
+    because a status read through a pipe reports the pipe's, and because a launch can fail
+    silently and leave no log, no process and no status file (`nohup setsid …` did exactly that
+    on macOS, where setsid does not exist). A test that only checked "it ran" would miss both.
+    """
+    print("\ntools/run-live.sh — detaches, logs, and keeps the exit code readable")
+    out, bindir = tempfile.mkdtemp(), tempfile.mkdtemp()
+    fake = os.path.join(bindir, "cowork-harness")
+    open(fake, "w").write("#!/bin/sh\necho \"ran: $*\"\nexit 7\n")
+    os.chmod(fake, 0o755)
+    envfile = os.path.join(out, "fake.env")
+    open(envfile, "w").write("")
+
+    env = dict(os.environ, COWORK_RUN_OUT=out, COWORK_DOTENV=envfile,
+               PATH=bindir + os.pathsep + os.environ["PATH"])
+    r = subprocess.run([os.path.join(ROOT, "tools", "run-live.sh"), "tests/scenarios/x.yaml"],
+                       capture_output=True, text=True, cwd=ROOT, env=env)
+    check("it launches and reports where the result will be", r.returncode == 0
+          and "status:" in r.stdout, r.stdout + r.stderr)
+
+    rc_path, log_path = os.path.join(out, "live.rc"), os.path.join(out, "live.log")
+    for _ in range(50):
+        if os.path.exists(rc_path): break
+        time.sleep(0.2)
+    check("the status file is written at all", os.path.exists(rc_path),
+          "no status file — this is the silent-launch failure the script exists to prevent")
+    check("...and carries the harness's own exit code, not a pipeline's",
+          os.path.exists(rc_path) and open(rc_path).read().strip() == "7",
+          repr(open(rc_path).read()) if os.path.exists(rc_path) else "absent")
+    check("the log captured the invocation",
+          os.path.exists(log_path) and "ran: " in open(log_path).read(),
+          repr(open(log_path).read()[:80]) if os.path.exists(log_path) else "absent")
+
+    # Absent credentials must refuse rather than start a run that cannot authenticate — and the
+    # refusal is only useful if it is a non-zero status, which is the thing a pipe would hide.
+    env2 = dict(env, COWORK_DOTENV=os.path.join(out, "absent.env"))
+    r2 = subprocess.run([os.path.join(ROOT, "tools", "run-live.sh")],
+                        capture_output=True, text=True, cwd=ROOT, env=env2)
+    check("a missing env file refuses, non-zero", r2.returncode != 0, f"rc={r2.returncode}")
+    check("...and says how to mint a token", "setup-token" in (r2.stdout + r2.stderr),
+          (r2.stdout + r2.stderr)[:90])
+
+    shutil.rmtree(out, True); shutil.rmtree(bindir, True)
 
 
 if __name__ == "__main__":

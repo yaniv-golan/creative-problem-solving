@@ -282,6 +282,26 @@ prompt, not the assertions; `../evals/README.md` has the worked case.
 Re-run this after any change to `SKILL.md`'s frontmatter or Phase 1, and pin the model — an
 unpinned session silently tests the harness default instead of the target.
 
+**`ideas-command`, measured 2026-08-28 — n=1.** The first measurement this scenario has ever had;
+the table above says so itself. One live `container` run (`local_auz35uofjm`), `claude-opus-5`,
+under **`cowork-harness` 2.5.0, baseline `desktop-1.37937.1`** — deliberately its own block rather
+than a row in the table above, whose banner disowns every number in it. **PASS**: 95 tools, 33
+sub-agents, 1634.5 s, **$23.8071**, all four guards ok, 280 options into 113 families.
+
+Its `assert:` block has since gained `max_cost_usd: 40` and a `transcript_contains` check, and
+`timeout_ms` dropped from 90 to 46 minutes to match the cost bound at the observed burn of
+$0.0146/s. **Both numbers rest on this single run**, plus one censored lower bound — a run killed,
+unfinished, at 1800 s. Raise them together when there are more observations; raising one alone
+re-opens the gap where the cost assertion reds before the clock does.
+
+> The run also carried three signals worth more than its cost: a shard budget exceeded by 9% whose
+> named remedy the pipeline never told the model to apply (now fixed); a verdict mix of **1.9%
+> duplicate / 34.6% joinable**, both below the bands of previously recorded runs and kept here
+> because a passing run discards its own WARN lines; and **26 pairs sitting inside families after
+> being adjudicated apart**, up from 18 on the run before it, still unaddressed. Only the share
+> gate and adjudication coverage move that last number, so it is a property of the grouping and
+> not of any one run.
+
 ## Running them
 
 Requires [`cowork-harness`](https://github.com/yaniv-golan/cowork-harness) 2.5.0 — the exact
