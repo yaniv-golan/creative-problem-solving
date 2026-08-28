@@ -152,7 +152,7 @@ jobs:
       # is now its own edit across the eleven scenarios and tools/build-eval-scenarios.py, and
       # it invalidates any measured reliability figure taken on the old one.
       - name: Install cowork-harness
-        run: npm install --global cowork-harness@2.3.0
+        run: npm install --global cowork-harness@2.5.0
 
       # --strict makes the WARN class gate, which a bare lint would only print. --min-severity
       # WARN is the other half and it is load-bearing, not decoration: `gate-needs-controlout`

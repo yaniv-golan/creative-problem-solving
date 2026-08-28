@@ -71,6 +71,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **CI pins `cowork-harness` 2.5.0**, up from 2.3.0. The two had drifted apart: `doctor` reports
+  the agent image and egress-proxy digests matching what 2.5.0 pins, so running the older CLI
+  against those images was the worse mismatch. Verified by running all four commands CI takes from
+  this tool — scenario lint, eval-scenario lint, `lint-skill` and `analyze-skill` — at 2.5.0.
+  Nothing between the two versions bites here: 2.4.0's `fidelity-defaulted` warning cannot fire
+  because every scenario pins `fidelity: container`.
 - **Three behavioural scenarios asked for the skill the way the description says not to.** The
   description is explicit-only, and `pipeline-bounded`, `pipeline-strategic` and
   `deliverable-composition` asserted `skill_triggered` on prompts that only wanted ideas and said the

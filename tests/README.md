@@ -284,9 +284,12 @@ unpinned session silently tests the harness default instead of the target.
 
 ## Running them
 
-Requires [`cowork-harness`](https://github.com/yaniv-golan/cowork-harness) 2.3.0 — the exact
+Requires [`cowork-harness`](https://github.com/yaniv-golan/cowork-harness) 2.5.0 — the exact
 version CI pins, so a local green means what CI's green means — plus Docker,
-and a Claude auth token. None of that is needed to use or contribute to the skill itself —
+and a Claude auth token. Keep the two in step: on 2026-08-28 the pin said 2.3.0 while the installed
+CLI was 2.5.0, and `doctor` reported the agent image and egress-proxy digests matching what **2.5.0**
+pins — so running the older CLI would have been the worse mismatch, not the safer one. Bumping is
+gated on the four commands below passing, which is the whole of what CI runs from this tool. None of that is needed to use or contribute to the skill itself —
 this lane is optional.
 
 ```bash
