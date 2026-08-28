@@ -18,13 +18,19 @@ fidelity: container
 on_unanswered: first
 # A full run is tens of minutes across roughly eighteen dispatches — far longer than the other
 # scenarios here, which is why this one sets its own budget.
-# Bounded against the one completed observation: 1634.5 s / $23.8071 on 2026-08-28, a burn of
-# $0.0146/s. 46 minutes and $40 are the SAME bound at that rate — an earlier draft paired 60
-# minutes with $40, which reds on cost fifteen minutes before the clock it was set beside and makes
-# the last quarter of the allowed time unreachable. Headroom is 1.5x one completed run and one
-# censored lower bound (a run killed, unfinished, at 1800 s), which is thin; raise both together
-# when there are more runs, and never one alone.
-timeout_ms: 2760000
+# WIDENED BACK, after the second observation arrived and refuted the first bound.
+#
+# Set at 46 min / $40 from ONE run (1634.4 s, $23.8071 — a burn of $0.0146/s), described at the
+# time as 1.5x headroom. Then `deliverable-composition`, the same pipeline behind a different
+# prompt, took **2736.7 s / $32.8139** — 45.6 minutes, leaving that bound **23 seconds** of margin.
+# A gate with 23 seconds of headroom is a coin toss that reds a $30 run and looks like a skill
+# defect, which is the failure this file's own note warned about while setting the number anyway.
+#
+# n=2 on the same pipeline spans 1634-2737 s, a 1.7x spread between two ordinary runs. So the bound
+# is 2x the worst observed, not a fraction above the best: back to 90 minutes, and $60 for cost —
+# enough to catch a doubling, not so tight that ordinary variance trips it. Tighten only with
+# enough runs to know the distribution, and move both together.
+timeout_ms: 5400000
 
 # Leading slash is load-bearing: mid-sentence slashes are not expanded by the agent binary.
 prompt: "/creative-problem-solving:ideas Our four independent bookshops are losing footfall, we cannot match online on price, and author events and a loyalty card are already spent. What else could we be?"
@@ -42,7 +48,7 @@ assert:
   # On a cassette lane this goes vacuous — the schema says it asserts "the frozen recording's cost,
   # not fresh spend", so under replay it compares a constant to a constant and cannot fail. If
   # cassettes are ever adopted, this assertion has to move to the live lane or go.
-  - max_cost_usd: 40
+  - max_cost_usd: 60
   # THE REPLY MUST CARRY THE REPORT, NOT A SUMMARY OF IT.
   # `pipeline.md` step 10: "The file is the answer, and the reply is the file… Do not compose a
   # second, shorter version." Nothing enforced it. On 2026-08-28 the run shipped a 2,155-character

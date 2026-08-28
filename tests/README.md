@@ -288,11 +288,20 @@ under **`cowork-harness` 2.5.0, baseline `desktop-1.37937.1`** — deliberately 
 than a row in the table above, whose banner disowns every number in it. **PASS**: 95 tools, 33
 sub-agents, 1634.5 s, **$23.8071**, all four guards ok, 280 options into 113 families.
 
-Its `assert:` block has since gained `max_cost_usd: 40` and a `transcript_contains` check, and
-`timeout_ms` dropped from 90 to 46 minutes to match the cost bound at the observed burn of
-$0.0146/s. **Both numbers rest on this single run**, plus one censored lower bound — a run killed,
-unfinished, at 1800 s. Raise them together when there are more observations; raising one alone
-re-opens the gap where the cost assertion reds before the clock does.
+**`deliverable-composition`, re-measured 2026-08-28 after the trigger fix — n=1.** PASS on all
+five assertions, under the same harness and baseline but on the **fallback agent binary**
+(`2.1.247`, the pinned `2.1.246` having been replaced by a Desktop update): 98 tools, 50
+sub-agents, **2736.7 s, $32.8139**. The earlier 2026-08-19 figure above — 356.5 s, $1.59 — is not
+comparable: the skill was never invoked on that run, which is the defect the prompt fix corrected.
+
+**What those two runs settle about bounding.** `ideas-command` gained `max_cost_usd` and a
+`timeout_ms`, first set at $40 / 46 minutes from its own single observation and described as 1.5x
+headroom. `deliverable-composition` — the same pipeline behind a different prompt — then took
+2736.7 s, leaving that bound **23 seconds** of margin. So n=2 on one pipeline spans 1634-2737 s, a
+1.7x spread between two ordinary runs, and the bound is now 2x the worst observed rather than a
+fraction above the best: **90 minutes and $60**. A gate with 23 seconds of headroom reds a $30 run
+and looks like a skill defect. Tighten only with enough runs to know the distribution, and move the
+two together — they are one bound expressed twice.
 
 > The run also carried three signals worth more than its cost: a shard budget exceeded by 9% whose
 > named remedy the pipeline never told the model to apply (now fixed); a verdict mix of **1.9%
