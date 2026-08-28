@@ -222,6 +222,25 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
         json.dump({"pairs": s}, open(os.path.join(wd, f"cand-{i}.json"), "w", encoding="utf-8"),
                   separators=(",", ":"))
 
+    # A re-run that produces FEWER shards leaves the extra files from the previous sharding on
+    # disk, and step 5 dispatches "one adjudicator per cand-*.json" -- so the run would judge
+    # superseded shards and the heartbeat would announce a count the summary line below
+    # contradicts three lines later. Step 4 now tells the model to re-run with --probe raised
+    # when the budget is exceeded, which makes this the expected path rather than an exotic one.
+    #
+    # Renamed, not deleted: nothing under outputs/ is removed (step 0b, and the harness enforces
+    # it), and the new name is deliberately not `cand-*` so the glob stops seeing it.
+    superseded = 0
+    for old in sorted(glob.glob(os.path.join(wd, "cand-*.json"))):
+        n = os.path.basename(old)[len("cand-"):-len(".json")]
+        if n.isdigit() and int(n) > len(shards):
+            os.rename(old, os.path.join(wd, f"superseded-{os.path.basename(old)}"))
+            superseded += 1
+    if superseded:
+        print(f"WARN: {superseded} shard file(s) from an earlier sharding of this run directory "
+              f"were superseded by this one and renamed out of the way. Dispatch one adjudicator "
+              f"per cand-*.json as step 5 says; the renamed files are kept but no longer match.")
+
     # The generation heartbeat rides on this call rather than on a separate one. A progress
     # command that exists only to print is the first thing skipped when nothing depends on it,
     # and nothing notices; this call the pipeline cannot skip.

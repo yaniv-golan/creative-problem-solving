@@ -2636,7 +2636,13 @@ def t_slots_path_is_named_in_both_spellings():
           / "references" / "pipeline.md").read_text(encoding="utf-8")
     check("the shell form is passed to --fill", '--slots-json "$BASE/$RUN/_work/slots.json"' in md,
           "the script is handed a path the shell can resolve")
-    check("the file-tool form is named too", "$RUN/_work/slots.json" in md,
+    # NOT `"$RUN/_work/slots.json" in md` — that is a substring of the --slots-json line checked
+    # above, so it could never fail independently and asserted nothing. The bare form has to be
+    # found where it is NOT preceded by the $BASE/ prefix.
+    import re as _re2
+    bare = [m for m in _re2.finditer(r"\$RUN/_work/slots\.json", md)
+            if not md[max(0, m.start() - 7):m.start()].endswith("$BASE/")]
+    check("the file-tool form is named too, separately from the shell form", bare,
           "a file tool needs the bare path; Step 0b says no single string serves both")
     check("...and the two are distinguished, not conflated",
           "both spellings" in md.lower() or "two spellings" in md.lower(),
@@ -2710,15 +2716,10 @@ def t_slots_fill_and_deletion():
         check("CONTROL: a file that exists but is malformed still says so",
               rc != 0 and "not readable JSON" in out, out.strip()[:140])
 
-        # Deletion: no {{ remains, headings and options intact, and the missing words vanish
-        # against a 22,000-word floor.
-        body = open(rep).read()
-        victim = [l for l in body.splitlines() if l.strip().startswith("{{")][0]
-        open(rep, "w").write("\n".join(l for l in body.splitlines() if l != victim))
-        fill_placeholders(rep)
-        rc, out = run("build_report.py", "--check", rep)
-        check("a slot DELETED rather than filled is caught",
-              rc != 0 and "nothing in their place" in out, out.strip()[:140])
+        # NOT TESTED, because it is not detected: a slot DELETED rather than filled. The check
+        # that tried to catch it fired on correct reports and missed real deletions, and was
+        # removed — see the note above `check()` in build_report.py. `--check` still refuses an
+        # UNFILLED slot, which is the assertion below.
 
         # CONTROL: the same report with every slot filled must pass, or the check above is
         # passing for some unrelated reason.
@@ -2756,9 +2757,14 @@ def t_verifier_note_reaches_the_reader():
         v["checked"][1] = {"id": v["checked"][1]["id"], "verdict": "no_external_claim",
                            "note": NOTE2}
         json.dump(v, open(vf, "w"))
-        touched = 2
-        check("the fixture actually carries notes on both states", touched == 2,
-              "nothing to attach one to — the test would pass vacuously")
+        # Read back from disk rather than asserting a constant. The previous version was
+        # `touched = 2` followed by `check(touched == 2)` — an anti-vacuity guard that was itself
+        # the vacuous shape it was named for.
+        _v = json.load(open(vf))["checked"]
+        _states = {e.get("verdict") for e in _v if str(e.get("note") or "").strip()}
+        check("the fixture actually carries notes on both states",
+              {"confirmed", "no_external_claim"} <= _states,
+              f"notes present only on {_states} — the render checks below would pass vacuously")
 
         rc, out = run("verify_pipeline.py", d)
         check("a note does not fail the integrity check", rc == 0, out.strip()[:140])
@@ -2769,9 +2775,25 @@ def t_verifier_note_reaches_the_reader():
         rc, out = run("build_report.py", d, "--out", rep)
         body = open(rep).read() if rc == 0 else ""
         check("a confirmed verdict's note reaches the report", NOTE in body, out.strip()[:120])
-        if touched == 2:
+        if "no_external_claim" in _states:
             check("...and so does one on no_external_claim, which has no other place to say why",
                   NOTE2 in body, "")
+
+        # null is how JSON spells an unset optional field. An earlier version died on it, which
+        # would have failed a run at step 9 over a key the verifier was right to leave empty.
+        _v = json.load(open(vf)); _v["checked"][0]["note"] = None
+        json.dump(_v, open(vf, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("a null note is treated as absent, not as an error", rc == 0, out.strip()[:120])
+        # A list is truthy under str(), so it passed the old check and then crashed the report
+        # build with AttributeError at the last step of the run.
+        _v = json.load(open(vf)); _v["checked"][0]["note"] = ["a", "b"]
+        json.dump(_v, open(vf, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("a non-string note is refused here, not at the report build",
+              rc != 0 and "must be a string" in out, out.strip()[:120])
+        _v = json.load(open(vf)); _v["checked"][0]["note"] = NOTE
+        json.dump(_v, open(vf, "w"))
 
         # A refuted option's note belongs in the "Checked and failed" band -- it says WHICH part
         # did not hold, which is the only reason that band is worth the reader's time. Rendering
@@ -2814,6 +2836,41 @@ def t_verifier_note_reaches_the_reader():
         json.dump(v, open(vf, "w"))
         rc, out = run("verify_pipeline.py", d)
         check("CONTROL: an unfamiliar key is absorbed, not refused", rc == 0, out.strip()[:140])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_superseded_shards_do_not_linger():
+    """A re-sharding that produces FEWER shards must not leave the old ones matching cand-*.json.
+
+    Step 5 dispatches one adjudicator per `cand-*.json`, so a stale file from a superseded
+    sharding sends a sub-agent to judge pairs this run did not plan — and the heartbeat, which
+    counts the same glob, announces a number the summary line contradicts three lines later.
+    Step 4 now tells the model to re-run with `--probe` raised when the shard budget is exceeded,
+    which makes this the expected path rather than an exotic one.
+    """
+    print("\nsuperseded shard files stop matching the glob")
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 3, 40)
+        # Built directly rather than via make_candidates, which caps well below the pair count
+        # this needs: the first sharding has to produce MORE than three shards or the re-run
+        # cannot supersede anything and the test asserts nothing.
+        pairs = [{"a": a_, "b": b_} for a_, b_ in itertools.combinations(ids, 2)][:900]
+        json.dump({"pairs": pairs}, open(os.path.join(d, "candidates.json"), "w"))
+        rc, _ = run("shard_candidates.py", d, "--probe", 48)
+        first = len(glob.glob(os.path.join(d, "cand-*.json")))
+        check("the first sharding wrote several shards", first > 3, f"{first}")
+        rc, out = run("shard_candidates.py", d, "--shards", 3, "--probe", 48)
+        now = sorted(os.path.basename(x) for x in glob.glob(os.path.join(d, "cand-*.json")))
+        check("a re-run with fewer shards leaves exactly its own",
+              now == ["cand-1.json", "cand-2.json", "cand-3.json"], str(now))
+        check("...and says so rather than doing it silently", "superseded" in out, out.strip()[:110])
+        check("...and nothing was deleted — they are renamed aside",
+              len(glob.glob(os.path.join(d, "superseded-cand-*.json"))) == first - 3,
+              "outputs/ is delete-denied; the files must still exist")
+        check("...and the heartbeat count matches the sharding it just did",
+              "in 3 parallel batches" in out, out.strip()[:150])
     finally:
         shutil.rmtree(d, True)
 
@@ -2873,7 +2930,7 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_lead_assignment_complete, t_cps_resolver,
           t_merged_labels_replace_concatenation, t_slots_fill_and_deletion,
           t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage,
-          t_slots_path_is_named_in_both_spellings):
+          t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger):
     t()
 
 print()

@@ -18,7 +18,7 @@
 #   tools/run-live.sh [scenario-path ...]      # default: every scenario
 set -euo pipefail
 
-TARGET="${*:-tests/scenarios}"
+[ "$#" -gt 0 ] || set -- tests/scenarios
 OUT="${COWORK_RUN_OUT:-$(mktemp -d)}"
 ENVFILE="${COWORK_DOTENV:-.env}"
 LOG="$OUT/live.log"; RC="$OUT/live.rc"
@@ -26,9 +26,16 @@ LOG="$OUT/live.log"; RC="$OUT/live.rc"
 [ -f "$ENVFILE" ] || { echo "no $ENVFILE — the harness injects only env/.env, never a Keychain" \
                             "credential. Mint one with: claude setup-token" >&2; exit 2; }
 
-nohup sh -c "cowork-harness --dotenv '$ENVFILE' run $TARGET > '$LOG' 2>&1; echo \$? > '$RC'" \
+# Arguments go through "$@" and the paths through the environment — NEVER interpolated into the
+# `sh -c` string. Interpolating them made this script reproduce, one level down, the exact failure
+# it exists to prevent: a target containing `;` ran a second command whose exit status became the
+# recorded one, so `live.rc` said 0 for a harness run that never happened. A path with a space was
+# silently split in half by the same mechanism.
+export COWORK_LIVE_LOG="$LOG" COWORK_LIVE_RC="$RC" COWORK_LIVE_ENV="$ENVFILE"
+nohup sh -c 'cowork-harness --dotenv "$COWORK_LIVE_ENV" run "$@" \
+               > "$COWORK_LIVE_LOG" 2>&1; echo $? > "$COWORK_LIVE_RC"' _ "$@" \
       >/dev/null 2>&1 &
 
-echo "started: $TARGET"
+echo "started: $*"
 echo "  log:    $LOG"
 echo "  status: $RC   (written when it finishes; read this, never a pipeline's exit code)"

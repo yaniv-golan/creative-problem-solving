@@ -425,7 +425,7 @@ def main(wd):
                 f"got {e.get('verdict')!r}")
 
         # `note` — the verifier's qualification, and it is NOT a new field. Verifiers were
-        # already writing it unprompted while nothing read it: 5 of 5 records on the 2026-08-28
+        # already writing it unprompted while nothing read it: 13 of 13 records on the 2026-08-28
         # run, 11 of 19 across the 20260827 run, with agents/verifier.md mentioning neither
         # `note` nor `caveat`. Sixteen qualifications were discarded before anyone looked at the
         # files rather than at the two scripts that consume them.
@@ -440,14 +440,24 @@ def main(wd):
         # Not refusing unknown keys either, deliberately. Doing so would have hard-failed both
         # preserved runs, and an extra key is how a model tells you what the schema is missing --
         # which is exactly what happened here.
-        if "note" in e and "caveat" in e and str(e["note"]).strip() != str(e["caveat"]).strip():
+        # `null` is the ordinary JSON spelling of an unset optional field, so it is ABSENT, not
+        # an error -- an earlier version died on it, which would have failed a run at step 9 over
+        # a key the verifier was right to leave empty. A non-string is refused rather than
+        # coerced: `str(["a","b"])` is truthy, so it passed the old check and then crashed
+        # build_report with an AttributeError at the last step of the run.
+        for k in ("note", "caveat"):
+            if k in e and e[k] is not None and not isinstance(e[k], str):
+                die(f"{i}: `{k}` must be a string, got {type(e[k]).__name__}. A qualification is a "
+                    f"sentence for the reader; a list or object cannot be rendered and would fail "
+                    f"later, in the report build, where it is far more expensive to diagnose.")
+            if k in e and e[k] is not None and not e[k].strip():
+                die(f"{i}: `{k}` is present but empty. An empty qualification reads in the file "
+                    f"as a qualification that exists; drop the key or use null.")
+        n_, c_ = (e.get("note") or "").strip(), (e.get("caveat") or "").strip()
+        if n_ and c_ and n_ != c_:
             die(f"{i}: carries both `note` and `caveat` with different text. They are the same "
                 f"field; keep one. The report renders `note`, so a differing `caveat` would be "
                 f"dropped without saying so.")
-        for k in ("note", "caveat"):
-            if k in e and not str(e[k] or "").strip():
-                die(f"{i}: `{k}` is present but empty. An empty qualification reads in the file "
-                    f"as a qualification that exists; drop the key instead.")
         # Two states that a single `unclear` cannot tell apart: a search that ran and settled
         # nothing, and an option resting on no outside-world claim, where no search was possible.
         # Collapsed together, the second can be recorded with a query describing why none ran --

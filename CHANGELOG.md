@@ -90,6 +90,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   status read through `grep` reported a pass on a run that exited 1, and a 27-minute scenario was
   killed at 30 minutes by a tracked background runner. Tested against a fake harness on the CI
   gate, including that a silent launch leaves no status file.
+- **A per-slot deletion check was tried and removed, and the dead end is recorded in the code.**
+  The manifest carries the skeleton, so walking it against the body and requiring content in each
+  slot's place looks workable. Measured on a real report, it fires **both** ways: removing one
+  blank line after a filled paragraph reports three untouched bullets as deleted, and deleting a
+  slot while any other line occupies the run reports nothing. The echo scan this pipeline ships
+  exists to prompt an edit, so reflow is the expected case. A gate that fails correct work and
+  passes broken work is worse than none — `--check` still refuses an *unfilled* slot, and
+  fine-grained deletion is now documented as undetectable rather than falsely claimed.
 - **`build_report.py --slots` and `--fill`.** The build now prints every `{{...}}` token verbatim,
   and `--fill` refuses a key matching no placeholder. The failure this removes is a fill loop keyed
   on remembered names: a mistyped key matches nothing, is skipped in silence, and the judgement never
@@ -106,7 +114,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **`ideas-command` is bounded in time and cost.** `timeout_ms` drops from 90 to 46 minutes and
   `max_cost_usd: 40` is added — the same bound at the observed burn of $0.0146/s, where 60 minutes
   paired with $40 would red on cost fifteen minutes before the clock. Both rest on one completed
-  run (1634.5 s, $23.8071) plus one censored lower bound, so raise them together or not at all.
+  run (1634.4 s, $23.8071) plus one censored lower bound, so raise them together or not at all.
   Validated with `verify-run` against the kept run dir, free: $20 reds, $40 greens.
 - **CI pins `cowork-harness` 2.5.0**, up from 2.3.0. The two had drifted apart: `doctor` reports
   the agent image and egress-proxy digests matching what 2.5.0 pins, so running the older CLI

@@ -1004,7 +1004,7 @@ if not _scen:
     fail("check-repo.py found no scenario files to check the triggering assertions of. They live "
          "in tests/scenarios/ and evals/scenarios/; if they moved, fix this reader rather than "
          "letting it pass on an empty set.")
-_checked = 0
+_checked = _bad = 0
 for _f in _scen:
     _rel, _txt = os.path.relpath(_f, REPO), read_text(os.path.relpath(_f, REPO))
     _pos = re.search(r"^\s*-\s*skill_triggered:", _txt, re.M)
@@ -1018,18 +1018,43 @@ for _f in _scen:
     _has = bool(_EXPLICIT.search(_p))
     _checked += 1
     if _pos and not _has:
-        fail("%s asserts `skill_triggered` but its prompt never explicitly asks for the skill. "
+        _bad += 1; fail("%s asserts `skill_triggered` but its prompt never explicitly asks for the skill. "
              "The description says to select it ONLY on an explicit ask and NOT merely because a "
              "prompt wants ideas or says the obvious answers are spent — so this asserts the "
              "opposite of the shipped behaviour, and a correct model reds it. Add an explicit ask "
              "(`/ideas`, or \"use creative problem solving on this\"), or invert the assertion."
              % _rel)
     if _neg and _has:
-        fail("%s asserts `no_skill_triggered` but its prompt DOES explicitly ask for the skill, "
+        _bad += 1; fail("%s asserts `no_skill_triggered` but its prompt DOES explicitly ask for the skill, "
              "which the description says should trigger. This scenario can only pass by the skill "
              "misbehaving." % _rel)
-if _checked:
+# Guarded on _bad, not just _checked: this printed a green summary line in the same output as its
+# own failures, which is how a run reports "7 scenario(s) pair correctly" while three of them do
+# not. And _checked itself must be non-zero — a rule that examined nothing must not look clean.
+if not _checked:
+    fail("the triggering rule examined no scenario at all; every scenario that asserts a "
+         "triggering outcome must be readable by it, so finding none means the reader broke")
+elif not _bad:
     ok("%d scenario(s) pair their triggering assertion with a matching prompt" % _checked)
+
+# The live lane asserts a band heading appears in the SENT message. That literal lives in two
+# files that must agree, and nothing tied them together — a reword of the heading would red a $24
+# scenario at full price, and the heading has already been revised once.
+print("\nthe live lane's transcript marker is a string the report actually emits")
+_marker = None
+for _f in sorted(glob.glob(os.path.join(REPO, "tests", "scenarios", "*.yaml"))):
+    _m = re.search(r'transcript_contains:\s*"([^"]+)"', read_text(os.path.relpath(_f, REPO)))
+    if _m: _marker = (_m.group(1), os.path.relpath(_f, REPO))
+if _marker:
+    _lit, _where = _marker
+    _br = read_text(os.path.join(plugin_name, "scripts", "build_report.py"))
+    if _lit in _br:
+        ok("%s's marker %r is emitted by build_report.py" % (_where, _lit))
+    else:
+        fail("%s asserts the sent message contains %r, and build_report.py never emits that "
+             "string. Either the heading was reworded or the assertion was mistyped; both red a "
+             "live run at full price and neither is visible until it is spent."
+             % (_where, _lit))
 
 print()
 if failures:

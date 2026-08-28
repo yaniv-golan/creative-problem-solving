@@ -45,8 +45,9 @@ on_unanswered: first
 # fails to trigger reds this run with something indistinguishable from a pipeline regression, at
 # full price. The command is the most reliable ask available (it is still prose instructing
 # invocation, not a mechanical dispatch — which is what ../scenarios/ideas-command.yaml asserts).
-# The phrase path keeps its own coverage in phrase-trigger.yaml, which is cheap and fails fast, so
-# a trigger failure names itself instead of arriving disguised as this scenario's subject.
+# The phrase path is covered by `pipeline-bounded.yaml`, which is the only scenario that uses it.
+# A separate trigger-only scenario was tried and withdrawn: the harness reds an errored run at the
+# run level regardless of assertions, so a short `timeout_ms` could not make it cheap.
 # check-repo.py gates the assertion/prompt pairing statically, token-free.
 prompt: |
   /creative-problem-solving:ideas We run four independent bookshops, 30 staff, one city.

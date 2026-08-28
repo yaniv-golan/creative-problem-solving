@@ -138,6 +138,49 @@ def t_run_live():
           os.path.exists(log_path) and "ran: " in open(log_path).read(),
           repr(open(log_path).read()[:80]) if os.path.exists(log_path) else "absent")
 
+    # DETACHMENT, which the earlier version of this test did not check at all: replacing the
+    # backgrounded `nohup sh -c … &` with a synchronous call passed every other assertion here.
+    # A slow fake proves it — the launcher must return long before the run finishes.
+    slow = os.path.join(bindir, "cowork-harness")
+    open(slow, "w").write("#!/bin/sh\nsleep 3\nexit 7\n"); os.chmod(slow, 0o755)
+    out2 = tempfile.mkdtemp(); open(os.path.join(out2, "e.env"), "w").write("")
+    env3 = dict(env, COWORK_RUN_OUT=out2, COWORK_DOTENV=os.path.join(out2, "e.env"))
+    t0 = time.time()
+    subprocess.run([os.path.join(ROOT, "tools", "run-live.sh"), "x.yaml"],
+                   capture_output=True, text=True, cwd=ROOT, env=env3)
+    elapsed = time.time() - t0
+    check("it returns immediately rather than waiting for the run", elapsed < 1.5,
+          f"took {elapsed:.1f}s — a synchronous call passes every other check in here")
+    check("...and the run is still going when it returns",
+          not os.path.exists(os.path.join(out2, "live.rc")),
+          "the status file already existed, so nothing was detached")
+    shutil.rmtree(out2, True)
+
+    # A target is DATA, not shell. Interpolating it into `sh -c` made this script reproduce its
+    # own headline failure: `x.yaml; echo PWNED` recorded echo's 0 as the harness's status.
+    out3 = tempfile.mkdtemp(); open(os.path.join(out3, "e.env"), "w").write("")
+    open(fake, "w").write("#!/bin/sh\necho \"ran: $*\"\nexit 7\n"); os.chmod(fake, 0o755)
+    env4 = dict(env, COWORK_RUN_OUT=out3, COWORK_DOTENV=os.path.join(out3, "e.env"))
+    subprocess.run([os.path.join(ROOT, "tools", "run-live.sh"), "x.yaml; echo PWNED"],
+                   capture_output=True, text=True, cwd=ROOT, env=env4)
+    for _ in range(50):
+        if os.path.exists(os.path.join(out3, "live.rc")): break
+        time.sleep(0.2)
+    rc3 = open(os.path.join(out3, "live.rc")).read().strip() if \
+        os.path.exists(os.path.join(out3, "live.rc")) else ""
+    log3 = open(os.path.join(out3, "live.log")).read() if \
+        os.path.exists(os.path.join(out3, "live.log")) else ""
+    check("a target containing `;` is passed as data, not executed",
+          rc3 == "7" and "PWNED" not in log3.split("ran:")[0],
+          f"rc={rc3!r} log={log3[:70]!r}")
+    subprocess.run([os.path.join(ROOT, "tools", "run-live.sh"), "a b/x.yaml"],
+                   capture_output=True, text=True, cwd=ROOT, env=env4)
+    time.sleep(1.5)
+    check("...and a path containing a space stays one argument",
+          "run a b/x.yaml" in open(os.path.join(out3, "live.log")).read(),
+          open(os.path.join(out3, "live.log")).read()[:90])
+    shutil.rmtree(out3, True)
+
     # Absent credentials must refuse rather than start a run that cannot authenticate — and the
     # refusal is only useful if it is a non-zero status, which is the thing a pipe would hide.
     env2 = dict(env, COWORK_DOTENV=os.path.join(out, "absent.env"))

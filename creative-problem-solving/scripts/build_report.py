@@ -185,7 +185,7 @@ def main(wd, out):
         v = verdict.get(head, {})
         vd = (v.get("verdict") or "").lower()
         # The verifier's qualification, if it wrote one. Verifiers have been writing these into a
-        # `note` key nobody read: 5 of 5 records on one preserved run, 11 of 19 on another, with
+        # `note` key nobody read: 13 of 13 records on one preserved run, 11 of 19 on another, with
         # `agents/verifier.md` never mentioning the field. A `confirmed` whose source supports a
         # weaker claim than the option states is materially different from a clean one, and until
         # now the report rendered the two identically.
@@ -551,35 +551,26 @@ def fill(path, slots_path):
     for tok in left: print(f"    {tok}")
 
 
-def _deleted_slots(body, man):
-    """Slot lines the build wrote that have nothing in their place now.
-
-    A slot can fail to reach the reader two ways: filled with nothing (a key that matched
-    nothing), or deleted outright. Only the first leaves a `{{` behind. Deleting the closing
-    line entirely passes every other check in here -- no placeholder remains, the headings and
-    options are intact, and eleven missing words are invisible against a ~22,000-word floor.
-
-    Positional, not pattern-matched: walk the skeleton and the body together, anchoring on the
-    skeleton lines that are NOT slots, and require each run of slot lines to have at least as
-    many non-empty lines standing in its place. Where an anchor cannot be found the layout has
-    been reflowed and this cannot judge it, so it declines rather than guessing -- a false FAIL
-    here is a gate the caller would learn to work around.
-    """
-    sk = man.get("skeleton") or []
-    lines, i, pending, gone = body.splitlines(), 0, [], []
-    for s in sk:
-        if SLOT_RE.search(s):
-            pending.append(s); continue
-        j = i
-        while j < len(lines) and lines[j] != s: j += 1
-        if j >= len(lines):
-            pending = []; continue          # reflowed; cannot judge this run
-        if pending:
-            if len([x for x in lines[i:j] if x.strip()]) < len(pending): gone += pending
-            pending = []
-        i = j + 1
-    if pending and len([x for x in lines[i:] if x.strip()]) < len(pending): gone += pending
-    return gone
+# A per-slot deletion check was tried here and REMOVED. Recorded because the next person will
+# have the same idea: the manifest carries the skeleton verbatim, so it looks like you can walk
+# skeleton and body together, anchor on the non-slot lines, and require each run of slot lines to
+# have content standing in its place.
+#
+# It fires in BOTH wrong directions, measured on a real built report:
+#   - FALSE POSITIVE. Delete one blank line after a filled WHY paragraph and it reports three
+#     bullets as deleted, on a report where every slot is filled. The skeleton is dense with
+#     blank lines, so a blank line IS the anchor for most slot runs, and any reflow re-slices
+#     them. The echo scan this pipeline ships exists to PROMPT an edit, so reflow is the
+#     expected case, not the exotic one.
+#   - FALSE NEGATIVE. Delete `{{WHO-1}}` and put any other non-empty line in that run and it
+#     reports nothing.
+#
+# A gate that fails correct work and passes broken work is worse than no gate, and this one would
+# have landed at step 10 of a forty-minute run with a message telling the caller to restore text
+# that is already in the file. **A deleted slot is not reliably detectable from the artifact.**
+# What survives: `--check` refuses an UNFILLED slot (the `{{` scan), and the word floor catches
+# gross truncation. Fine-grained deletion is not covered, and saying so is better than a check
+# that claims it.
 
 
 def check(path, skeleton_words=None):
@@ -634,14 +625,6 @@ def check(path, skeleton_words=None):
             sys.exit(f"FAIL: {sum(missing.values())} rendered option(s) are not in {path}, "
                      f"counting repeats: {ex}\n      every option the build wrote must still be "
                      f"there, and one that appears twice must appear twice.")
-
-        gone = _deleted_slots(body, man)
-        if gone:
-            ex = "; ".join(x.strip()[:52] for x in gone[:3])
-            sys.exit(f"FAIL: {len(gone)} slot(s) the build wrote have nothing in their place in "
-                     f"{path}: {ex}\n      These were deleted rather than filled. Every "
-                     f"placeholder is a part of the answer only you can write; removing one "
-                     f"leaves no trace a presence check can see.")
 
         _slot_check(body, man, path)
         brief = _find_brief(path)

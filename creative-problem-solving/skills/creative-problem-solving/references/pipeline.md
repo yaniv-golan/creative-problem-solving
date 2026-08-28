@@ -352,8 +352,6 @@ assumed: a negation round against that structure returned one search-verified op
    reader instead — every other WARN in this pipeline is for the reader to judge, and this one is
    for you to fix before continuing.
 
-   `python3 "$CPS/scripts/shard_candidates.py" "$BASE/$RUN/_work"`
-
    That drops repeated proposals, deals the rest into balanced shards, and plants the
    agreement probe — 48 pairs dealt to a *second* shard so two adjudicators judge them without
    seeing each other, sampled so that every adjudicator is cross-checked rather than only the
