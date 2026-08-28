@@ -138,6 +138,22 @@ def t_run_live():
           os.path.exists(log_path) and "ran: " in open(log_path).read(),
           repr(open(log_path).read()[:80]) if os.path.exists(log_path) else "absent")
 
+    # A COWORK_RUN_OUT that does not exist yet must be created, not silently skipped. Every other
+    # case here hands the script an existing mktemp -d, so this path had no coverage at all — and
+    # it is the one that fired in practice.
+    fresh = os.path.join(out, "not-yet")
+    env0 = dict(env, COWORK_RUN_OUT=fresh)
+    subprocess.run([os.path.join(ROOT, "tools", "run-live.sh"), "x.yaml"],
+                   capture_output=True, text=True, cwd=ROOT, env=env0)
+    for _ in range(50):
+        if os.path.exists(os.path.join(fresh, "live.rc")): break
+        time.sleep(0.2)
+    check("an output directory that does not exist yet is created",
+          os.path.isdir(fresh), "the script announced 'started:' and created nothing")
+    check("...and the run actually happened in it",
+          os.path.exists(os.path.join(fresh, "live.rc")),
+          "no status file — the launch failed after saying it had started")
+
     # DETACHMENT, which the earlier version of this test did not check at all: replacing the
     # backgrounded `nohup sh -c … &` with a synchronous call passed every other assertion here.
     # A slow fake proves it — the launcher must return long before the run finishes.

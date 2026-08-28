@@ -23,6 +23,13 @@ OUT="${COWORK_RUN_OUT:-$(mktemp -d)}"
 ENVFILE="${COWORK_DOTENV:-.env}"
 LOG="$OUT/live.log"; RC="$OUT/live.rc"
 
+# Create it. Without this the redirect below fails, `sh -c` dies before the harness is reached,
+# stderr is already going to /dev/null, and the parent has ALREADY printed "started:" with two
+# paths that will never exist — a launch that announces success and does nothing, which is the
+# first of the two failures this script was written to prevent. It happened: a scenario reported
+# as running for the better part of an hour had never started.
+mkdir -p "$OUT" || { echo "cannot create $OUT" >&2; exit 2; }
+
 [ -f "$ENVFILE" ] || { echo "no $ENVFILE — the harness injects only env/.env, never a Keychain" \
                             "credential. Mint one with: claude setup-token" >&2; exit 2; }
 
