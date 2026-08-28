@@ -72,10 +72,39 @@ cps_resolve() {                    # $1 = the path you read THIS file at
     CPS="$CAND"; echo "CPS=$CPS (branch 1: path as read)"; return 0
   fi
 
+  # Between the branches: if the shell CAN see the directory the file tools named, it can judge
+  # this install directly, and searching elsewhere would be a mistake rather than a fallback.
+  # A skills-only install (the zip, the .agents mirror, an older version that shipped skills/ and
+  # nothing else) reaches this point legitimately, and the global search below would bind it to a
+  # DIFFERENT version's scripts sitting elsewhere on the same disk — or refuse because two of them
+  # are. Measured locally: reading pipeline.md from a cached 0.1.0 (skills/ only) refused with two
+  # copies found, instead of taking the documented scriptless fallback written for exactly it.
+  #
+  # Gated on visibility, and that gate is load-bearing. On a split-namespace host $CAND is a path
+  # from the OTHER filesystem: `[ -d "$CAND" ]` is false there not because the install is odd but
+  # because the shell cannot see it. Measured on Cowork host loop — the file tools report the
+  # plugin under /Users/... while the shell has it under /sessions/<id>/mnt/.remote-plugins/. If
+  # this test ran unconditionally, every host-loop run would conclude "scriptless" and take the
+  # degraded path, which is the exact silent downgrade this whole block exists to prevent.
+  if [ -d "$CAND" ]; then
+    if [ -d "$CAND/agents" ] || [ -d "$CAND/../agents" ]; then
+      echo "REFUSING: $CAND is a plugin install — it has an agents/ directory — but carries no"
+      echo "  $SENTINEL. Its scripts are missing. Another copy elsewhere on this disk is a"
+      echo "  DIFFERENT version, and running its scripts against these instructions is the"
+      echo "  version skew this step exists to prevent. Reinstall the plugin, or set CPS by hand."
+      return 2
+    fi
+    echo "CPS= (branch 1b: visible install with no scripts/ and no agents/ — this is the zip, the"
+    echo "  .agents/ mirror, or a skills-only version. They ship without scripts/ by design. Take"
+    echo "  the SKILL.md Phase 1 fallback and say in one line which checks the run lost.)"
+    return 1
+  fi
+
   # Branch 2 — the shell searches for itself, because only the shell can answer where the shell
-  # is. Match on the SENTINEL FILE, never on a directory name: skills are separately mounted at
-  # .claude/<...>/<sanitized skill name>, which carries no scripts/, so a name match can succeed
-  # and still land somewhere useless — the original failure with a green tick on it.
+  # is. Reached when $CAND is invisible, i.e. the namespaces differ. Match on the SENTINEL FILE,
+  # never on a directory name: skills are separately mounted at .claude/<...>/<sanitized skill
+  # name>, which carries no scripts/, so a name match can succeed and still land somewhere
+  # useless — the original failure with a green tick on it.
   HITS=$(for R in $ROOTS; do
            [ -d "$R" ] && find "$R" -maxdepth 12 -type f -path "*/$SENTINEL" 2>/dev/null
          done | sort -u)
@@ -101,20 +130,17 @@ cps_resolve() {                    # $1 = the path you read THIS file at
     return 2
   fi
 
-  # Branch 3 — nothing found. Whether that means "mis-derived" or "genuinely absent" is decided
-  # by a POSITIVE test for the install shape, not by inferring it from the failure.
-  if [ -d "$CAND/../agents" ] || [ -d "$CAND/agents" ]; then
-    echo "REFUSING: no $SENTINEL under any of: $ROOTS"
-    echo "  This install has an agents/ directory beside the skill, so it is a plugin and the"
-    echo "  scripts belong here. Do NOT take the no-script fallback: a mis-derived path and a"
-    echo "  missing install look identical from one failed test, and a run that guesses wrong"
-    echo "  drops every check this pipeline advertises while describing itself as a normal run."
-    return 2
-  fi
-  echo "CPS= (branch 3: no scripts, and no agents/ beside the skill — this is the zip or the"
-  echo "  .agents/ mirror, which ship without scripts/. Take the SKILL.md Phase 1 fallback and"
-  echo "  say in one line which checks the run lost.)"
-  return 1
+  # Branch 3 — nothing found, and $CAND is not visible either, so the install shape cannot be
+  # judged at all. REFUSE. The scriptless fallback is reachable only from branch 1b above, where
+  # the shell could actually see that the install ships no scripts/. Concluding "scriptless" from
+  # a failed search on a filesystem you cannot see is the guess that produced this whole step:
+  # a run made it, dropped to six lenses with no adjudication and no grouping, and described
+  # itself as a legitimate fallback.
+  echo "REFUSING: no $SENTINEL under any of: $ROOTS"
+  echo "  — and $CAND is not visible from this shell, so whether this install ships scripts/"
+  echo "  cannot be determined from here. Do NOT take the no-script fallback on that: name the"
+  echo "  plugin root and set CPS to it by hand."
+  return 2
 }
 
 cps_resolve "<the path you read this file at>" || true

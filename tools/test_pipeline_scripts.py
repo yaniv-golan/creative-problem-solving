@@ -2460,59 +2460,72 @@ def t_cps_resolver():
             open(root + "/scripts/verify_pipeline.py", "w").write("")
         empty = mk("empty")
 
-        # Shared namespace (Claude Code): the string edit is right, and is verified not trusted.
+        # SHARED namespace (Claude Code): the read path is real and the scripts sit beside it.
         a = mk("A", "plugin_ABC"); skill(a); scripts(a)
         rc, out = resolve(a + TAIL, empty)
         check("shared namespace resolves on branch 1", rc == 0 and "branch 1" in out and a in out,
               out.strip()[:120])
 
-        # Split namespace: the file-tool path has no scripts/ and does not exist for the shell.
-        ft = mk("B", "host", "plugin_XYZ"); skill(ft)
+        # SPLIT namespace. The file-tool path DOES NOT EXIST for the shell — that is what "split"
+        # means, and an earlier version of this fixture created it as a real directory, which made
+        # every case below exercise the shared-namespace path instead. Measured on Cowork host
+        # loop: the file tools report /Users/…/rpm/plugin_<id>/ while the shell has the same
+        # plugin at /sessions/<id>/mnt/.remote-plugins/plugin_<id>/, and the first is not stat-able.
+        ghost = os.path.join(base, "not-in-this-filesystem", "plugin_XYZ")
         sh = mk("B", "sess", "s1", "mnt", ".remote-plugins", "plugin_XYZ"); scripts(sh)
-        rc, out = resolve(ft + TAIL, os.path.join(base, "B", "sess"))
+        rc, out = resolve(ghost + TAIL, os.path.join(base, "B", "sess"))
         check("split namespace resolves on the id join", rc == 0 and "id join" in out and sh in out,
               out.strip()[:120])
         check("...and names the branch, not only the path", "branch 2" in out, out.strip()[:120])
 
-        # The skill mount carries no scripts/. A name match would find it; a sentinel match must not.
+        # A skill mount carries the name and no scripts/; matching on the sentinel must ignore it.
         mk("B", "sess", "s1", "mnt", ".claude", "skills", "creative-problem-solving")
-        rc, out = resolve(ft + TAIL, os.path.join(base, "B", "sess"))
+        rc, out = resolve(ghost + TAIL, os.path.join(base, "B", "sess"))
         check("a skill mount does not shadow the plugin", rc == 0 and sh in out, out.strip()[:120])
 
-        # Two indistinguishable copies: refuse. Taking head -1 runs one version's scripts against
-        # another version's instructions, and nothing downstream can see that happened.
+        # Two copies and nothing to choose between them: refuse rather than take the first.
         for v in ("0.2.0", "0.3.0"):
             scripts(mk("C", "sess", "s1", "mnt", ".local-plugins", "c", "cps", v))
-        ftc = mk("C", "host", "nomatch"); skill(ftc)
-        rc, out = resolve(ftc + TAIL, os.path.join(base, "C", "sess"))
+        ghost_c = os.path.join(base, "not-in-this-filesystem", "nomatch")
+        rc, out = resolve(ghost_c + TAIL, os.path.join(base, "C", "sess"))
         check("two copies with nothing to choose between them are REFUSED",
-              rc == 2 and "REFUSING" in out and "nothing distinguishes" in out, out.strip()[:140])
+              rc == 2 and "nothing distinguishes" in out, out.strip()[:140])
         check("...and both candidates are printed", out.count("verify_pipeline.py") >= 2,
               out.strip()[:140])
 
-        # ...but the basename preference settles it when it can. Under a marketplace install the
-        # basename is the VERSION, not a plugin id, and matching it picks the same version.
-        ftv = mk("C", "host2", "0.3.0"); skill(ftv)
-        rc, out = resolve(ftv + TAIL, os.path.join(base, "C", "sess"))
+        # ...but the basename settles it when it can. Under a marketplace install that basename
+        # is the VERSION, and matching it picks the same version.
+        ghost_v = os.path.join(base, "not-in-this-filesystem", "0.3.0")
+        rc, out = resolve(ghost_v + TAIL, os.path.join(base, "C", "sess"))
         check("a basename that matches one copy disambiguates it",
               rc == 0 and "0.3.0" in out and "0.2.0" not in out, out.strip()[:140])
 
-        # A plugin with no scripts anywhere: REFUSE. This is the run that produced the issue --
-        # it concluded "the scripts don't ship" and took the degraded path.
+        # VISIBLE install, has agents/, no scripts/: a plugin whose scripts are missing. Refuse
+        # WITHOUT searching — another copy on this disk is a different version, and binding this
+        # version's instructions to it is the skew the search would otherwise cause. Measured
+        # locally: a cached 0.1.0 shipping skills/ only used to reach the global search from here.
         d = mk("D", "plugin_NONE"); skill(d)
-        rc, out = resolve(d + TAIL, empty)
-        check("a plugin whose scripts are missing is REFUSED, not degraded",
-              rc == 2 and "REFUSING" in out, out.strip()[:140])
-        check("...and the refusal names the roots it searched", empty in out, out.strip()[:140])
-        check("...and it does not recommend the no-script fallback",
-              "Do NOT take the no-script fallback" in out, out.strip()[:140])
+        other = mk("D", "elsewhere"); scripts(other)
+        rc, out = resolve(d + TAIL, os.path.join(base, "D"))
+        check("a visible plugin missing its scripts REFUSES without searching",
+              rc == 2 and "scripts are missing" in out, out.strip()[:150])
+        check("...and does not bind to another version found nearby", other not in out,
+              "it reached the search and picked a different install")
 
-        # The .agents/ mirror genuinely ships without scripts/. Refusing here would halt a
-        # supported install at step 0 -- a false refusal traded for a false degrade.
+        # VISIBLE install, no agents/ and no scripts/: the zip, the .agents mirror, or a
+        # skills-only version. These ship without scripts/ by design.
         e = mk("E", "mirror"); skill(e, agents=False)
-        rc, out = resolve(e + TAIL, empty)
-        check("the mirror shape takes the documented fallback instead of refusing",
-              rc == 1 and "REFUSING" not in out and "fallback" in out, out.strip()[:140])
+        scripts(mk("E", "somewhere-else"))
+        rc, out = resolve(e + TAIL, os.path.join(base, "E"))
+        check("a visible scriptless install takes the documented fallback",
+              rc == 1 and "REFUSING" not in out and "fallback" in out, out.strip()[:150])
+
+        # INVISIBLE read path and nothing found: the shape cannot be judged at all, so refusing is
+        # the only honest answer. Calling this "scriptless" is the guess that started all of this.
+        rc, out = resolve(os.path.join(base, "gone", "plugin_X") + TAIL, empty)
+        check("an invisible read path with no hits REFUSES rather than assuming scriptless",
+              rc == 2 and "not visible from this shell" in out, out.strip()[:150])
+        check("...and names the roots it searched", empty in out, out.strip()[:150])
 
     # The shape the fixture must not have: if the roots were not fully parameterised the cases
     # above would reach the real install. Assert the block has no hard-coded search root left.
