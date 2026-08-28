@@ -37,38 +37,100 @@ prevent.
 
 ## Step 0 — resolve `$CPS` before any other step
 
-Every script below is called as `python3 "$CPS/scripts/<name>.py"`. Set `CPS` once, first, from
-**the path you read this file at** — you have it, because you just read it. Strip the trailing
-`/skills/creative-problem-solving/references/pipeline.md` and what remains is the plugin root:
+Every script below is called as `python3 "$CPS/scripts/<name>.py"`. Resolve `CPS` once, first,
+with the block below. Run it exactly as written and read the `CPS=` line it prints.
 
+**Why it is a search and not an edit.** The path you read this file at is a **file-tool** path.
+The scripts are run by the **shell**. On some hosts those are different filesystem namespaces —
+not different working directories, different mounts of the same content at different absolute
+paths — and there is **no string that is correct for both**. On Cowork's host loop the file tools
+report the plugin under the user's home directory while the shell sees it under
+`/sessions/<session>/mnt/.remote-plugins/<plugin id>`. Stripping a known tail off the first
+produces a path the shell cannot stat, and an upward walk from it searches a tree that is not
+there — so both halves of the old instruction failed together, for one shared reason, and
+produced "scripts not found" on a host where the scripts were present and working.
+
+That is a different problem from Step 0b's, and it has a different answer. Step 0b's run directory
+is one place with **two spellings**, so each tool family is handed the spelling it accepts. The
+plugin root is **two places**, so the shell has to find its own.
+
+```sh
+# CPS-RESOLVER — executable as written; the test suite extracts and runs this block.
+cps_resolve() {                    # $1 = the path you read THIS file at
+  READ_AT="$1"
+  SENTINEL="scripts/verify_pipeline.py"
+  # The COMPLETE root list, overridable as one variable. Not a default plus a hard-coded
+  # tail: a search with roots the caller cannot control cannot be tested, because the fixture
+  # cannot stop it reaching the real install and answering correctly for the wrong reason.
+  ROOTS="${CPS_SEARCH_ROOTS:-/sessions $HOME/.claude/plugins $HOME/.claude}"
+  CAND="${READ_AT%/skills/creative-problem-solving/references/pipeline.md}"
+  PID=$(basename "$CAND")
+
+  # Branch 1 — the string edit, VERIFIED rather than trusted. Free, and guaranteed to be the
+  # same install as the file you just read, which no other branch can promise.
+  if [ -f "$CAND/$SENTINEL" ]; then
+    CPS="$CAND"; echo "CPS=$CPS (branch 1: path as read)"; return 0
+  fi
+
+  # Branch 2 — the shell searches for itself, because only the shell can answer where the shell
+  # is. Match on the SENTINEL FILE, never on a directory name: skills are separately mounted at
+  # .claude/<...>/<sanitized skill name>, which carries no scripts/, so a name match can succeed
+  # and still land somewhere useless — the original failure with a green tick on it.
+  HITS=$(for R in $ROOTS; do
+           [ -d "$R" ] && find "$R" -maxdepth 12 -type f -path "*/$SENTINEL" 2>/dev/null
+         done | sort -u)
+
+  # Prefer the match whose plugin directory basename is the one the file tools reported. That
+  # basename IS the plugin id in the remote shape, which is why it appears in both namespaces.
+  # It is NOT the id elsewhere — under a marketplace install it is the version — so this is a
+  # preference, not a filter, and the id-free hits stay in play.
+  EXACT=$(printf '%s\n' "$HITS" | while IFS= read -r P; do
+            [ -n "$P" ] || continue
+            [ "$(basename "$(dirname "$(dirname "$P")")")" = "$PID" ] && printf '%s\n' "$P"
+          done)
+  BR="2: search"; [ -n "$EXACT" ] && { HITS="$EXACT"; BR="2: id join on $PID"; }
+
+  N=$(printf '%s\n' "$HITS" | grep -c . || true)
+  if [ "$N" -eq 1 ]; then
+    CPS=$(dirname "$(dirname "$HITS")"); echo "CPS=$CPS (branch $BR)"; return 0
+  fi
+  if [ "$N" -gt 1 ]; then
+    echo "REFUSING: $N copies of $SENTINEL and nothing distinguishes them:"; echo "$HITS"
+    echo "  Taking the first would silently run one version's scripts against another's"
+    echo "  instructions. Name the right plugin root and set CPS to it by hand."
+    return 2
+  fi
+
+  # Branch 3 — nothing found. Whether that means "mis-derived" or "genuinely absent" is decided
+  # by a POSITIVE test for the install shape, not by inferring it from the failure.
+  if [ -d "$CAND/../agents" ] || [ -d "$CAND/agents" ]; then
+    echo "REFUSING: no $SENTINEL under any of: $ROOTS"
+    echo "  This install has an agents/ directory beside the skill, so it is a plugin and the"
+    echo "  scripts belong here. Do NOT take the no-script fallback: a mis-derived path and a"
+    echo "  missing install look identical from one failed test, and a run that guesses wrong"
+    echo "  drops every check this pipeline advertises while describing itself as a normal run."
+    return 2
+  fi
+  echo "CPS= (branch 3: no scripts, and no agents/ beside the skill — this is the zip or the"
+  echo "  .agents/ mirror, which ship without scripts/. Take the SKILL.md Phase 1 fallback and"
+  echo "  say in one line which checks the run lost.)"
+  return 1
+}
+
+cps_resolve "<the path you read this file at>" || true
 ```
-# from the path you read THIS file at, strip the whole tail:
-#   /skills/creative-problem-solving/references/pipeline.md
-# what remains is the PLUGIN ROOT, which is the parent of skills/, agents/ and scripts/.
-CPS=<that path>
 
-# Verify by finding the scripts, not by trusting the arithmetic:
-if [ ! -f "$CPS/scripts/verify_pipeline.py" ]; then
-  D=<this file's directory>
-  while [ "$D" != "/" ]; do
-    [ -f "$D/scripts/verify_pipeline.py" ] && { CPS="$D"; break; }
-    D=$(dirname "$D")
-  done
-fi
-ls "$CPS/scripts/verify_pipeline.py"
-```
+**Read the `CPS=` line back, and keep it in the record.** It is the only thing that makes a wrong
+resolution visible rather than inferred forty minutes later from files that are not where anything
+looks for them. The branch number matters as much as the path: branch 1 on a host where you
+expected branch 2 means the namespaces are shared after all, and branch 2 with a bare `search`
+rather than an `id join` means nothing confirmed which install answered.
 
-**Why the second half exists.** Stripping only `/references/pipeline.md` leaves
-`…/skills/creative-problem-solving`, which has no `scripts/` beside it — and a run that made exactly
-that slip reported *"the scripts directory doesn't ship at all in this install"* and dropped to the
-no-script fallback, producing six lenses and no adjudication. **A mis-derived path and a missing
-install look identical from one failed `ls`.** The loop above tells them apart, because it searches
-upward for the file itself rather than trusting the string edit.
-
-If the loop also finds nothing, **then** the scripts genuinely are absent — say so and follow the
-`SKILL.md` Phase 1 fallback. That is a real install shape: the scripts ship with the plugin and not
-with the zip or the `.agents/` mirror. What must not happen is reporting it on the strength of one
-`ls` against a path you computed.
+**Three outcomes, and only one of them is a fallback.** A resolved path; a **refusal**, which stops
+the run; and the mirror case, which takes the documented no-script fallback. A refusal is not a
+failure to handle — it is the handling. The failure this replaced was a run that concluded *"the
+scripts directory doesn't ship at all in this install"* from one failed `ls`, produced six lenses
+and no adjudication, and described itself as a legitimate fallback.
 
 Export it, or repeat the literal path in each call; either is fine, and a Bash call in a later
 step may not inherit a variable set in an earlier one. What must not happen is a shell seeing
@@ -77,12 +139,12 @@ confusing failure rather than a loud one.
 
 **Never write `${CLAUDE_PLUGIN_ROOT}` into a Bash command.** That token is substituted into the
 text of *definition* files at load time; this is a reference file, read at runtime, so it arrives
-here literally and expands to the empty string in a shell. Measured across three runs: fifteen
-script invocations, none of which used it, because the model resolved the path some other way each
-time — twice by searching the filesystem, once by luck. This step exists so that resolution is
-specified rather than improvised, and the search above is deliberately kept as the *check* rather
-than the method: improvised searching is what this replaced, but a search that confirms a computed
-answer costs nothing and catches the one slip that has actually happened.
+here literally and expands to the empty string in a shell. Verified against the shipping binaries:
+it is set into exactly three spawn environments — plugin-declared commands, MCP stdio servers, an
+MCP headers helper — and the Bash tool's own child environment is not one of them. It is not
+available on the VM loop either, which an earlier reading of this claimed and which was withdrawn
+on re-derivation. The resolver above deliberately does not consult it: the ban is on *relying* on
+it, and there is nothing to rely on.
 
 ## Step 0b — one directory per run, resolved before any stage writes
 
@@ -395,6 +457,14 @@ assumed: a negation round against that structure returned one search-verified op
    and the report is simply shorter than the run paid for. If it names a shard, re-dispatch **only**
    that one.
 
+   **A repair merges two families, and the surviving heading is one label, not both joined.** The
+   heading is the label of the family the final lead came from — chosen after the lead is settled,
+   because a merge re-solves the lead over the union and it can land on a member from the absorbed
+   side. The other family's label moves to `merged_labels` and the report prints it in the body.
+   Joining them with `"; "`, which is what this used to do, put three mechanisms in one `###`
+   heading on a recorded run: 38 of 99 labels over 200 characters, the longest 537. Nothing is
+   dropped — that rule is not relaxed here — it simply stops being part of the heading.
+
    **Re-running this after step 7 or 8 invalidates both.** It repairs leads by merging, so the
    family a lead belongs to can change — which restakes the ranking step 7 produced and the
    verifications step 8 recorded against it. `verify_pipeline.py` catches the visible half (a
@@ -466,12 +536,34 @@ assumed: a negation round against that structure returned one search-verified op
    that is right for this problem beats a novel one that is wrong for it.
 
 8. **Dispatch `verifier` sub-agents for the top 13 families.** Take the first 13 family ids in
-   `ranked.json` — the families that fill the Top 3 and the next 10 — and from each take its
-   **lead member**, the one the report will lead that family with. That is 13 options; read
-   their text from the pools. Checking every member of those families instead would be five
-   times the searches for options the reader meets as one-line variants, and checking only the
-   first 13 options in rank order would leave most of the prominent families unchecked. The lead
-   member is the claim that carries the family.
+   `ranked.json` — the families that fill the Top 3 and the next 10 — and from each take
+   **`members[0]`**. That is 13 options; read their text from the pools.
+
+   **`families.json` does not have the same shape the grouper wrote, and this is the step where
+   that matters.** The grouper returns `{cid, label, lead, members}`; `merge_families.py` emits:
+
+   ```json
+   {"families": [{"id": "f001", "label": "...", "members": ["p3-011", "p8-004"],
+                  "merged_labels": [], "pools": 2}]}
+   ```
+
+   `cid` became `id`, and **there is no `lead` key** — the grouper's choice was spent into
+   *position*, so the lead is `members[0]`. Reading `lead` here gets a `KeyError`, and reading
+   `fid` gets one too.
+
+   **`members[0]` is what you verify. It is not always what the reader meets.** The report leads
+   each family with its first member that was **not refuted**, so when a lead is refuted the two
+   diverge — the option on the page is not the option that was checked. `verify_pipeline.py`
+   refuses that rather than letting it ship, but the two are chosen by different rules and only
+   one of them is verified by construction. This is repeated under **Reporting the list** because
+   it governs the rendering as well; it is stated here because this is where the choice is made.
+
+   `merged_labels` carries the headings of any families merged into this one — see step 6.
+
+   Checking every member of those families instead would be five times the searches for options
+   the reader meets as one-line variants, and checking only the first 13 options in rank order
+   would leave most of the prominent families unchecked. `members[0]` is the claim that carries
+   the family.
 
    Any option whose force rests on a claim about the outside world (how an institution operates,
    what a field's practice is, how an organism works, what another industry did) must be checked.
@@ -492,10 +584,19 @@ assumed: a negation round against that structure returned one search-verified op
 
    ```json
    {"checked": [{"id": "p2-017", "query": "what was searched", "verdict": "confirmed",
-                 "source_url": "https://…", "quote": "the sentence that supports it"},
+                 "source_url": "https://…", "quote": "the sentence that supports it",
+                 "note": "what the source does and does not support"},
                 {"id": "p4-002", "query": "what was searched", "verdict": "unclear"},
                 {"id": "p6-011", "verdict": "no_external_claim"}, ...]}
    ```
+
+   **`note` is optional, allowed on every verdict, and rendered under the option.** It is where a
+   qualification goes: a source that confirms the mechanism exists but supports a *weaker* claim
+   than the option makes is still `confirmed`, and the difference between that and a clean
+   `confirmed` is a sentence the reader needs. On `no_external_claim` it is the only place to say
+   why nothing was checkable. Verifiers were already writing this field before anything read it —
+   on the two preserved runs, 5 of 5 and 11 of 19 records carried one, and all sixteen were
+   discarded.
 
    **Four verdicts, and the difference between the last two is the whole point.**
 
@@ -535,7 +636,25 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     text, and a hand-assembled list is where options go missing under end-of-run pressure.
 
     What it leaves you is `{{...}}` placeholders for the parts only you can write: the assumption
-    line, one sentence on each of the top 3, and the closing read. Edit those into the file, then:
+    line, the depth fields and one sentence on each of the top 3, and the closing read. **The
+    build prints every token verbatim — use those strings, do not retype them from memory**, and
+    `build_report.py --slots "$BASE/$RUN/report.md"` lists them again at any point.
+
+    Fill them with the script rather than by hand:
+
+    ```
+    # slots.json: {"<token, verbatim>": "<the text that replaces it>", ...}
+    python3 "$CPS/scripts/build_report.py" --fill "$BASE/$RUN/report.md" --slots-json slots.json
+    ```
+
+    It refuses any key that matches no placeholder, and prints what is still outstanding. A
+    partial fill is fine — filling some by hand and the rest from a file is normal. **The shape
+    that fails silently is a loop over remembered keys** — `for k, v in R.items(): if k in t: t =
+    t.replace(k, v)` — where a key reconstructed from memory matches nothing, is skipped without a
+    word, and the judgement never reaches the file while every later check still passes. That is
+    not hypothetical: it is why `--fill` exists.
+
+    Then:
 
     `python3 "$CPS/scripts/build_report.py" --check "$BASE/$RUN/report.md"`
 

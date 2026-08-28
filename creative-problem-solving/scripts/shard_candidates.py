@@ -159,12 +159,6 @@ def plan_shards(npairs, nprobe, per_shard):
 
 
 def main(wd, nshards, nprobe, per_shard=PER_SHARD):
-    # The generation heartbeat rides on this call rather than on a separate one. A progress
-    # command that exists only to print is the first thing skipped when nothing depends on it,
-    # and nothing notices; this call the pipeline cannot skip.
-    hb = progress_line(wd)
-    if hb: print(hb)
-
     pairs = load(os.path.join(wd, "candidates.json"), "pairs")
 
     seen, uniq = set(), []
@@ -227,6 +221,17 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
     for i, s in enumerate(shards, 1):
         json.dump({"pairs": s}, open(os.path.join(wd, f"cand-{i}.json"), "w", encoding="utf-8"),
                   separators=(",", ":"))
+
+    # The generation heartbeat rides on this call rather than on a separate one. A progress
+    # command that exists only to print is the first thing skipped when nothing depends on it,
+    # and nothing notices; this call the pipeline cannot skip.
+    #
+    # It runs AFTER the shard files exist, which is the whole of the fix: the line tells the
+    # reader how many adjudicators are about to run, and progress.py counts them off disk rather
+    # than being handed a number. Called before this loop -- where it used to be -- there was
+    # nothing on disk to count, so the count was zero on a first run and stale on a re-run.
+    hb = progress_line(wd, stage="sharded")
+    if hb: print(hb)
 
     dropped = len(pairs) - len(uniq)
     print(f"{len(uniq)} unique pairs"

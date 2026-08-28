@@ -25,7 +25,7 @@ import sys, glob, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, load_obj
 
-def line(wd):
+def line(wd, stage=None):
     # Silence is a legitimate answer here -- called before the first pool lands, there is
     # genuinely nothing to say. A path that does not exist is NOT that: it is a caller bug, and
     # staying quiet about it means the heartbeat never fires and nobody finds out. Exactly the
@@ -36,6 +36,14 @@ def line(wd):
 
     pools = sorted(glob.glob(os.path.join(wd, "pool-*.json")))
     if not pools: return None
+
+    # How many adjudicators are about to run, counted from the files that will carry them. The
+    # caller writes those files BEFORE calling this, which it did not always do: the heartbeat
+    # used to be the third statement in shard_candidates.main() and the shards are written near
+    # the end of it, so counting them here returned zero on every first run and the previous
+    # run's count on a re-run. A wrong number that looks counted is worse than no number, and
+    # this script's whole claim is that every figure in it was read off a file.
+    shards = len(glob.glob(os.path.join(wd, "cand-*.json")))
 
     lenses, n = [], 0
     for p in pools:
@@ -49,6 +57,12 @@ def line(wd):
     fpath = os.path.join(wd, "families.json")
     fams = load(fpath, "families") if os.path.exists(fpath) else []
     placed = sum(len(f.get("members") or []) for f in fams)
+
+    # The caller says which stage it is calling from, because presence of a file cannot say it.
+    # Re-run sharding in a work dir that already holds a complete families.json and the
+    # post-grouping branch below fires -- announcing a family count while the run is sharding.
+    # The file is real and the count is right; it just describes a previous run.
+    if stage == "sharded": fams, placed = [], -1
 
     # Mid-flight, half-written state is normal here -- this runs while the pipeline is still
     # going. A progress line is cosmetic, so it degrades to the earlier, simpler line rather
@@ -68,9 +82,10 @@ def line(wd):
                 f"({', '.join(lenses[:4])}{'…' if L > 4 else ''}). "
                 f"Nothing is dropped for being similar to another — grouping never deletes. "
                 f"The only way out is a search that refutes one, and those are reported too. "
-                f"Grouping them into families is next: it produces no output while it works, so "
-                f"expect a couple of minutes of silence there — longer if the first grouping needs "
-                f"repairing, which the run will say.")
+                + (f"Adjudicating them in {shards} parallel batches is next"
+                   if shards else "Adjudicating the proposed pairs is next")
+                + f", and that is the long quiet stretch — several minutes, with nothing printed "
+                  f"until every batch is back. Grouping follows it and is quick by comparison.")
 
     def spread(f): return len({m.split("-")[0] for m in (f.get("members") or [])})
     top = max(fams, key=spread)

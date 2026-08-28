@@ -82,15 +82,21 @@ Cheap and the highest-leverage phase. Never skip it.
 of any implied solution. "Design a better pill bottle" → "ensure a person takes the right
 dose at the right time." The form in the brief is the ceiling on the answer.
 
-**2. Build a banned-word list.** List the 5-10 loaded nouns from the user's phrasing and
-ban them in Phase 1. Models reliably echo the seed vocabulary and produce variations on
-the example they were given; taking the words away forces mechanism over label.
+**2. Build a banned-word list.** Ban the nouns naming a **shape of answer**; never the nouns
+naming the **thing the answer is about**. Models echo the seed vocabulary, so taking the form
+words away forces mechanism over label — while taking the subject words away leaves a pass
+generating plausibly about nothing.
 
-Then ban your own. **The sharpened brief anchors your passes harder than the user's phrasing
-did**, because it *is* their prompt — every noun you choose gets followed, and one abstract
-noun in the brief can send most of a pool in one direction. Strip your own load-bearing nouns,
-or give each pass a different phrasing of the same function. Identical sentences give you five
-copies of one starting point.
+Which is which is not a property of the word. Strike it from the sharpened brief and read the
+brief back: if it no longer says what the problem is about, keep it. *"A better pill bottle"* →
+ban **bottle, cap, dispenser**; keep **medication, dose, patient**. *"How to distribute this
+document about X"* → ban **site, publish, newsletter, thread**; **X is not bannable**. A
+generator has the brief and its lens and nothing else, so what the brief drops it cannot know.
+Same rule as the retrieved neighbours below: a ban list is for shapes to avoid, never the subject.
+
+Then ban your own by the same test — **the sharpened brief anchors your passes harder than the
+user's phrasing did**, because it *is* their prompt. Give each pass a different phrasing of the
+same function; identical sentences give five copies of one starting point.
 
 **3. Write down the obvious answer — and set it aside.** Two lines on what a competent
 generalist would say. This is the baseline every idea gets measured against, and naming it
@@ -152,9 +158,8 @@ Retrieval works better as a novelty checker than as a muse.
 **Search outward, but ground inward first.** If the user has connected data sources — a CRM, a
 customer or project database, internal documents — describe the *current state* from those
 before searching. What they already have is more specific than anything retrieval returns, and
-it is the half of the brief the web cannot supply. Keep the two apart. Neighbours are a ban
-list; their own situation is the starting position. Folding it into the neighbour list bans the
-thing you were asked about.
+it is the half of the brief the web cannot supply. Keep the two apart: neighbours are a ban
+list, their own situation is the starting position, and step 2's rule applies here too.
 
 ---
 

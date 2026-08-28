@@ -2421,6 +2421,397 @@ def t_verify_pipeline():
     check("text in an index file fails", rc != 0 and "index" in out, out.strip()[:90])
     shutil.rmtree(d, True)
 
+
+def t_cps_resolver():
+    """Step 0's resolver, extracted from pipeline.md and actually run.
+
+    It used to be prose with `<that path>` in it, so nothing could execute it and no negative
+    control could break it -- which is how it shipped with both of its branches doing path
+    arithmetic on a path from the OTHER tool family. Every root it searches comes from
+    CPS_SEARCH_ROOTS so a fixture can isolate it: with the real ~/.claude/plugins in the list a
+    temp-tree case resolves against the developer's own install and passes for the wrong reason,
+    which is this repo's most-repeated test failure.
+    """
+    print("\nStep 0's $CPS resolver runs, and refuses rather than degrading")
+    import re as _re
+    md = (ROOT / "creative-problem-solving" / "skills" / "creative-problem-solving"
+          / "references" / "pipeline.md").read_text(encoding="utf-8")
+    blocks = [b for b in _re.findall(r"```sh\n(.*?)```", md, _re.S) if "CPS-RESOLVER" in b]
+    check("exactly one CPS-RESOLVER block in pipeline.md", len(blocks) == 1, f"found {len(blocks)}")
+    if len(blocks) != 1: return
+    src = blocks[0].replace('cps_resolve "<the path you read this file at>" || true', "")
+
+    TAIL = "/skills/creative-problem-solving/references/pipeline.md"
+    def resolve(read_at, roots):
+        env = dict(os.environ, CPS_SEARCH_ROOTS=roots)
+        r = subprocess.run(["sh", "-c", src + f'\ncps_resolve "{read_at}"\n'],
+                           capture_output=True, text=True, env=env)
+        return r.returncode, r.stdout + r.stderr
+
+    with tempfile.TemporaryDirectory() as base:
+        def mk(*d):
+            q = os.path.join(base, *d); os.makedirs(q, exist_ok=True); return q
+        def skill(root, agents=True):
+            os.makedirs(root + os.path.dirname(TAIL), exist_ok=True)
+            open(root + TAIL, "w").write("")
+            if agents: os.makedirs(root + "/agents", exist_ok=True)
+        def scripts(root):
+            os.makedirs(root + "/scripts", exist_ok=True)
+            open(root + "/scripts/verify_pipeline.py", "w").write("")
+        empty = mk("empty")
+
+        # Shared namespace (Claude Code): the string edit is right, and is verified not trusted.
+        a = mk("A", "plugin_ABC"); skill(a); scripts(a)
+        rc, out = resolve(a + TAIL, empty)
+        check("shared namespace resolves on branch 1", rc == 0 and "branch 1" in out and a in out,
+              out.strip()[:120])
+
+        # Split namespace: the file-tool path has no scripts/ and does not exist for the shell.
+        ft = mk("B", "host", "plugin_XYZ"); skill(ft)
+        sh = mk("B", "sess", "s1", "mnt", ".remote-plugins", "plugin_XYZ"); scripts(sh)
+        rc, out = resolve(ft + TAIL, os.path.join(base, "B", "sess"))
+        check("split namespace resolves on the id join", rc == 0 and "id join" in out and sh in out,
+              out.strip()[:120])
+        check("...and names the branch, not only the path", "branch 2" in out, out.strip()[:120])
+
+        # The skill mount carries no scripts/. A name match would find it; a sentinel match must not.
+        mk("B", "sess", "s1", "mnt", ".claude", "skills", "creative-problem-solving")
+        rc, out = resolve(ft + TAIL, os.path.join(base, "B", "sess"))
+        check("a skill mount does not shadow the plugin", rc == 0 and sh in out, out.strip()[:120])
+
+        # Two indistinguishable copies: refuse. Taking head -1 runs one version's scripts against
+        # another version's instructions, and nothing downstream can see that happened.
+        for v in ("0.2.0", "0.3.0"):
+            scripts(mk("C", "sess", "s1", "mnt", ".local-plugins", "c", "cps", v))
+        ftc = mk("C", "host", "nomatch"); skill(ftc)
+        rc, out = resolve(ftc + TAIL, os.path.join(base, "C", "sess"))
+        check("two copies with nothing to choose between them are REFUSED",
+              rc == 2 and "REFUSING" in out and "nothing distinguishes" in out, out.strip()[:140])
+        check("...and both candidates are printed", out.count("verify_pipeline.py") >= 2,
+              out.strip()[:140])
+
+        # ...but the basename preference settles it when it can. Under a marketplace install the
+        # basename is the VERSION, not a plugin id, and matching it picks the same version.
+        ftv = mk("C", "host2", "0.3.0"); skill(ftv)
+        rc, out = resolve(ftv + TAIL, os.path.join(base, "C", "sess"))
+        check("a basename that matches one copy disambiguates it",
+              rc == 0 and "0.3.0" in out and "0.2.0" not in out, out.strip()[:140])
+
+        # A plugin with no scripts anywhere: REFUSE. This is the run that produced the issue --
+        # it concluded "the scripts don't ship" and took the degraded path.
+        d = mk("D", "plugin_NONE"); skill(d)
+        rc, out = resolve(d + TAIL, empty)
+        check("a plugin whose scripts are missing is REFUSED, not degraded",
+              rc == 2 and "REFUSING" in out, out.strip()[:140])
+        check("...and the refusal names the roots it searched", empty in out, out.strip()[:140])
+        check("...and it does not recommend the no-script fallback",
+              "Do NOT take the no-script fallback" in out, out.strip()[:140])
+
+        # The .agents/ mirror genuinely ships without scripts/. Refusing here would halt a
+        # supported install at step 0 -- a false refusal traded for a false degrade.
+        e = mk("E", "mirror"); skill(e, agents=False)
+        rc, out = resolve(e + TAIL, empty)
+        check("the mirror shape takes the documented fallback instead of refusing",
+              rc == 1 and "REFUSING" not in out and "fallback" in out, out.strip()[:140])
+
+    # The shape the fixture must not have: if the roots were not fully parameterised the cases
+    # above would reach the real install. Assert the block has no hard-coded search root left.
+    body = src.split("HITS=$(", 1)[-1].split(")", 1)[0]
+    check("the search has no root outside $ROOTS", "$HOME" not in body and "/sessions" not in body,
+          "a hard-coded root makes every case above resolve against the real install")
+
+    # And the mirror-vs-plugin discriminator must be a positive test, not an inference.
+    check("the fallback is chosen by a positive test for the mirror shape",
+          "-d \"$CAND/../agents\"" in src or "-d \"$CAND/agents\"" in src,
+          "nothing distinguishes 'mis-derived' from 'genuinely absent'")
+
+
+def t_merged_labels_replace_concatenation():
+    """A merged family leads with ONE mechanism, and the other framing survives beside it.
+
+    merge_families used to join the two labels with "; ". build_report prints the label as the
+    family heading, so the reported run's second heading was 537 characters holding three
+    mechanisms. Nothing may be deleted to fix that -- a merge the reader never learns about is
+    the one loss this script exists to prevent -- so the absorbed label moves, it does not go.
+    """
+    print("\nmerged families keep one heading and carry the rest")
+
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 2, 6)
+        a, b, c = ids[0], ids[1], ids[2]
+        # Three mutual duplicates split into three families: no assignment of leads separates
+        # them, so the repair path must merge twice -- a chain, which is where a naive append
+        # drops whatever the absorbed side had already accumulated.
+        trio = {frozenset((a, b)), frozenset((a, c)), frozenset((b, c))}
+        rels = [{"a": x, "b": y, "relation": "duplicate"} for x, y in
+                itertools.combinations((a, b, c), 2)]
+        rels += [{"a": x, "b": y, "relation": "distinct"}
+                 for x, y in itertools.combinations(ids, 2) if frozenset((x, y)) not in trio]
+        json.dump({"pairs": [{"a": r["a"], "b": r["b"]} for r in rels]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        json.dump({"relations": rels}, open(os.path.join(d, "relations.json"), "w"))
+        run("plan_groups.py", d)
+        clusters = json.load(open(os.path.join(d, "clusters.json")))["clusters"]
+        home = next(c2 for c2 in clusters if a in c2["members"])
+        labels = {a: "left", b: "middle", c: "right"}
+        fams = [{"cid": home["cid"], "label": labels[m], "lead": m, "members": [m]}
+                for m in (a, b, c) if m in home["members"]]
+        rest = [m for m in home["members"] if m not in (a, b, c)]
+        if rest:
+            fams.append({"cid": home["cid"], "label": "rest", "lead": rest[0], "members": rest})
+        for c2 in clusters:
+            if c2["cid"] == home["cid"]: continue
+            fams.append({"cid": c2["cid"], "label": f"m{c2['cid']}", "lead": c2["members"][0],
+                         "members": c2["members"]})
+        json.dump({"families": fams}, open(os.path.join(d, "group-result-1.json"), "w"))
+        rc, out = run("merge_families.py", d)
+        check("the chain of forced merges completes", rc == 0, out.strip()[:140])
+        if rc != 0: return
+
+        got = json.load(open(os.path.join(d, "families.json")))["families"]
+        written = {f["label"] for f in fams}
+        # 1. Byte identity. A concatenation cannot satisfy this, and unlike a length cap it
+        #    cannot fire on a grouper that legitimately wrote a semicolon -- four of the 130
+        #    labels in one preserved run do exactly that.
+        check("every emitted label is one a grouper wrote, unchanged",
+              all(f["label"] in written for f in got),
+              repr([f["label"] for f in got if f["label"] not in written][:2]))
+        check("...so no heading is a concatenation",
+              not any("; " in f["label"] and f["label"] not in written for f in got), "")
+
+        merged = next((f for f in got if len(f["members"]) >= 3
+                       and {a, b, c} <= set(f["members"])), None)
+        check("the three duplicates ended in one family", merged is not None,
+              f"sizes={[len(f['members']) for f in got]}")
+        if merged is None: return
+
+        # 2. The heading belongs to the family the FINAL lead came from. `fams[i]` is
+        #    itertools.combinations order -- shard-glob order, no meaning -- and the lead is
+        #    re-solved over the union afterwards, so it can arrive from the absorbed side.
+        origin = {m: f["label"] for f in fams for m in f["members"]}
+        check("the heading is the label of the family the lead came from",
+              merged["label"] == origin[merged["members"][0]],
+              f"lead {merged['members'][0]} came from {origin[merged['members'][0]]!r} "
+              f"but the heading is {merged['label']!r}")
+
+        # 3. Both other labels survive. A naive append carries only the most recent one.
+        expect = {origin[m] for m in merged["members"]} - {merged["label"]}
+        check("every merged-away label survives the chain",
+              set(merged.get("merged_labels") or []) == expect,
+              f"expected {sorted(expect)}, got {sorted(merged.get('merged_labels') or [])}")
+        check("merged_labels is present on every family, empty or not",
+              all("merged_labels" in f for f in got), "the key set must be stable")
+
+        # 4. And it reaches the reader, which is the only reason to keep it.
+        rep = os.path.join(d, "report.md")
+        make_tail(d, got)
+        rc2, out2 = run("build_report.py", d, "--out", rep)
+        if rc2 == 0:
+            body = open(rep).read()
+            check("a merged-away label appears in the report body",
+                  all(ml in body for ml in (merged.get("merged_labels") or [])), out2.strip()[:90])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_slots_fill_and_deletion():
+    """The judgement reaches the file, or something says so.
+
+    A fill loop keyed on remembered placeholder names skips an unmatched key in silence -- the
+    closing analysis of one run never entered the report and every check still passed. And a slot
+    DELETED rather than filled leaves no `{{` behind, so the presence check cannot see it either.
+    """
+    print("\nreport slots: printed, filled under refusal, and not deletable in silence")
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 3, 6)
+        fams = make_families(d, ids)
+        make_tail(d, fams)
+        rep = os.path.join(d, "report.md")
+        rc, out = run("build_report.py", d, "--out", rep)
+        check("the build succeeds", rc == 0, out.strip()[:120])
+        if rc != 0: return
+
+        # The tokens, verbatim, at the moment the caller needs them.
+        check("the build prints the slot tokens it wrote", "slot(s) to fill, verbatim" in out,
+              out.strip()[:120])
+        printed = [l.strip() for l in out.splitlines() if l.strip().startswith("{{")]
+        rc, listed = run("build_report.py", "--slots", rep)
+        toks = [l.strip() for l in listed.splitlines() if l.strip().startswith("{{")]
+        check("--slots lists the same tokens", rc == 0 and set(printed) == set(toks),
+              f"{len(printed)} printed vs {len(toks)} listed")
+        check("...and there is at least one", len(toks) >= 2, f"{len(toks)}")
+
+        # A key that matches nothing is the exact failure. It must refuse, not skip.
+        sj = os.path.join(d, "slots.json")
+        json.dump({toks[0]: "real text", "{{CLOSING — the read: what I would do}}": "lost"},
+                  open(sj, "w"))
+        rc, out = run("build_report.py", "--fill", rep, "--slots-json", sj)
+        check("a key matching no placeholder is REFUSED", rc != 0 and "match no placeholder" in out,
+              out.strip()[:140])
+        check("...and the offending key is named", "CLOSING — the read" in out, out.strip()[:140])
+        check("...and the file is untouched", toks[0] in open(rep).read(),
+              "a refused fill still wrote")
+
+        # A partial fill is the ordinary case -- three fixed slots plus four per top-3 family --
+        # so refusing one would make the gated route the one nobody can use.
+        json.dump({toks[0]: "real text"}, open(sj, "w"))
+        rc, out = run("build_report.py", "--fill", rep, "--slots-json", sj)
+        check("a partial fill is accepted", rc == 0, out.strip()[:140])
+        check("...and reports what is still outstanding", "left" in out and "{{" in out,
+              out.strip()[:140])
+        check("...and actually substituted", "real text" in open(rep).read(), "")
+
+        # Deletion: no {{ remains, headings and options intact, and the missing words vanish
+        # against a 22,000-word floor.
+        body = open(rep).read()
+        victim = [l for l in body.splitlines() if l.strip().startswith("{{")][0]
+        open(rep, "w").write("\n".join(l for l in body.splitlines() if l != victim))
+        fill_placeholders(rep)
+        rc, out = run("build_report.py", "--check", rep)
+        check("a slot DELETED rather than filled is caught",
+              rc != 0 and "nothing in their place" in out, out.strip()[:140])
+
+        # CONTROL: the same report with every slot filled must pass, or the check above is
+        # passing for some unrelated reason.
+        rc, _ = run("build_report.py", d, "--out", rep)
+        fill_placeholders(rep)
+        rc, out = run("build_report.py", "--check", rep)
+        check("CONTROL: a fully filled report still passes", rc == 0, out.strip()[:140])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_verifier_note_reaches_the_reader():
+    """Verifiers were already writing qualifications into a key nothing read.
+
+    5 of 5 records on one run and 11 of 19 across another carried a `note`, with the verifier
+    agent never mentioning the field. Sixteen qualifications were discarded -- a `confirmed`
+    whose source supports a weaker claim than the option states rendered identically to a clean
+    one. This was found by opening verified-*.json, after two scripts had been read instead.
+    """
+    print("\nverifier notes are carried, not discarded")
+    d = tempfile.mkdtemp()
+    try:
+        # A full fixture: verify_pipeline reads relations, clusters and families too, and a
+        # partial one fails for a reason unrelated to what this tests.
+        ids, fams = full_fixture(d, multi=True)
+        vf = os.path.join(d, "verified-1.json")
+        v = json.load(open(vf))
+        NOTE = "the badge scheme is voluntary at most venues and is not a hard gate"
+        NOTE2 = "rests on internal process design, so there was nothing to search for"
+        # make_tail writes every verdict as `unclear`; the two states this is about are
+        # `confirmed` (a source that supports a WEAKER claim than the option states) and
+        # `no_external_claim` (where the note is the only place to say why nothing was checked).
+        v["checked"][0].update(verdict="confirmed", source_url="https://example.org/a",
+                               quote="a sentence from the source", note=NOTE)
+        v["checked"][1] = {"id": v["checked"][1]["id"], "verdict": "no_external_claim",
+                           "note": NOTE2}
+        json.dump(v, open(vf, "w"))
+        touched = 2
+        check("the fixture actually carries notes on both states", touched == 2,
+              "nothing to attach one to — the test would pass vacuously")
+
+        rc, out = run("verify_pipeline.py", d)
+        check("a note does not fail the integrity check", rc == 0, out.strip()[:140])
+        check("...and the run says how many were carried", "carry a verifier note" in out,
+              out.strip()[:140])
+
+        rep = os.path.join(d, "report.md")
+        rc, out = run("build_report.py", d, "--out", rep)
+        body = open(rep).read() if rc == 0 else ""
+        check("a confirmed verdict's note reaches the report", NOTE in body, out.strip()[:120])
+        if touched == 2:
+            check("...and so does one on no_external_claim, which has no other place to say why",
+                  NOTE2 in body, "")
+
+        # A refuted option's note belongs in the "Checked and failed" band -- it says WHICH part
+        # did not hold, which is the only reason that band is worth the reader's time. Rendering
+        # notes on presented options and not here left 2 of 11 real notes out of a report.
+        v = json.load(open(vf))
+        NOTE3 = "the closure is real, but the site is not open to the public"
+        v["checked"][2].update(verdict="refuted", source_url="https://example.org/c",
+                               quote="a sentence that contradicts it", note=NOTE3)
+        json.dump(v, open(vf, "w"))
+        rc, out = run("build_report.py", d, "--out", rep)
+        body = open(rep).read() if rc == 0 else ""
+        check("a refuted option's note reaches the rejected band", NOTE3 in body, out.strip()[:120])
+        check("...and the option is in that band", "Checked and failed" in body, "")
+        # Undo it: a refuted lead promotes an unchecked replacement, which verify_pipeline
+        # rightly refuses -- and the controls below are about note handling, not about that gate.
+        v = json.load(open(vf)); v["checked"][2] = {"id": v["checked"][2]["id"],
+                                                    "query": "q", "verdict": "unclear"}
+        json.dump(v, open(vf, "w"))
+
+        # An empty note reads in the file as a qualification that exists.
+        v = json.load(open(vf)); v["checked"][0]["note"] = "   "
+        json.dump(v, open(vf, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("an empty note is refused rather than carried", rc != 0 and "empty" in out,
+              out.strip()[:140])
+
+        # Two names for one field, disagreeing, would drop one silently.
+        v = json.load(open(vf))
+        v["checked"][0]["note"] = "one thing"; v["checked"][0]["caveat"] = "a different thing"
+        json.dump(v, open(vf, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("note and caveat disagreeing is refused", rc != 0 and "same field" in out,
+              out.strip()[:140])
+
+        # CONTROL: unknown keys are NOT refused. Refusing them would have hard-failed both
+        # preserved runs, whose verifiers wrote `note` before anything accepted it.
+        v = json.load(open(vf))
+        v["checked"][0].pop("caveat", None); v["checked"][0]["note"] = NOTE
+        v["checked"][0]["some_future_field"] = "x"
+        json.dump(v, open(vf, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("CONTROL: an unfamiliar key is absorbed, not refused", rc == 0, out.strip()[:140])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_progress_names_the_next_stage():
+    """The heartbeat says what is actually next, and counts it off disk after the files exist.
+
+    It said grouping was next when adjudication is, and quoted a wait calibrated against the
+    grouper dispatches. And the fix has its own trap: the call sat before the shard files were
+    written, so counting them there returns zero on a first run and the previous run's count on
+    a re-run -- a wrong number that looks counted.
+    """
+    print("\nthe heartbeat names adjudication, and counts shards that exist")
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 3, 8)
+        make_candidates(d, ids, n=60)
+        # Through the real invocation order, not by hand-placing cand-*.json: a fixture that
+        # constructs a state the pipeline never reaches is a green test over a dead feature.
+        rc, out = run("shard_candidates.py", d, "--probe", 12)
+        check("sharding succeeds", rc == 0, out.strip()[:120])
+        n = len(glob.glob(os.path.join(d, "cand-*.json")))
+        check("...and wrote shards", n >= 1, f"{n}")
+        check("the heartbeat names adjudication as next", "Adjudicating" in out, out.strip()[:200])
+        check("...and does not claim grouping is next",
+              "Grouping them into families is next" not in out, out.strip()[:200])
+        check("...and states the real shard count", f"in {n} parallel batches" in out,
+              out.strip()[:200])
+        check("...and describes the long wait, not a couple of minutes",
+              "couple of minutes" not in out, out.strip()[:200])
+
+        # A completed families.json from an earlier run must not make the sharding call announce
+        # a family count. The file is real; it describes a different stage.
+        fams = make_families(d, ids)
+        rc, out = run("shard_candidates.py", d, "--probe", 12)
+        check("a stale families.json does not turn the sharding line into a grouping line",
+              "grouped into" not in out and "Adjudicating" in out, out.strip()[:200])
+        # CONTROL: called standalone with grouping genuinely done, it still reports families.
+        rc, out = run("progress.py", d)
+        check("CONTROL: standalone after grouping still reports families", "grouped into" in out,
+              out.strip()[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+
 for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
           t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
           t_wp4_gates, t_rev6_report, t_relation_gate, t_reply_gate,
@@ -2432,7 +2823,9 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_band_header_states_what_was_verified, t_fabricated_id_stops_at_the_first_stage,
           t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
           t_out_path_echo, t_promoted_lead_gate,
-          t_lead_assignment_complete):
+          t_lead_assignment_complete, t_cps_resolver,
+          t_merged_labels_replace_concatenation, t_slots_fill_and_deletion,
+          t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage):
     t()
 
 print()

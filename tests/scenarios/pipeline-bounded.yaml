@@ -42,10 +42,38 @@ fidelity: container
 # the measured batch; that sentence was wrong and has been corrected against these records.
 on_unanswered: first
 
+# THE COMMAND PREFIX IS LOAD-BEARING — do not "tidy" it away.
+# The description is explicit-only: it selects the skill on `/ideas`, on being named, or on "use
+# creative problem solving on this" — and NOT merely because a prompt wants ideas or says the
+# obvious answers are spent. This prompt used to do only the latter, so `skill_triggered` asserted
+# the exact behaviour the description forbids: the model was RIGHT to answer directly and the
+# scenario called that a failure (measured 2026-08-28, skill=offered,NOT-invoked, $1.13).
+#
+# THIS SCENARIO CARRIES THE PHRASE PATH, AND IT IS THE ONLY ONE THAT DOES.
+# The description names three ways to ask: `/ideas`, naming the skill, and this phrasing.
+# `ideas-command.yaml` covers the command; `pipeline-strategic` and `deliverable-composition` open
+# with the command too, because a trigger flake there wastes a full pipeline run. If this one also
+# used the command, NOTHING would exercise the phrase — and the phrase is the fragile path, since
+# it resolves by description matching and the description is what gets edited. A narrowing edit
+# could break it while the whole suite stayed green, because a command bypasses the matching that
+# broke. commands/ideas.md also claims "a run reached by asking for the skill by name and a run
+# reached by typing /ideas are the same run"; this is what checks it.
+#
+# A separate cheap trigger-only scenario was tried and withdrawn (2026-08-28). It relied on a short
+# `timeout_ms` to kill the run just after invocation — but the harness reds an errored run at the
+# RUN level regardless of assertions: `result: error` recorded pass:true and the scenario still
+# exited 1. There is no clean early stop (`max_turns` and `max_cost_usd` are post-hoc assertions,
+# not caps), so isolated phrase coverage costs a whole extra pipeline run. Attaching it here costs
+# nothing extra. Measured twice live: the phrase triggers (skill=offered,invoked, 2 of 2).
+#
+# What that trade gives up, stated: a phrase-trigger failure lands on THIS scenario and takes its
+# grounding assertions with it. That is survivable because the harness names the cause —
+# `skill=offered,NOT-invoked` with the failing assertion — so the diagnosis is not ambiguous, only
+# the run is wasted. check-repo.py gates the assertion/prompt pairing statically, token-free.
 prompt: |
   Our onboarding flow has a 60% drop-off at the account-verification step. We've already
-  tried shortening the form and adding a progress bar. I'm out of ideas — what else could
-  we do?
+  tried shortening the form and adding a progress bar. I'm out of ideas — use creative
+  problem solving on this.
 
 assert:
   - result: success

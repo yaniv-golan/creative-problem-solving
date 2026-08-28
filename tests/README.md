@@ -35,6 +35,48 @@ property. Second limit: in practice the deliverable is asked for on a **later tu
 asserted `run` is single-turn, so the scenario compresses report and document into one prompt. A
 green here does not clear the later-turn case.
 
+**Every prompt asserting `skill_triggered` must explicitly ask for the skill, and this is not
+style.** The description is explicit-only: it says to select the skill only on `/ideas`, on being
+named, or on "use creative problem solving on this" — and *not* merely because a prompt wants
+ideas or says the obvious answers are spent. On 2026-08-28 three scenarios here
+(`pipeline-bounded`, `pipeline-strategic`, `deliverable-composition`) asserted `skill_triggered`
+on prompts that did only the latter. They asserted the opposite of the shipped design, so a model
+behaving *correctly* reds them — `deliverable-composition` did exactly that, at $1.13, with
+`skill=offered,NOT-invoked`.
+
+**Which explicit form, and why it differs by scenario.** Every scenario whose subject is
+*post-invocation* behaviour now opens with `/creative-problem-solving:ideas`. That is not because
+the command is special — it expands to prose instructing invocation, not a mechanical dispatch,
+which is precisely what `ideas-command.yaml` asserts — but because it is the most reliable ask
+available, and a scenario about grouping or composition must not be gated on a trigger decision it
+is not testing. A phrase that fails to trigger reds those runs with something indistinguishable
+from a pipeline regression, at full price.
+
+That would leave the phrase path uncovered, and the phrase path is the fragile one: it resolves by
+description matching, and the description is the thing most likely to be edited. So **`pipeline-bounded`
+keeps the phrase** and is the only scenario that exercises it.
+
+A separate cheap trigger-only scenario was tried and **withdrawn** on 2026-08-28. It used a short
+`timeout_ms` to kill the run just after invocation. `timeout_ms` really is an abort — but the
+harness reds an errored run at the **run level regardless of assertions**: with `- result: error`
+asserted it recorded `pass: true`, all three assertions passed, and the scenario still exited 1.
+There is no clean early stop — `max_turns` and `max_cost_usd` are post-hoc assertions, not caps —
+so isolated phrase coverage would cost a whole extra pipeline run per suite. Attaching it to
+`pipeline-bounded` costs nothing.
+
+The trade that makes acceptable: a phrase-trigger failure lands on `pipeline-bounded` and takes its
+grounding assertions with it. That is survivable because the harness names the cause —
+`skill=offered,NOT-invoked`, plus the failing assertion — so what a trigger miss costs is the run,
+not the diagnosis. Measured live twice on 2026-08-28: the phrase triggers, `skill=offered,invoked`,
+2 of 2.
+
+Nothing cheap could catch that at the time: `lint` is static but never reads `SKILL.md`, and **CI
+does not run this live lane at all**, so the contradiction was reachable only by spending tokens on
+a red indistinguishable from a skill regression. `tools/check-repo.py` now pairs each triggering
+assertion with its own prompt, token-free and in CI: a scenario expecting a trigger must ask for
+one, and a scenario expecting none must not. Verified against the three original prompts — it
+catches all three.
+
 `meta-no-trigger` and `negative-trigger` are a pair and should be read together, and since
 2026-08-24 they assert the same thing from two directions: the skill does not select itself.
 `meta-no-trigger` was inverted when the description became explicit-only — it used to assert

@@ -15,7 +15,9 @@ It also takes the largest write in the run off the orchestrator: ~22,000 tokens 
 that it would otherwise copy out by hand.
 
   build_report.py <work-dir> [--out outputs/report.md]
-  build_report.py --check <report.md>      # every {{...}} filled in
+  build_report.py --slots <report.md>      # list the {{...}} tokens still to fill
+  build_report.py --fill <report.md> --slots-json <slots.json>   # fill them, refusing unknown keys
+  build_report.py --check <report.md>      # every {{...}} filled in, and none deleted
   build_report.py --check-reply <reply.md> --against <report.md>   # the reply carries the report
 """
 import json, os, sys, glob
@@ -182,12 +184,20 @@ def main(wd, out):
         # the line above -- and no raw tag leaks as text where the report is shown unrendered.
         v = verdict.get(head, {})
         vd = (v.get("verdict") or "").lower()
+        # The verifier's qualification, if it wrote one. Verifiers have been writing these into a
+        # `note` key nobody read: 5 of 5 records on one preserved run, 11 of 19 on another, with
+        # `agents/verifier.md` never mentioning the field. A `confirmed` whose source supports a
+        # weaker claim than the option states is materially different from a clean one, and until
+        # now the report rendered the two identically.
+        note = (v.get("note") or v.get("caveat") or "").strip()
         if vd == "confirmed" and v.get("source_url"):
             b += ["", f"*Checked — {source_link(v['source_url'])}*"]
         elif vd == "no_external_claim":
             b += ["", "*Proposal — nothing to verify*"]
         elif rank <= 13:
             b += ["", "*Not verified*"]
+        if note and (vd in ("confirmed", "refuted", "no_external_claim") or rank <= 13):
+            b += ["", f"*Note — {one_line(note)}*"]
 
         if lead_prose:
             # Phase 4's template, as slots. The generator used to hand the model a heading and
@@ -202,6 +212,15 @@ def main(wd, out):
                   f"- **Who runs it:** {{{{WHO-{rank}}}}}"]
         if rest:
             b += [""] + [f"- {one_line(text[m])}" for m in rest]
+        # Families merged into this one keep their framing. The merge happens because the
+        # adjudicators left no way to give two families distinct leads -- so this names what the
+        # other side of that merge was called, without putting three mechanisms in one heading.
+        # Deliberately worded to be true of BOTH merge paths: the repair merge requires every
+        # cross pair to join, the forced merge takes the highest joining ratio and can fall back
+        # to the two smallest families with no joining evidence at all. "Judged the same move"
+        # would be an overstatement of the second.
+        for ml in (f.get("merged_labels") or []):
+            b += [f"- *Merged in, and previously headed:* {one_line(ml)}"]
         # "Reached independently" is not established: seven of nine generator briefs were
         # byte-identical in the first live run, so the passes were separate but not independent.
         # The count itself is real and worth printing. Three, not two -- at two it fired on ten
@@ -271,6 +290,13 @@ def main(wd, out):
             e = verdict[i]
             src = f" — {source_link(e['source_url'])}" if e.get("source_url") else ""
             L.append(f"- {one_line(text[i])}{src}")
+            # A refuted option's note says WHICH part did not hold, which is the whole value of
+            # this band: "the closure is true, but the site is not accessible" tells the reader
+            # what to look at next, where a bare strike-through does not. Rendering notes on the
+            # presented options and not here left 2 of the 11 notes in one preserved run in the
+            # file and out of the report -- the same defect, one band over.
+            note = (e.get("note") or e.get("caveat") or "").strip()
+            if note: L.append(f"  - *{one_line(note)}*")
         for fid in dead:
             L.append(f"- *Family #{rank_of[fid]} ({fams[fid]['label']}) had no surviving "
                      f"member.*")
@@ -305,6 +331,15 @@ def main(wd, out):
     # inferred later from a delivery step that refuses a file it cannot see.
     print(f"wrote {out}: {len(live)} families, {slots} options presented, "
           f"{len(rejected)} rejected, {len(text)} generated")
+    # The tokens, verbatim. A run that fills these from memory writes a key that matches nothing
+    # and a replace-loop cannot report that: on the run this was added for, the closing analysis
+    # was skipped silently and never reached the file. Printing them costs a few lines and
+    # removes the reconstruction step. It puts them in context at BUILD time, though, and the
+    # fill happens after the largest write in the run -- so this narrows the window rather than
+    # closing it, and --fill is what refuses a key that matched nothing.
+    tokens = SLOT_RE.findall("\n".join(L))
+    print(f"  {len(tokens)} slot(s) to fill, verbatim:")
+    for tok in tokens: print(f"    {tok}")
     print(f"  wrote to {os.path.abspath(out)}")
     if slots + len(rejected) != len(text):
         sys.exit(f"FAIL: {slots} presented + {len(rejected)} rejected != {len(text)} generated")
@@ -458,6 +493,86 @@ def check_reply(reply_path, report_path):
           f"({len(reply.split())} words)")
 
 
+SLOT_RE = __import__("re").compile(r"\{\{[^{}]*\}\}")
+
+
+def slots_in(path):
+    """The {{...}} tokens still in a file, in order, deduplicated."""
+    body = open(path, encoding="utf-8-sig").read()
+    return list(dict.fromkeys(SLOT_RE.findall(body)))
+
+
+def fill(path, slots_path):
+    """Fill slots from a JSON map, refusing any key that matches nothing in the file.
+
+    The failure this exists for: `for k, v in R.items(): if k in t: t = t.replace(k, v)`. A key
+    reconstructed from memory matches nothing, the loop skips it in silence, and the model's
+    judgement never reaches the report while every downstream check still passes. A refusal is
+    the whole point -- there is no way to notice this from the artifact afterwards.
+
+    It does NOT refuse a slot left unfilled. There are three fixed slots plus four per top-3
+    family, so filling some by hand and the rest from a file is the ordinary case, not an abuse;
+    refusing a partial fill would make the gated route the one nobody can use. Unfilled slots are
+    printed instead, and --check is what finally insists on them.
+    """
+    body = open(path, encoding="utf-8-sig").read()
+    try:
+        slots = json.load(open(slots_path, encoding="utf-8-sig"))
+    except Exception as exc:
+        sys.exit(f"FAIL: {slots_path} is not readable JSON: {exc}")
+    if not isinstance(slots, dict) or not slots:
+        sys.exit(f"FAIL: {slots_path} must be a non-empty JSON object mapping each {{{{...}}}} "
+                 f"token, verbatim, to the text that replaces it.")
+
+    present = set(SLOT_RE.findall(body))
+    unknown = [k for k in slots if k not in present]
+    if unknown:
+        ex = "; ".join(repr(k) for k in unknown[:3])
+        sys.exit(f"FAIL: {len(unknown)} key(s) in {slots_path} match no placeholder in {path}: "
+                 f"{ex}\n      The build step prints every token verbatim; copy them rather than "
+                 f"retyping. A key that matches nothing is silently skipped by a replace loop, "
+                 f"which is the failure this refusal exists to catch.")
+
+    for k, v in slots.items():
+        body = body.replace(k, str(v))
+    open(path, "w", encoding="utf-8").write(body)
+
+    left = list(dict.fromkeys(SLOT_RE.findall(body)))
+    print(f"{path}: filled {len(slots)} slot(s), {len(left)} left")
+    for tok in left: print(f"    {tok}")
+
+
+def _deleted_slots(body, man):
+    """Slot lines the build wrote that have nothing in their place now.
+
+    A slot can fail to reach the reader two ways: filled with nothing (a key that matched
+    nothing), or deleted outright. Only the first leaves a `{{` behind. Deleting the closing
+    line entirely passes every other check in here -- no placeholder remains, the headings and
+    options are intact, and eleven missing words are invisible against a ~22,000-word floor.
+
+    Positional, not pattern-matched: walk the skeleton and the body together, anchoring on the
+    skeleton lines that are NOT slots, and require each run of slot lines to have at least as
+    many non-empty lines standing in its place. Where an anchor cannot be found the layout has
+    been reflowed and this cannot judge it, so it declines rather than guessing -- a false FAIL
+    here is a gate the caller would learn to work around.
+    """
+    sk = man.get("skeleton") or []
+    lines, i, pending, gone = body.splitlines(), 0, [], []
+    for s in sk:
+        if SLOT_RE.search(s):
+            pending.append(s); continue
+        j = i
+        while j < len(lines) and lines[j] != s: j += 1
+        if j >= len(lines):
+            pending = []; continue          # reflowed; cannot judge this run
+        if pending:
+            if len([x for x in lines[i:j] if x.strip()]) < len(pending): gone += pending
+            pending = []
+        i = j + 1
+    if pending and len([x for x in lines[i:] if x.strip()]) < len(pending): gone += pending
+    return gone
+
+
 def check(path, skeleton_words=None):
     """Guard the finished report against the three ways it stops being the answer.
 
@@ -511,6 +626,14 @@ def check(path, skeleton_words=None):
                      f"counting repeats: {ex}\n      every option the build wrote must still be "
                      f"there, and one that appears twice must appear twice.")
 
+        gone = _deleted_slots(body, man)
+        if gone:
+            ex = "; ".join(x.strip()[:52] for x in gone[:3])
+            sys.exit(f"FAIL: {len(gone)} slot(s) the build wrote have nothing in their place in "
+                     f"{path}: {ex}\n      These were deleted rather than filled. Every "
+                     f"placeholder is a part of the answer only you can write; removing one "
+                     f"leaves no trace a presence check can see.")
+
         _slot_check(body, man, path)
         brief = _find_brief(path)
         if brief: _echo_scan(body, man, brief, os.path.basename(path))
@@ -527,6 +650,13 @@ def check(path, skeleton_words=None):
 if __name__ == "__main__":
     a = sys.argv[1:]
     if not a: sys.exit(__doc__)
+    if a[0] == "--slots":
+        for tok in slots_in(a[1]): print(tok)
+        sys.exit(0)
+    if a[0] == "--fill":
+        if "--slots-json" not in a:
+            sys.exit("usage: build_report.py --fill <report.md> --slots-json <slots.json>")
+        fill(a[1], a[a.index("--slots-json") + 1]); sys.exit(0)
     if a[0] == "--check":
         floor = int(a[a.index("--min-words") + 1]) if "--min-words" in a else None
         check(a[1], floor); sys.exit(0)

@@ -27,6 +27,19 @@ proposal. Return verdict `no_external_claim` and **no query field at all**. Do n
 settled nothing, and "none run" or "N/A" in that field is a claim about work you did not do. The
 reader is told either way; the two states are different.
 
+**If the source supports a weaker claim than the option makes, the verdict is still `confirmed`
+— and it must carry a `note`.** This is common, and it is the most useful thing you can produce.
+A source can confirm a mechanism exists while not supporting the strength the option claims for
+it: "conference artifact badging exists, and reviewers do re-run the artifact to earn it" really
+does confirm the mechanism, and it does not support "before it counts as a rival" — badging is
+voluntary at most venues and gates nothing. Put that difference in `note`, in a sentence: what
+the source supports, and what it does not.
+
+`note` is optional, allowed on every verdict, and printed under the option in the report. On
+`no_external_claim` it is the only place to say why nothing was checkable. Do not use it to
+explain away a search you did not run — that is what the verdicts are for. One field, one name:
+write `note`, never `caveat`, and never both.
+
 Record the query you actually ran, not a tidied version of it. Someone reading the work files
 later needs to know what was searched, including when the search was a poor one.
 

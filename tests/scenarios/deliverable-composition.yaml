@@ -33,12 +33,28 @@ on_unanswered: first
 # something to harden, and the tier where a document actually gets asked for. The named output
 # path is what makes `user_visible_artifact` deterministic; the "don't ask me" clause is load-bearing, since a
 # run that ends at a clarifying gate measures nothing.
+# THE COMMAND PREFIX IS LOAD-BEARING — do not "tidy" it away.
+# The description is explicit-only: it selects the skill on `/ideas`, on being named, or on "use
+# creative problem solving on this" — and NOT merely because a prompt wants ideas or says the
+# obvious answers are spent. This prompt used to do only the latter, so `skill_triggered` asserted
+# the exact behaviour the description forbids: the model was RIGHT to answer directly and the
+# scenario called that a failure (measured 2026-08-28, skill=offered,NOT-invoked, $1.13).
+#
+# Why the COMMAND rather than the phrase, given both are explicit. What this scenario tests happens
+# AFTER invocation, so it must not be gated on a trigger decision it is not about — a phrase that
+# fails to trigger reds this run with something indistinguishable from a pipeline regression, at
+# full price. The command is the most reliable ask available (it is still prose instructing
+# invocation, not a mechanical dispatch — which is what ../scenarios/ideas-command.yaml asserts).
+# The phrase path keeps its own coverage in phrase-trigger.yaml, which is cheap and fails fast, so
+# a trigger failure names itself instead of arriving disguised as this scenario's subject.
+# check-repo.py gates the assertion/prompt pairing statically, token-free.
 prompt: |
-  We run four independent bookshops, 30 staff, one city. Footfall is falling, we cannot match
-  online on price, and we have already tried author events and a loyalty card. I don't think this
-  model survives four more years — work out what else we could be, then write the result up as a
-  strategy document at outputs/strategy.md. This is all the information available, so don't ask
-  me any questions; where something is missing, make a reasonable assumption and state it.
+  /creative-problem-solving:ideas We run four independent bookshops, 30 staff, one city.
+  Footfall is falling, we cannot match online on price, and we have already tried author events
+  and a loyalty card. I don't think this model survives four more years — work out what else we
+  could be, then write the result up as a strategy document at outputs/strategy.md. This is all
+  the information available, so don't ask me any questions; where something is missing, make a
+  reasonable assumption and state it.
 
 assert:
   - result: success

@@ -423,6 +423,31 @@ def main(wd):
         if v not in ("confirmed", "refuted", "unclear", "no_external_claim"):
             die(f"{i}: verdict must be confirmed|refuted|unclear|no_external_claim, "
                 f"got {e.get('verdict')!r}")
+
+        # `note` — the verifier's qualification, and it is NOT a new field. Verifiers were
+        # already writing it unprompted while nothing read it: 5 of 5 records on the 2026-08-28
+        # run, 11 of 19 across the 20260827 run, with agents/verifier.md mentioning neither
+        # `note` nor `caveat`. Sixteen qualifications were discarded before anyone looked at the
+        # files rather than at the two scripts that consume them.
+        #
+        # Allowed on every verdict, including no_external_claim, which is where the argument for
+        # refusing it looked strongest and is wrong: `p2-008` on that run is no_external_claim
+        # carrying "Rests entirely on internal process design ... Not a failed check -- a
+        # proposal." A `query` asserts that work happened, which is why an absent search must not
+        # carry one. A note asserts nothing about work, and on no_external_claim it is the only
+        # place to say WHY nothing was checkable.
+        #
+        # Not refusing unknown keys either, deliberately. Doing so would have hard-failed both
+        # preserved runs, and an extra key is how a model tells you what the schema is missing --
+        # which is exactly what happened here.
+        if "note" in e and "caveat" in e and str(e["note"]).strip() != str(e["caveat"]).strip():
+            die(f"{i}: carries both `note` and `caveat` with different text. They are the same "
+                f"field; keep one. The report renders `note`, so a differing `caveat` would be "
+                f"dropped without saying so.")
+        for k in ("note", "caveat"):
+            if k in e and not str(e[k] or "").strip():
+                die(f"{i}: `{k}` is present but empty. An empty qualification reads in the file "
+                    f"as a qualification that exists; drop the key instead.")
         # Two states that a single `unclear` cannot tell apart: a search that ran and settled
         # nothing, and an option resting on no outside-world claim, where no search was possible.
         # Collapsed together, the second can be recorded with a query describing why none ran --
@@ -482,6 +507,14 @@ def main(wd):
                 f"{os.path.basename(vf_of[id(e)])} says {v!r}. A refuted verdict removes an option, "
                 f"so which file sorts last must not decide that. build_report.py refuses this too")
         by[i] = v; seen_where[i] = os.path.basename(vf_of[id(e)])
+    # Counted and printed, because the reader is the only party who can weigh a qualification --
+    # and because a field that is carried but never surfaces in the run's own output is how this
+    # one went sixteen records unnoticed.
+    noted = sum(1 for e in ents if str(e.get("note") or e.get("caveat") or "").strip())
+    if noted:
+        print(f"{noted} of {len(ents)} checked option(s) carry a verifier note; each is rendered "
+              f"under its option in the report.")
+
     missing = [i for i in top13 if i not in by]
     if missing:
         # Naming only "verify these" would be a partial action: the usual cause is a re-merge

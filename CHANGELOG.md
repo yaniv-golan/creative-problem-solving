@@ -7,6 +7,79 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A merged family's heading names one mechanism again.** When two families had to be merged —
+  which happens when the adjudicators leave no way to give them distinct leads — `merge_families.py`
+  joined their labels with `"; "`, and `build_report.py` prints the label as the `###` heading. One
+  recorded run put three mechanisms in its second heading, 537 characters long, with 38 of 99 labels
+  over 200. The heading is now the label of the family the **final** lead came from, resolved after
+  the lead is settled, because a merge re-solves the lead over the union and it can land on a member
+  from the absorbed side. The other label moves to a new `merged_labels` field and the report prints
+  it in the family body — nothing is dropped, it just stops being part of the heading. A gate refuses
+  any label no grouper wrote, byte for byte; a length cap was rejected because it would refuse the
+  223-character label and the four legitimate semicolon labels that real runs contain.
+- **The verifier's qualification reaches the reader.** Verifiers were already writing one into a
+  `note` key that nothing read — 5 of 5 records on one preserved run, 11 of 19 on another, with
+  `agents/verifier.md` never mentioning the field. Sixteen qualifications were discarded, so a
+  `confirmed` whose source supports a weaker claim than the option states rendered identically to a
+  clean one. `note` is now accepted on every verdict, refused when empty or contradicted by a
+  `caveat`, counted by `verify_pipeline.py`, and rendered under the option and in the rejected band
+  — where it says *which* part did not hold, which is the only reason that band is worth reading.
+- **The progress heartbeat names the stage that is actually next.** It said grouping; adjudication
+  is, and it quoted a wait calibrated against the grouper dispatches rather than the longer one in
+  front of the reader. It now counts the adjudicators off disk — and the call moved below the point
+  where those files are written, because counting them where it used to sit returned zero on a first
+  run and the previous run's count on a re-run. It also no longer announces a family count from a
+  stale `families.json` while the run is sharding.
+- **`$CPS` resolution no longer does path arithmetic in one filesystem and uses the answer in
+  another.** Step 0 derived the plugin root by stripping a known tail off the path the *file tools*
+  reported, then ran scripts with it under the *shell*. Where those are different mounts of the same
+  content — Cowork's host loop — the result does not exist for the shell, and the documented
+  fallback walked the same absent tree, so both halves failed together and produced "scripts not
+  found" on a host where the scripts were present. Step 0 is now an executable block: the string
+  edit verified rather than trusted, then a search from the shell keyed on the plugin id, matching a
+  sentinel **file** rather than a directory name (a skill mount carries the name and no `scripts/`,
+  so a name match can succeed and still be wrong). Ambiguous matches refuse instead of taking the
+  first. It prints which branch answered, and a missing install refuses loudly rather than dropping
+  to the scriptless fallback in silence — except for the `.agents/` mirror, which genuinely ships
+  without `scripts/` and is now told apart by a positive test rather than inferred from failure.
+- **Phase 0 no longer bans the subject of the question.** "List the loaded nouns and ban them" named
+  a *source* of words rather than a function, and its only worked example showed the form side. A run
+  banned the noun naming the thing being asked about, and nine generators produced 270 options about
+  nothing in particular — a whole generation cycle. The rule now bans the nouns naming a **shape of
+  answer** and never those naming the **thing the answer is about**, with the test that separates
+  them (strike it from the brief and read the brief back) and both sides of the example.
+- **`families.json`'s real shape is documented where it is used.** Three steps said "take its lead
+  member", but `merge_families.py` renames `cid` to `id` and spends `lead` into position, so
+  following the documented shape gets a `KeyError`. Step 8 now states the keys it actually emits,
+  that there is no `lead`, that `members[0]` is what verification targets, and that the report leads
+  with the first member *not refuted* — a divergence that was documented 140 lines further on.
+
+### Added
+
+- **`build_report.py --slots` and `--fill`.** The build now prints every `{{...}}` token verbatim,
+  and `--fill` refuses a key matching no placeholder. The failure this removes is a fill loop keyed
+  on remembered names: a mistyped key matches nothing, is skipped in silence, and the judgement never
+  reaches the report while every later check still passes. A partial fill is accepted, because
+  filling some slots by hand is ordinary. `--check` also now catches a slot **deleted** rather than
+  filled, which previously left no trace at all.
+- **Two static checks in `tools/check-repo.py`**, both token-free. `families.json`'s documented key
+  set must equal what `merge_families.py` emits, read with `ast` so a reformatted dict fails loudly
+  instead of matching nothing and passing. And every scenario asserting a triggering outcome must
+  have a prompt that agrees with it.
+
+### Changed
+
+- **Three behavioural scenarios asked for the skill the way the description says not to.** The
+  description is explicit-only, and `pipeline-bounded`, `pipeline-strategic` and
+  `deliverable-composition` asserted `skill_triggered` on prompts that only wanted ideas and said the
+  obvious answers were spent — so a model behaving correctly failed them, which is what a live run
+  found. Their prompts now ask explicitly. The two whose subject is post-invocation behaviour use the
+  `/ideas` command so a trigger flake cannot waste a pipeline run; `pipeline-bounded` keeps the
+  phrase form, because it is the only remaining coverage of the path that resolves by description
+  matching — the one an edit to the description would break invisibly.
+
 ## [0.3.0] — 2026-08-28
 
 ### Added

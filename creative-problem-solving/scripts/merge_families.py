@@ -141,6 +141,29 @@ def worst_pinned_pair(fams, rel):
     return best[1], best[2]
 
 
+def relabel(f):
+    """The heading is the label of the family the CURRENT lead came from.
+
+    Not the label of whichever side happened to be `fams[i]` at a merge: `i < j` is
+    itertools.combinations order, which is shard-glob order and carries no meaning. And the lead
+    is re-solved over the union afterwards, so it can be a member that arrived from `fams[j]`.
+    Taking `fams[i]`'s label would then print one mechanism above a different one's option.
+    """
+    f["label"] = f["origin"][f["members"][0]]
+    return f
+
+
+def other_labels(f):
+    """The labels of families merged into this one, in member order, minus the heading's own.
+
+    Nothing is dropped by a merge -- that is the rule this whole script is built on -- so the
+    absorbed family's framing has to survive somewhere the reader can see it. It stops being part
+    of the heading, which is the defect; it does not stop existing.
+    """
+    seen = list(dict.fromkeys(f["origin"][m] for m in f["members"]))
+    return [x for x in seen if x != f["label"]]
+
+
 def main(wd, expect):
     clusters = load(os.path.join(wd, "clusters.json"), "clusters")
     if not clusters: die("clusters.json holds no clusters — run plan_groups.py first")
@@ -157,7 +180,7 @@ def main(wd, expect):
             f"Re-dispatch only the named shard(s).")
     if not shards: die(f"no group-result-*.json in {wd}")
 
-    fams, seen, claimed = [], Counter(), set()
+    fams, seen, claimed, grouper_labels = [], Counter(), set(), set()
     for s in shards:
         for f in (load(s, "families") or []):
             mem = f.get("members") or []
@@ -185,8 +208,17 @@ def main(wd, expect):
                     f"cluster — a shard may split what it was given, never reach outside it")
             claimed.add(src)
             for m in mem: seen[m] += 1
+            lab = f["label"].strip()
+            grouper_labels.add(lab)
+            # Every member remembers the label of the family it arrived in. Merging unions these
+            # maps, so a chain of merges accumulates rather than overwriting -- and because the
+            # lead is re-solved AFTER a merge (and can land on a member that came from the
+            # absorbed side), the heading can only be chosen correctly once the lead is final.
+            # Concatenating the two labels at the merge site, which is what this used to do,
+            # answered both questions at the one moment neither is answerable yet.
             fams.append({"members": [lead] + [m for m in mem if m != lead],
-                         "label": f["label"].strip(), "cid": src})
+                         "label": lab, "cid": src,
+                         "origin": {m: lab for m in mem}})
 
     dupes = [m for m, n in seen.items() if n > 1]
     if dupes: die(f"{len(dupes)} option(s) placed in more than one family, e.g. {sorted(dupes)[:5]}")
@@ -287,7 +319,8 @@ def main(wd, expect):
         # to edit the script's own output until the gate passes.
         if fams[i]["cid"] != fams[j]["cid"]: cross_merged += 1
         fams[i]["members"] = fams[i]["members"] + fams[j]["members"]
-        fams[i]["label"] = f"{fams[i]['label']}; {fams[j]['label']}"
+        fams[i]["origin"].update(fams[j]["origin"])
+        relabel(fams[i])
         fams.pop(j); merged_back += 1
 
     lead = {i: fams[i]["members"][0] for i in range(len(fams))}
@@ -370,7 +403,8 @@ def main(wd, expect):
                 f"script; do not hand-edit families.json.")
         i, j = pair
         fams[i]["members"] = fams[i]["members"] + fams[j]["members"]
-        fams[i]["label"] = f"{fams[i]['label']}; {fams[j]['label']}"
+        fams[i]["origin"].update(fams[j]["origin"])
+        relabel(fams[i])
         fams.pop(j); forced_merged += 1
     merged_back += forced_merged
 
@@ -392,8 +426,24 @@ def main(wd, expect):
             f"this script is handed. Do not hand-edit families.json, and do not re-run this script "
             f"unchanged -- it is deterministic and will stop here again.")
 
+    # Every lead is final by here -- the greedy passes, the exhaustive solve and both merge paths
+    # have all run -- so this is the first point at which the heading can be chosen at all.
+    for f in fams: relabel(f)
+
+    # A label this script emits must be one a grouper actually wrote, byte for byte. That is the
+    # property the old "; "-join broke, and it is checkable without guessing at length: a cap
+    # would refuse the 223-char single label in val3-frozen and the four legitimate semicolon
+    # labels in the 20260827 run, which is the unactionable-refusal shape this repo keeps paying
+    # for. Byte identity cannot fire on correct output and cannot be satisfied by a concatenation.
+    invented = sorted({f["label"] for f in fams} - grouper_labels)
+    if invented:
+        die(f"{len(invented)} famil(ies) carry a label no grouper wrote, e.g. {invented[:2]!r} — "
+            f"the heading must be one of the labels a shard returned, unchanged. This is a bug in "
+            f"merge_families.py; please report it with the group-result-*.json files.")
+
     order = sorted(range(len(fams)), key=lambda i: (-len(fams[i]["members"]), fams[i]["members"][0]))
     out = [{"id": f"f{n+1:03d}", "label": fams[i]["label"], "members": fams[i]["members"],
+            "merged_labels": other_labels(fams[i]),
             "pools": len({m.split("-")[0] for m in fams[i]["members"]})}
            for n, i in enumerate(order)]
     json.dump({"families": out}, open(os.path.join(wd, "families.json"), "w", encoding="utf-8"),

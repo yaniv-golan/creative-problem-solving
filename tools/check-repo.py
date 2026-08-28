@@ -20,6 +20,7 @@ Checks, in order:
 Exit code 0 if everything passes, 1 otherwise.  No third-party dependencies.
 """
 import filecmp
+import glob
 import json
 import os
 import ast
@@ -903,6 +904,133 @@ for label, n, phrase in (("files in scripts/", len(on_disk),
 
 
 # --------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
+# The families.json contract, asserted against both sources rather than reasoned about.
+#
+# merge_families.py rewrites the grouper's shape: `cid` becomes `id` and `lead` disappears, its
+# meaning carried by position as `members[0]`. pipeline.md said "take its lead member" for three
+# steps, and a run that followed the documented shape got KeyError on `lead` and then on `fid`
+# before reverse-engineering the answer from the script. Nothing checked that the two agreed.
+#
+# Read with ast, not a regex over source lines. A regex breaks the moment the dict is reformatted
+# and it breaks OPEN -- no match yields an empty set and the check passes vacuously, which is the
+# most-repeated failure shape in this repo. Finding no dict is a FAILURE here, not a pass.
+print("\nthe families.json shape is documented as it is emitted")
+_mf = os.path.join(REPO, plugin_name, "scripts", "merge_families.py")
+_emitted = set()
+for _node in ast.walk(ast.parse(read_text(os.path.join(plugin_name, "scripts", "merge_families.py")))):
+    if not isinstance(_node, ast.Dict): continue
+    _keys = {k.value for k in _node.keys
+             if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+    # The output record, identified by the two keys nothing else in this file carries together.
+    if {"id", "members"} <= _keys:
+        _emitted = _keys
+        break
+if not _emitted:
+    fail("check-repo.py could not find the families.json output record in merge_families.py, so "
+         "it cannot compare it with references/pipeline.md. This check has failed open before; "
+         "fix the reader rather than removing the check.")
+else:
+    # pipeline.md shows TWO family-shaped examples: the GROUPER's output in step 6 (cid/lead) and
+    # families.json in step 8. Matching the first one is how this check reported the defect it was
+    # written to prevent, against the wrong surface. The step-8 block is the one carrying `id`.
+    _blocks = [m for m in re.findall(r'\{"families": \[\{(.*?)\}\]\}', pipeline_md, re.S)
+               if '"id":' in m]
+    if len(_blocks) != 1:
+        fail("references/pipeline.md shows %d families.json example(s) carrying an `id` key; this "
+             "check needs exactly one to compare against merge_families.py. Step 8 must document "
+             "the shape the orchestrator actually receives." % len(_blocks))
+    else:
+        _documented = set(re.findall(r'"([a-z_]+)":', _blocks[0]))
+        _undoc = sorted(_emitted - _documented)
+        _phantom = sorted(_documented - _emitted)
+        if _undoc:
+            fail("merge_families.py emits %s in families.json, and references/pipeline.md does "
+                 "not document %s. An orchestrator reads the documented shape."
+                 % (", ".join(_undoc), "it" if len(_undoc) == 1 else "them"))
+        if _phantom:
+            fail("references/pipeline.md documents %s in families.json, which merge_families.py "
+                 "does not emit. This is the `lead` defect: a documented key that is not there "
+                 "costs a KeyError and a reverse-engineering session."
+                 % ", ".join(_phantom))
+        if not (_undoc or _phantom):
+            ok("families.json documents exactly what it emits: %s" % ", ".join(sorted(_emitted)))
+        # And the key the shape does NOT have must stay named, because its absence is the
+        # surprise -- three steps asked for it and a silent removal would restore the defect.
+        if "no `lead` key" not in pipeline_md:
+            fail("references/pipeline.md no longer says families.json has no `lead` key. That "
+                 "absence is the thing a reader gets wrong; naming the four keys is not enough.")
+        else:
+            ok("...and says explicitly that there is no `lead` key")
+
+# ---------------------------------------------------------------------------------------------
+# A triggering assertion must agree with the description it is asserting about.
+#
+# The description is explicit-only. Three scenarios nonetheless asserted `skill_triggered` on
+# prompts that only asked for ideas and said the obvious answers were spent -- the exact shape the
+# description tells the model to answer directly. They were asserting the opposite of the design,
+# so the model behaving CORRECTLY reds the suite. Measured 2026-08-28 on the first one to run:
+# `skill=offered,NOT-invoked`, $1.13 to learn it.
+#
+# Nothing could have caught it cheaply. `lint` is static but does not read SKILL.md, and CI never
+# runs the live lane -- so the contradiction was only reachable by spending tokens on a red that
+# looks exactly like a skill regression. This rule closes that, token-free: a scenario that expects
+# a trigger must ask for one, and a scenario that expects no trigger must not.
+print("\nevery triggering assertion agrees with the explicit-only description")
+
+# \s+ between the words, not a single space: a prompt is wrapped prose, so the ask can straddle a
+# line break — "use creative\n  problem solving on this" is the ordinary case, and a single-space
+# pattern misses it while looking correct. That exact miss reported a scenario as unfixed here
+# after it had been fixed.
+_EXPLICIT = re.compile(r"/ideas\b|/creative-problem-solving:ideas|creative[-\s]+problem[-\s]+solving",
+                       re.I)
+
+def _prompt_of(text):
+    """The prompt block only -- never the comments or the assert list.
+
+    Scoped deliberately: `creative-problem-solving` appears in every assertion line and in most
+    header comments, so a whole-file grep reports every scenario as carrying an explicit ask,
+    including the two that must not. That reading would pass this check on all six while the
+    defect was live in three -- a check that cannot fail is worse than no check.
+    """
+    m = re.search(r"^prompt: \|\s*\n((?:[ \t]+.*\n|\n)*)", text, re.M)   # block scalar
+    if m: return m.group(1)
+    m = re.search(r'^prompt:[ \t]*(.+)$', text, re.M)                      # inline / quoted scalar
+    return m.group(1) if m else None
+
+_scen = sorted(glob.glob(os.path.join(REPO, "tests", "scenarios", "*.yaml"))
+               + glob.glob(os.path.join(REPO, "evals", "scenarios", "*.yaml")))
+if not _scen:
+    fail("check-repo.py found no scenario files to check the triggering assertions of. They live "
+         "in tests/scenarios/ and evals/scenarios/; if they moved, fix this reader rather than "
+         "letting it pass on an empty set.")
+_checked = 0
+for _f in _scen:
+    _rel, _txt = os.path.relpath(_f, REPO), read_text(os.path.relpath(_f, REPO))
+    _pos = re.search(r"^\s*-\s*skill_triggered:", _txt, re.M)
+    _neg = re.search(r"^\s*-\s*no_skill_triggered:", _txt, re.M)
+    if not (_pos or _neg): continue
+    _p = _prompt_of(_txt)
+    if _p is None:
+        fail("%s asserts a triggering outcome but this check cannot find its `prompt: |` block, "
+             "so it cannot tell whether the prompt agrees with it." % _rel)
+        continue
+    _has = bool(_EXPLICIT.search(_p))
+    _checked += 1
+    if _pos and not _has:
+        fail("%s asserts `skill_triggered` but its prompt never explicitly asks for the skill. "
+             "The description says to select it ONLY on an explicit ask and NOT merely because a "
+             "prompt wants ideas or says the obvious answers are spent — so this asserts the "
+             "opposite of the shipped behaviour, and a correct model reds it. Add an explicit ask "
+             "(`/ideas`, or \"use creative problem solving on this\"), or invert the assertion."
+             % _rel)
+    if _neg and _has:
+        fail("%s asserts `no_skill_triggered` but its prompt DOES explicitly ask for the skill, "
+             "which the description says should trigger. This scenario can only pass by the skill "
+             "misbehaving." % _rel)
+if _checked:
+    ok("%d scenario(s) pair their triggering assertion with a matching prompt" % _checked)
+
 print()
 if failures:
     print("FAILED (%d problem%s)" % (len(failures), "" if len(failures) == 1 else "s"))
