@@ -186,7 +186,17 @@ python3 tools/check-repo.py
 
 # build the distributable zip locally
 python3 tools/build-zip.py
+
+# or run all three suites at once — tools/conftest.py drives them, and this is the
+# only reason `pytest tools/` is meaningful: they are scripts, not pytest cases
+python3 -m pytest tools/
 ```
+
+**Invoke a suite as a script, or through that pytest shim — not by importing it.** Each runs its
+checks at import and exits non-zero at the end, and each file name matches pytest's default
+discovery pattern while containing no `test_` functions. Before the shim existed, `pytest tools/`
+collected nothing and exited 0: a green having run nothing, which is the failure these suites are
+built to prevent.
 
 **Behavioural tests** (`tests/`) assert what the skill *does* — that it declines to fire on a
 decision question, that both a bounded and a strategic problem ground by search, that `/ideas`

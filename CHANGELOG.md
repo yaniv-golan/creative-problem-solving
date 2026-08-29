@@ -25,7 +25,68 @@ project adheres to [Semantic Versioning](https://semver.org/).
   why testing whether it is empty will not tell you it is wrong, is in `references/pipeline.md`
   beside the rule that depends on it.
 
+- **`docs/INCIDENTS.md`** — the runs behind the rules that read as unusually specific, in full:
+  the working directory that resolved read-only, two runs merging in one directory, the
+  over-budget shard warning passed to the reader, headings that grew to 537 characters, a
+  169-member family that passed every check then in existence, and the three step-10 delivery
+  failures. It is a repository document and is not installed; every rule in `references/pipeline.md`
+  is complete without it. It exists for deciding whether a rule can be relaxed, which is the
+  question the narrative answers and the rule does not.
+
+- **Each dispatch tells its sub-agent what consumes the output.** One clause per stage in steps
+  3-8. A generator told that nothing downstream rewrites an option writes the sentence the reader
+  will actually get; an adjudicator told that `plan_groups.py` partitions on the joinable graph
+  knows a pair it does not return is indistinguishable from one nobody proposed.
+
+- **Two more static checks.** Every executable in `bin/` must be named in `SECURITY.md` — it is
+  the widest-reach file a plugin install delivers and it was documented nowhere. And the host-path
+  guard now walks `docs/` and `bin/`, scanning every file in `bin/` rather than only known
+  suffixes, since a launcher has no extension; `docs/internal/` stays excluded, being untracked
+  and the one place host paths legitimately live.
+
 ### Fixed
+
+- **A repair now merges only inside the component the lead proof is about.** `worst_pinned_pair`
+  runs after `solve_leads` has *proved* no assignment of distinct family leads exists, and that
+  proof is always about one component — the families that constrain each other. Its score ranged
+  over the whole partition, so it kept picking the highest-scoring pair from a component that was
+  never stuck: a merge that cannot move the proof licensing it, fusing two families the reader
+  would have seen separately and leaving the loop to go round again. A budget exhaustion is not a
+  proof, so an unproven component is left out rather than treated as infeasible.
+
+- **A grouping stale against its own ranking is refused.** Re-running `merge_families.py` after
+  step 7 or 8 can change which family a lead belongs to, which restakes the ranking and the
+  verifications recorded against it. `verify_pipeline.py` already caught the visible half — a
+  top-13 lead nothing checked — but a re-merge that reshuffles membership without stranding a lead
+  left every count adding up and the report ranked on a grouping that no longer existed. It now
+  refuses when `families.json` is newer than `ranked.json`, on the same mtime pattern and
+  tolerance as the existing relations-versus-grouping gate. The message says what it cannot do:
+  the comparison is mtimes, not content, so it also fires on a no-op re-merge or a directory
+  restored without its mtimes, and it names `touch ranked.json` as the deliberate way out.
+
+- **An adjudicator that returned nothing is caught at the merge, not four stages later.**
+  `merge_relations.py` skipped a `cand-*.json` with no relations file of its own, deferring it to
+  the step 9 gate — so a shard returning 116 of 117 failed loudly here while one returning 0 of
+  117 passed, and surfaced only after grouping, ranking and verification had been built on a short
+  relation set. Every shard is now checked. The remedy is split by shape: a shard that is merely
+  short is re-dispatched with its missing pairs, one that returned nothing is re-dispatched against
+  its `cand-<k>.json` in full rather than being handed a truncated list to retype.
+
+- **`SKILL.md` fits the compaction budget.** At 20,186 characters it was over the roughly 19,900
+  that survives a compaction, so the tail was dropped and the truncation written back — recoverable
+  only by re-reading the file from disk, on a skill whose runs are long enough to compact mid-run.
+  Now 19,958, cut entirely from restatement rather than method: a `## Gotchas` section that
+  repeated its own Reference files entry, a second copy of the `report.md` pointer nine lines from
+  the first, a `pipeline.md` pointer given twice within nine lines, and an opening that made its
+  thesis three times. Every phase, the lens table and every rule are unchanged, and the four
+  required-file pointers were checked to fall above the surviving mark.
+
+- **`pytest tools/` no longer reports green having run nothing.** The suites are scripts that run
+  at import and exit non-zero on failure, and CI invokes them that way — but their filenames match
+  pytest's discovery pattern while containing no `test_` functions, so `pytest tools/` collected
+  nothing and exited 0. `tools/conftest.py` collects each suite as one item and runs it as a
+  subprocess; discovery is narrowed so the default collector no longer imports them, which was
+  separately turning a real failure into an `INTERNALERROR` instead of a red.
 
 - **The reply must now carry the report, and a copy no longer satisfies the check.** Step 10 has
   always said "the file is the answer, and the reply is the file… do not compose a second, shorter
