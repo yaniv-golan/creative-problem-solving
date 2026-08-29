@@ -80,10 +80,23 @@ def main(wd):
         # instructions. "Re-dispatch with ONLY its missing pairs" is right for the second and
         # absurd for the first, where the truncated list would have the caller retype 126 pairs
         # from a "and 114 more" line instead of pointing the adjudicator at the shard file.
-        whole = [k for k, g, n in missing if len(g) == n]
+        # A shard "returned nothing" when ITS OWN relations file is absent or empty -- never when
+        # len(gap) == n. shard_candidates.py plants the agreement probe by dealing some of shard
+        # k's pairs to a second shard as well, so when k returns nothing those copies still come
+        # back from its neighbour and the gap is strictly smaller than the shard. Measured: 3
+        # shards of 12 with probe 6, shard 2 silent, gap 8 of 12 -- so a len(gap) == n test never
+        # fired and the wholly-missing case got the "re-dispatch with ONLY its missing pairs"
+        # remedy this branch exists to avoid. The first version of this check had that bug and its
+        # test passed, because the fixture hand-built disjoint shards that no sharder produces.
+        def _returned_nothing(k):
+            rp = os.path.join(wd, f"relations-{k}.json")
+            if not os.path.exists(rp): return True
+            try: return not load(rp, "relations")
+            except SystemExit: return False
+        whole = [k for k, g, n in missing if _returned_nothing(k)]
         for k, gap, n in missing:
-            if len(gap) == n:
-                lines.append(f"  shard {k} returned NOTHING: all {n} pair(s) are missing.")
+            if k in whole:
+                lines.append(f"  shard {k} returned NOTHING: no relations-{k}.json, all {n} pair(s) dealt to it unjudged.")
             else:
                 lines.append(f"  shard {k} is short {len(gap)} of {n}: " +
                              ", ".join(f"{a}~{b}" for a, b in gap[:12]) +
@@ -91,7 +104,7 @@ def main(wd):
         if whole:
             lines.append("For the shard(s) that returned nothing, re-dispatch the adjudicator "
                          "against cand-<k>.json IN FULL — do not retype the pairs.")
-        if any(len(g) != n for _, g, n in missing):
+        if any(k not in whole for k, _, _ in missing):
             lines.append("For a shard that is merely short, re-dispatch it with ONLY its missing "
                          "pairs.")
         lines.append("Either way have it write relations-<next-free-index>.json, then re-run this "

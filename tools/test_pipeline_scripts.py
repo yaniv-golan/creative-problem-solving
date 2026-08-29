@@ -2016,23 +2016,52 @@ def t_shard_coverage_check():
 
     # A shard that returned NOTHING used to pass here and surface four stages later. It was the
     # quieter half of the same defect: 116 of 117 failed loudly, 0 of 117 did not.
+    #
+    # BUILT BY THE REAL SHARDER, and it has to be. The first version of this case hand-built two
+    # disjoint cand-*.json files, which no sharder produces: shard_candidates.py plants the
+    # agreement probe by dealing some of shard k's pairs to a second shard too, so when k returns
+    # nothing those copies still come back from its neighbour. The fix under test keyed on
+    # len(gap) == n, which that overlap makes impossible -- so the branch was unreachable in a real
+    # run and the fixture passed anyway. A fixture that cannot produce the shape the code meets is
+    # not a test of it.
     d = tempfile.mkdtemp()
-    make_pools(d, 2, 6)
-    json.dump({"pairs": pairs[:10]}, open(os.path.join(d, "cand-1.json"), "w"))
-    json.dump({"pairs": pairs[10:]}, open(os.path.join(d, "cand-2.json"), "w"))
-    json.dump(rel(pairs[:10]), open(os.path.join(d, "relations-1.json"), "w"))   # shard 2 silent
-    rc, out = run("merge_relations.py", d)
-    check("a shard that returned nothing at all fails the merge too",
-          rc != 0 and "shard 2" in out, out.strip()[:140])
-    # ...and is told to re-dispatch the shard FILE, not to retype pairs from a truncated list.
-    check("...and the remedy fits that shape rather than the short-shard one",
-          "returned NOTHING" in out and "IN FULL" in out, out.strip()[:200])
-    # ...and the same remedy clears it, because the comparison is against every returned
-    # relation rather than against the shard's own file.
-    json.dump(rel(pairs[10:]), open(os.path.join(d, "relations-9.json"), "w"))
-    rc, out = run("merge_relations.py", d)
-    check("...and re-adjudicating into a NEW index clears that too", rc == 0, out.strip()[:200])
-    shutil.rmtree(d, True)
+    try:
+        ids = make_pools(d, 2, 8)
+        make_candidates(d, ids)
+        rc, _ = run("shard_candidates.py", d, "--probe", 6)
+        assert rc == 0, "fixture: shard_candidates failed"
+        shards = sorted(glob.glob(os.path.join(d, "cand-*.json")))
+        assert len(shards) >= 2, "fixture: need at least two shards"
+        overlap = set.intersection(*[{frozenset((p["a"], p["b"]))
+                                      for p in json.load(open(c))["pairs"]} for c in shards[:2]])
+        check("the sharder really does overlap shards (the probe)", bool(overlap),
+              "no overlap — this fixture would not reproduce the defect")
+        silent = os.path.basename(shards[-1])[5:-5]
+        for c in shards:
+            k = os.path.basename(c)[5:-5]
+            if k == silent: continue
+            json.dump({"relations": [dict(p, relation="distinct")
+                                     for p in json.load(open(c))["pairs"]]},
+                      open(os.path.join(d, f"relations-{k}.json"), "w"))
+        rc, out = run("merge_relations.py", d)
+        check("a shard that returned nothing at all fails the merge too",
+              rc != 0 and f"shard {silent}" in out, out.strip()[:140])
+        # ...and is told to re-dispatch the shard FILE, not to retype pairs from a truncated list.
+        check("...and the remedy fits that shape rather than the short-shard one",
+              "returned NOTHING" in out and "IN FULL" in out, out.strip()[:220])
+        # The gap is strictly smaller than the shard, which is exactly why a len(gap) == n test
+        # could not have fired here.
+        dealt = len(json.load(open(os.path.join(d, f"cand-{silent}.json")))["pairs"])
+        check("...even though the probe means the gap is smaller than the shard",
+              f"all {dealt} pair(s) dealt to it unjudged" in out, out.strip()[:220])
+        # And the documented remedy still clears it.
+        json.dump({"relations": [dict(p, relation="distinct") for p in
+                                 json.load(open(os.path.join(d, f"cand-{silent}.json")))["pairs"]]},
+                  open(os.path.join(d, "relations-99.json"), "w"))
+        rc, out = run("merge_relations.py", d)
+        check("...and re-adjudicating into a NEW index clears that too", rc == 0, out.strip()[:200])
+    finally:
+        shutil.rmtree(d, True)
 
 
 def t_infeasible_lead_core():
@@ -3257,6 +3286,28 @@ def t_cps_launcher():
           rc == 127, f"rc={rc} — a step that does nothing and reports success is the failure mode")
     check("...and says why", "did not expand" in out, out.strip()[:120])
 
+    # A SKILLS-ONLY install ships no scripts/ by design -- the zip, the .agents/ mirror, an older
+    # version -- and the resolver's branch 1b exists for that shape. --list printing nothing and
+    # exiting 0 there was the same "no output, exit 0" symptom this file's own header cites as the
+    # measured symlink defect, reached by a legitimate route.
+    d = tempfile.mkdtemp()
+    try:
+        os.makedirs(os.path.join(d, "p", "bin")); os.makedirs(os.path.join(d, "p", "skills"))
+        bare = os.path.join(d, "p", "bin", "cps")
+        shutil.copy(str(cps), bare); os.chmod(bare, 0o755)
+        r = subprocess.run([bare, "--list"], capture_output=True, text=True)
+        check("--list on a skills-only install refuses rather than printing nothing",
+              r.returncode == 127 and "no scripts/" in (r.stdout + r.stderr),
+              (r.stdout + r.stderr).strip()[:120])
+        check("...and names the fallback to take", "Phase 1 fallback" in (r.stdout + r.stderr),
+              (r.stdout + r.stderr).strip()[:120])
+        r = subprocess.run([bare, "verify_pipeline"], capture_output=True, text=True)
+        check("...and asking for a script there says why there is none",
+              r.returncode == 127 and "no scripts/" in (r.stdout + r.stderr),
+              (r.stdout + r.stderr).strip()[:120])
+    finally:
+        shutil.rmtree(d, True)
+
     rc, out = call("no_such_script")
     check("an unknown script refuses with the documented 127", rc == 127, f"rc={rc}")
     check("...and lists what it could have run", "verify_pipeline" in out, out.strip()[:120])
@@ -3298,27 +3349,38 @@ def t_cps_launcher():
         shutil.rmtree(d, True)
 
 
-for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
-          t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
+def main():
+    for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
+              t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
           t_wp4_gates, t_rev6_report, t_relation_gate, t_reply_gate,
-          t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
-          t_plan_groups, t_merge_families, t_forced_lead_collision,
-          t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
-          t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
-          t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
-          t_repair_stays_inside_the_pinned_component,
-          t_band_header_states_what_was_verified, t_fabricated_id_stops_at_the_first_stage,
-          t_cps_launcher,
-          t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
-          t_out_path_echo, t_promoted_lead_gate,
-          t_lead_assignment_complete, t_cps_resolver,
-          t_merged_labels_replace_concatenation, t_heading_follows_the_lead_across_a_merge,
-          t_slots_fill_and_deletion,
-          t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage,
-          t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger):
-    t()
+              t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
+              t_plan_groups, t_merge_families, t_forced_lead_collision,
+              t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
+              t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
+              t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
+              t_repair_stays_inside_the_pinned_component,
+              t_band_header_states_what_was_verified, t_fabricated_id_stops_at_the_first_stage,
+              t_cps_launcher,
+              t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
+              t_out_path_echo, t_promoted_lead_gate,
+              t_lead_assignment_complete, t_cps_resolver,
+              t_merged_labels_replace_concatenation, t_heading_follows_the_lead_across_a_merge,
+              t_slots_fill_and_deletion,
+              t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage,
+              t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger):
+        t()
 
-print()
-if FAILURES:
-    print(f"{len(FAILURES)} FAILED: {', '.join(FAILURES)}"); sys.exit(1)
-print("all pipeline script tests passed")
+    print()
+    if FAILURES:
+        print(f"{len(FAILURES)} FAILED: {', '.join(FAILURES)}"); return 1
+    print("all pipeline script tests passed")
+    return 0
+
+# Guarded so an IMPORT is inert. These suites run at import and exit non-zero, and their filenames
+# match pytest's default discovery -- so an unguarded import during collection both ran them and
+# turned a real failure into an INTERNALERROR. The alternative, narrowing pytest's discovery
+# pattern repo-wide, silently stopped collecting conventionally named tests anywhere else, which
+# is the same false green one directory over. tools/conftest.py runs each suite as a subprocess.
+
+if __name__ == "__main__":
+    sys.exit(main())

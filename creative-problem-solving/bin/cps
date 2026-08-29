@@ -95,7 +95,19 @@ fi
 case "$1" in
   -h|--help)    usage; exit 0 ;;
   --where)      printf '%s\n' "$ROOT"; exit 0 ;;
-  --list)       list_scripts; exit 0 ;;
+  --list)
+    # A skills-only install -- the zip, the .agents/ mirror, an older version -- ships no scripts/
+    # by design, and branch 1b of the resolver exists for exactly that shape. Printing nothing and
+    # exiting 0 there is the same "no output, exit 0" symptom this file's header cites as the
+    # measured symlink defect, reached by a legitimate route.
+    if [ -z "$(list_scripts)" ]; then
+      echo "cps: no scripts/ in this install." >&2
+      echo "  This is the zip, the .agents/ mirror, or a skills-only version — they ship without" >&2
+      echo "  scripts by design. Take the SKILL.md Phase 1 fallback and say in one line which" >&2
+      echo "  checks the run lost." >&2
+      exit 127
+    fi
+    list_scripts; exit 0 ;;
 esac
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -126,8 +138,15 @@ esac
 
 target="$ROOT/scripts/$name.py"
 if [ ! -f "$target" ]; then
-  echo "cps: no such script '$name'. Available:" >&2
-  list_scripts | sed 's/^/  /' >&2
+  avail="$(list_scripts)"
+  if [ -z "$avail" ]; then
+    echo "cps: no scripts/ in this install, so there is no '$name' to run." >&2
+    echo "  This is a skills-only install. Take the SKILL.md Phase 1 fallback and say in one" >&2
+    echo "  line which checks the run lost." >&2
+  else
+    echo "cps: no such script '$name'. Available:" >&2
+    printf '%s\n' "$avail" | sed 's/^/  /' >&2
+  fi
   exit 127
 fi
 

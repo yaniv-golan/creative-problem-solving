@@ -46,6 +46,30 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The wholly-missing-shard message now actually fires.** The branch added for an adjudicator
+  that returned nothing keyed on the gap being the whole shard, which the agreement probe makes
+  impossible: `shard_candidates.py` deals some of shard *k*'s pairs to a second shard as well, so
+  when *k* returns nothing those copies still come back from its neighbour. Measured at three
+  shards of twelve with a probe of six, a silent shard reported a gap of eight — so the branch was
+  unreachable in any real run and the case got the "re-dispatch with ONLY its missing pairs"
+  remedy it exists to avoid. It now keys on that shard's own relations file being absent or empty.
+  The test that passed over this hand-built disjoint shards, a shape no sharder produces; it is
+  rebuilt on `shard_candidates.py` and asserts the overlap it depends on.
+
+- **`cps --list` on a skills-only install refuses instead of printing nothing.** The zip, the
+  `.agents/` mirror and older versions ship without `scripts/` by design — the shape the
+  resolver's own scriptless branch exists for — and there the launcher printed an empty list and
+  exited 0. That is the "no output, exit 0" symptom its header cites as a defect, reached by a
+  legitimate route. It now names the install shape and the fallback to take.
+
+- **`pytest` collects conventionally named tests again.** Narrowing pytest's discovery pattern
+  stopped the script-suites being imported, but the setting is repo-wide: a normal `test_*.py`
+  anywhere else was then collected by nothing and pytest reported green having run it — the same
+  false green, one directory over, introduced by its own fix. Discovery is back to the default and
+  the suites are import-inert instead, so the collector finds no tests in them while
+  `tools/conftest.py` runs each as a subprocess. Verified both ways: a planted failing test
+  outside `tools/` is now collected and fails.
+
 - **A repair now merges only inside the component the lead proof is about.** `worst_pinned_pair`
   runs after `solve_leads` has *proved* no assignment of distinct family leads exists, and that
   proof is always about one component — the families that constrain each other. Its score ranged

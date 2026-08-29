@@ -40,4 +40,8 @@ ignore = [
 # collection and finds zero `test_` functions inside -- so `pytest tools/` reported "no tests
 # collected" and exited 0, a green having run nothing. Narrow discovery so nothing here is
 # auto-imported; tools/conftest.py collects each suite as one item and runs it as a subprocess.
-python_files = ["check_*.py"]
+# Discovery is left at pytest's default. Narrowing it here stopped the suites below from being
+# imported, but it is REPO-WIDE: a conventionally named test anywhere else was then collected by
+# nothing and pytest reported green having run it — the same false green, one directory over.
+# The suites are import-inert instead (see the note at the end of test_pipeline_scripts.py), so
+# the default collector finds no tests in them and tools/conftest.py runs each as a subprocess.

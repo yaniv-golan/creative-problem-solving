@@ -114,8 +114,10 @@ check("empty-ish input yields no ideas", len(load_ideas("   ")) == 0)
 
 # ---------------------------------------------------------------------------
 
-print()
-if FAILURES:
-    print(f"{len(FAILURES)} test(s) failed: {', '.join(FAILURES)}\n")
-    sys.exit(1)
-print("all tests passed\n")
+# Guarded so an IMPORT is inert -- see the note in test_pipeline_scripts.py.
+if __name__ == "__main__":
+    print()
+    if FAILURES:
+        print(f"{len(FAILURES)} test(s) failed: {', '.join(FAILURES)}\n")
+        sys.exit(1)
+    print("all tests passed\n")
