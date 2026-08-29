@@ -33,3 +33,11 @@ select = [
 ignore = [
     "E741",  # single-letter names are idiomatic in these short scripts
 ]
+
+[tool.pytest.ini_options]
+# The suites under tools/ are SCRIPTS: they run at import and sys.exit(1) on failure. Left to
+# pytest's default `test_*.py` discovery they are imported as modules, which both runs them during
+# collection and finds zero `test_` functions inside -- so `pytest tools/` reported "no tests
+# collected" and exited 0, a green having run nothing. Narrow discovery so nothing here is
+# auto-imported; tools/conftest.py collects each suite as one item and runs it as a subprocess.
+python_files = ["check_*.py"]

@@ -17,18 +17,15 @@ decorating a single sweep with headings. This pipeline does that by generating e
 under its own constraint, and by asking for enough options that the obvious ones are spent
 early.
 
-So this is an engine, not a menu. The classic methods survive only as **constraint lenses**
-applied one at a time.
-
-The sentence to hold onto: *structure that makes the next idea harder to reach for helps;
-structure that decorates a single sweep produces longer output that scores better and isn't
-better.*
+So this is an engine, not a menu: the classic methods survive only as **constraint lenses**
+applied one at a time. *Structure that makes the next idea harder to reach for helps; structure
+that decorates a single sweep produces longer output that scores better and isn't better.*
 
 ## When not to use this
 
-Problems with one correct answer, debugging, executing an already-chosen idea, or anything
-where the user wants a decision rather than options. Running a four-phase divergence engine
-on "which of these two should I pick" is the same mistake in the opposite direction.
+Problems with one correct answer, debugging, executing an already-chosen idea, or anything where
+the user wants a decision rather than options. A four-phase divergence engine on "which of these
+two should I pick" is the same mistake in the opposite direction.
 
 ## Reference files
 
@@ -37,7 +34,8 @@ on "which of these two should I pick" is the same mistake in the opposite direct
 - `references/report.md` — the whole of Phase 4. **Required before you write anything the user
   sees.**
 - `references/pruning.md` — the Phase 3 steps. **Required before you prune.**
-- `references/gotchas.md` — the failure modes this pipeline actually produces. Read it when
+- `references/gotchas.md` — the failure modes this pipeline actually produces (framework theater,
+  temperature, premature convergence and the rest), with what each one costs. Read it when
   something is going wrong, or once before your first run.
 - `references/lenses.md` — longer worked prompts per lens, plus the demoted ones (SCAMPER, Six
   Thinking Hats) and why. **Optional**: the Phase 1 table carries both moves for every lens. Read
@@ -46,9 +44,9 @@ on "which of these two should I pick" is the same mistake in the opposite direct
   challenges the approach, or before skipping or changing a phase.
 
 **If this file appears to end early, it did — re-read it from disk before continuing.** A long
-conversation truncates a skill body and leaves a marker where it cut. Seeing that marker, or
-finding that a phase named above is simply absent, means you are working from a fragment. This
-catches the visible failure only: a skill dropped from a conversation entirely leaves no trace.
+conversation truncates a skill body and leaves a marker where it cut; a phase named above being
+simply absent means the same. This catches only the visible failure — a skill dropped from a
+conversation entirely leaves no trace.
 
 `docs/DESIGN-NOTES.md` is for humans maintaining this and is **not** in the installed skill. Don't
 read it at runtime.
@@ -172,10 +170,9 @@ instruction.
 
 **Generate the passes in isolated sub-agents. This is required, not preferred.**
 
-**The stages, and what each writes, are in `references/pipeline.md`. Read it now, before
-generating.** It is not background: it names the sub-agent type for each stage, the file each
-one produces, and the scripts that refuse to let an answer be written when those files do not
-add up. You cannot run what follows without it.
+**Read `references/pipeline.md` now, before generating.** It names the sub-agent type for each
+stage, the file each writes, and the scripts that refuse an answer when those do not add up. You
+cannot run what follows without it.
 
 Pick the lenses from `references/lenses.md` before any generating, one per sub-agent — **every
 lens that genuinely attacks this problem differently**, not a fixed number. The file lists nine.
@@ -286,10 +283,9 @@ the method.
 
 ## Phase 2 — Category negation
 
-**Not run by this pipeline.** Measured against the family structure the grouping stage already
-produces, it returned one search-verified option in seven. The move is well-evidenced in general
-and the reason for dropping it is specific to this architecture; `docs/DESIGN-NOTES.md` has both,
-and the phase numbering keeps its place so a run does not read the gap as something it skipped.
+**Not run by this pipeline** — measured at one search-verified option in seven against the family
+structure grouping already produces. The numbering keeps its place so a run does not read the gap
+as a step it skipped; `docs/DESIGN-NOTES.md` has why.
 
 ---
 
@@ -301,7 +297,7 @@ flattering and least useful. Once an idea exists its novelty is fixed; the only 
 are killing it, merging duplicates, or noting what it costs.
 
 Run the steps once, in order, with no second refinement loop. **They are in
-`references/pruning.md`** — required before you prune, not optional depth.
+`references/pruning.md`**, required before you prune.
 
 ## Phase 4 — Report
 
@@ -313,11 +309,4 @@ single easiest way to triple the word count without adding information: in testi
 ran 2-3x the length of a plain answer and roughly half of that was apparatus.
 
 **Read `references/report.md` before writing anything the user sees.** It carries the rest of this
-phase — the shape of an option, what to do when the answer becomes a document, and the honesty rule
-about what was and was not checked. That material is required, not optional depth.
-
-## Gotchas
-
-The failure modes this pipeline has actually produced — framework theater, temperature, premature
-convergence and the rest — are in **`references/gotchas.md`**, with what each one costs. Read it
-when something is going wrong, or once before your first run.
+phase and is required.
