@@ -44,6 +44,31 @@ project adheres to [Semantic Versioning](https://semver.org/).
   suffixes, since a launcher has no extension; `docs/internal/` stays excluded, being untracked
   and the one place host paths legitimately live.
 
+### Changed
+
+- **The README stages its caveats instead of applying them all at the front door.** Every
+  qualification landed at the same altitude as every claim, including in the first screen, where
+  a reader has not yet been given a reason to read a caveat as rigour rather than as doubt. The
+  worked example in particular was retracted in the paragraph immediately below it — old version,
+  changed pipeline, and a round the baseline won — so the demo argued with itself before the
+  reader reached anything else. The example now leads, carries a one-clause version note and a
+  forward pointer to the round it lost, and the loss is stated in full under "Does it actually
+  work?" alongside the bounded-question result. The three limits on grouping move up out of the
+  results section, where someone deciding whether to spend forty minutes will actually meet them,
+  and a new "Reading the output" section says how the report is laid out — the one question the
+  page never answered. 3,605 words to 2,757.
+
+  The 0.1.0 numbers keep every figure and every counter-finding, now in `evals/` rather than
+  inline; each was verified present there before deletion. The `outputs/` retention policy moved
+  to `INSTALL.md` and the deduplication rationale to `DESIGN-NOTES.md`, both published in the
+  preceding commit so no claim was unreadable in between. This narrows the earlier decision
+  recorded under 0.2.0 — which kept the 0.1.0 results inline under their own subheading — to a
+  sentence and two links; the tradeoff is that a reader who never follows a link now gets a
+  rosier picture than before, which was the point of the change and its cost.
+
+- **`README.md` said the skill is six files; it is nine.** `INSTALL.md` and `tools/check-repo.py`
+  both said nine, and the checker computes it from the payload. Only the README was wrong.
+
 ### Fixed
 
 - **The wholly-missing-shard message now actually fires.** The branch added for an adjudicator
