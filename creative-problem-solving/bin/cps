@@ -25,10 +25,32 @@
 
 set -euo pipefail
 
-# ${BASH_SOURCE[0]} rather than $0: correct when the launcher is sourced as well as executed, and
-# unaffected by a caller that rewrites argv. The mount is read-only under Cowork, so this
-# directory can be read and executed but never written to -- no caching, no self-modification.
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# ${BASH_SOURCE[0]} rather than $0: unaffected by a caller that rewrites argv. This script is meant
+# to be EXECUTED, not sourced -- it calls `exit` and sets `-euo pipefail`, both of which would hit
+# the caller's own shell.
+#
+# RESOLVE SYMLINKS FIRST. BASH_SOURCE holds the path used to invoke, not the physical file, so
+# `ln -s <plugin>/bin/cps ~/bin/cps` -- the single most likely thing anyone does with a file called
+# cps -- made ROOT the symlink's grandparent. Measured: --where printed the wrong tree and --list
+# printed nothing at all, exit 0. The mount is read-only under Cowork, so this directory can be
+# read and executed but never written to: no caching, no self-modification.
+src="${BASH_SOURCE[0]}"
+while [ -L "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+done
+ROOT="$(cd -P "$(dirname "$src")/.." && pwd)"
+
+# Entry points only. A module that is imported rather than run has no `main` guard, so ask the
+# file rather than maintaining a denylist here that nothing checks against scripts/.
+list_scripts() {
+  for f in "$ROOT"/scripts/*.py; do
+    [ -e "$f" ] || continue
+    grep -q '^if __name__ ==' "$f" || continue
+    basename "$f" .py
+  done
+}
 
 usage() {
   cat <<USAGE
@@ -51,18 +73,23 @@ means when the script is called directly.
 USAGE
 }
 
-case "${1:-}" in
-  -h|--help|"") usage; exit 0 ;;
+# NO ARGUMENTS is a person typing `cps`. An EMPTY FIRST ARGUMENT is a variable that did not
+# expand, and the two want opposite answers. Grouped together, `cps typo` exited 127 while
+# `cps "$UNSET"` printed usage and exited 0 -- the near-miss loud, the likelier programmatic
+# failure silent, which inverts the exit-code table above. A pipeline step that does nothing and
+# reports success is the failure this whole plugin exists to make impossible. Tell them apart by
+# argument COUNT, never by value.
+if [ "$#" -eq 0 ]; then usage; exit 0; fi
+if [ -z "$1" ]; then
+  echo "cps: empty script name — a variable that did not expand?" >&2
+  usage >&2
+  exit 127
+fi
+
+case "$1" in
+  -h|--help)    usage; exit 0 ;;
   --where)      printf '%s\n' "$ROOT"; exit 0 ;;
-  --list)
-    for f in "$ROOT"/scripts/*.py; do
-      [ -e "$f" ] || continue
-      b="$(basename "$f" .py)"
-      case "$b" in robust_json|verdicts) continue ;;   # imported, not entry points
-      esac
-      printf '%s\n' "$b"
-    done
-    exit 0 ;;
+  --list)       list_scripts; exit 0 ;;
 esac
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -80,10 +107,21 @@ if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)'; 
 fi
 
 name="${1%.py}"; shift
+
+# A script NAME, never a path. Nothing legitimate needs a slash here, and interpolating one
+# straight into "$ROOT/scripts/$name.py" let `cps ../../elsewhere/x` execute a file outside the
+# plugin. Not a privilege boundary -- the caller already has a shell -- but it means the argument
+# can come from anywhere without turning into a way to run arbitrary files by relative path.
+case "$name" in
+  */*|.*)
+    echo "cps: '$name' is not a script name — pass a bare name, not a path." >&2
+    exit 127 ;;
+esac
+
 target="$ROOT/scripts/$name.py"
 if [ ! -f "$target" ]; then
   echo "cps: no such script '$name'. Available:" >&2
-  "${BASH_SOURCE[0]}" --list | sed 's/^/  /' >&2
+  list_scripts | sed 's/^/  /' >&2
   exit 127
 fi
 

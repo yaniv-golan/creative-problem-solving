@@ -393,7 +393,15 @@ def main(wd):
         die("families.json is newer than ranked.json, so the ranking describes a grouping that "
             "has since changed. This is what a re-run of merge_families.py after step 7 does. "
             "Re-run step 7 to re-rank, then step 8 against the new top 13 -- in that order. "
-            "Re-ranking alone is not enough if verification already ran against the old top 13.")
+            "Re-ranking alone is not enough if verification already ran against the old top 13.\n"
+            "  This compares mtimes, not content, and it cannot do better: what invalidates a "
+            "ranking is a change in family MEMBERSHIP, and nothing records what families.json "
+            "held when ranked.json was written. A change in family IDS is caught separately by "
+            "the permutation check above.\n"
+            "  So it also fires on a re-run that changed nothing -- a no-op re-merge, or a run "
+            "directory restored by a copy that did not preserve mtimes. If you know the grouping "
+            "is unchanged, `touch ranked.json` and re-run this. That is a deliberate act on a "
+            "directory you are inspecting, not something a pipeline run can do to itself.")
 
     order = load(rkpath, "ranked")
     if any(isinstance(x, dict) and "text" in x for x in order):

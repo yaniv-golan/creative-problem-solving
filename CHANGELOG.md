@@ -7,6 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`bin/cps`, so the shell can find the plugin by name.** Claude Code puts a plugin's `bin/` on
+  the Bash tool's `PATH`, built for that shell rather than inherited, so a bare `cps` is resolved
+  by the shell in its own namespace — which is exactly what Step 0's resolver spends 196 lines
+  reconstructing by hand on hosts where the file tools and the shell disagree about paths. The
+  resolver now tries `cps --where` as branch 0 on split-namespace hosts, below the read path and
+  gated, because only the read path can promise the scripts belong to the install whose
+  instructions are being read. Verified rather than trusted at every step: a `PATH` entry is
+  advertised whether or not the directory behind it exists. `bin/cps` is named in `SECURITY.md`
+  and CI now refuses an executable there that is not.
+
 ### Fixed
 
 - **The reply must now carry the report, and a copy no longer satisfies the check.** Step 10 has

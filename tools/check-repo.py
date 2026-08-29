@@ -915,6 +915,26 @@ for label, n, phrase in (("files in scripts/", len(on_disk),
 # Read with ast, not a regex over source lines. A regex breaks the moment the dict is reformatted
 # and it breaks OPEN -- no match yields an empty set and the check passes vacuously, which is the
 # most-repeated failure shape in this repo. Finding no dict is a FAILURE here, not a pass.
+# bin/ is on the Bash tool's PATH, which makes it the widest-reach thing the plugin installs. The
+# scripts/ inventory is asserted against SECURITY.md three ways; this file had none of that, and
+# shipped documented nowhere. Same rule, smaller: whatever is executable in bin/ is named there.
+print("\nevery executable in bin/ is named in SECURITY.md")
+_bin = os.path.join(REPO, plugin_name, "bin")
+if not os.path.isdir(_bin):
+    ok("no bin/ directory")
+else:
+    _sec = read_text("SECURITY.md")
+    _unnamed = [f for f in sorted(os.listdir(_bin))
+                if os.access(os.path.join(_bin, f), os.X_OK) and "`%s`" % f not in _sec
+                and "`bin/%s`" % f not in _sec]
+    if _unnamed:
+        fail("SECURITY.md does not name %s, which a plugin install puts on the Bash tool's PATH. "
+             "SECURITY.md is what a security researcher reads to learn what executes; the file "
+             "with the widest reach in the payload is not the one to leave out"
+             % ", ".join("bin/" + f for f in _unnamed))
+    else:
+        ok("every executable in bin/ appears in SECURITY.md")
+
 print("\nthe families.json shape is documented as it is emitted")
 _mf = os.path.join(REPO, plugin_name, "scripts", "merge_families.py")
 _emitted = set()
@@ -1076,15 +1096,19 @@ _leaks = []
 # gitignored, it is where host paths legitimately live, and scanning it fails the build on the
 # working notes rather than on anything shipped.
 _DOCS_SKIP = os.path.join(REPO, "docs", "internal") + os.sep
+# bin/ holds an extensionless executable, so the suffix filter would skip it entirely. It is the
+# widest-reach file in the payload -- Claude Code puts it on the Bash tool's PATH -- so scan
+# everything there rather than everything with a known suffix.
+_ALL = (os.path.join(plugin_name, "bin"),)
 for _root in (os.path.join(plugin_name, "skills"), os.path.join(plugin_name, "agents"),
               os.path.join(plugin_name, "commands"), os.path.join(plugin_name, "scripts"),
-              "docs"):
+              os.path.join(plugin_name, "bin"), "docs"):
     _abs = os.path.join(REPO, _root)
     if not os.path.isdir(_abs): continue
     for _dir, _, _files in os.walk(_abs):
         if (_dir + os.sep).startswith(_DOCS_SKIP): continue
         for _fn in _files:
-            if not _fn.endswith((".md", ".txt", ".py")): continue
+            if _root not in _ALL and not _fn.endswith((".md", ".txt", ".py")): continue
             _rel = os.path.relpath(os.path.join(_dir, _fn), REPO)
             for _i, _line in enumerate(read_text(_rel).splitlines(), 1):
                 if _hp.search(_line): _leaks.append((_rel, _i, _line.strip()[:70]))

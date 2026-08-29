@@ -64,7 +64,7 @@ plugin root is **two places**, so the shell has to find its own.
 cps_resolve() {                    # $1 = the path you read THIS file at
   READ_AT="$1"
   SENTINEL="scripts/verify_pipeline.py"
-  # The COMPLETE root list, overridable as one variable. Not a default plus a hard-coded
+  # The COMPLETE root list, overridable as one variable, ONE ROOT PER LINE. Not a default plus a hard-coded
   # tail: a search with roots the caller cannot control cannot be tested, because the fixture
   # cannot stop it reaching the real install and answering correctly for the wrong reason.
   #
@@ -77,27 +77,6 @@ cps_resolve() {                    # $1 = the path you read THIS file at
   ROOTS="${CPS_SEARCH_ROOTS:-$(printf '%s\n' /sessions "$HOME/.claude/plugins" "$HOME/.claude" "$HOME/Library/Application Support/Claude")}"
   CAND="${READ_AT%/skills/creative-problem-solving/references/pipeline.md}"
   PID=$(basename "$CAND")
-
-  # Branch 0 — ask the shell, which is the only party whose answer is already in the shell's own
-  # namespace. Claude Code puts <plugin root>/bin on the Bash tool's PATH, constructed for that
-  # shell rather than inherited, so a bare `cps` is looked up by the shell itself and NOTHING
-  # crosses the namespace boundary. Measured correct on plain CLI, Cowork host-loop and Cowork
-  # cloud -- three different path shapes, each right for its own lane.
-  #
-  # Overridable by name for the same reason ROOTS is: a branch that consults a PATH the caller
-  # cannot control cannot be tested, because the fixture cannot stop it finding the developer's
-  # own install and passing for the wrong reason.
-  #
-  # VERIFIED, not trusted, like every branch below: a PATH entry is advertised whether or not the
-  # directory behind it exists -- measured, 35 entries advertised and none present -- so a
-  # launcher that answers is still made to produce a path carrying the sentinel.
-  LAUNCHER="${CPS_LAUNCHER:-cps}"
-  if command -v "$LAUNCHER" >/dev/null 2>&1; then
-    W=$("$LAUNCHER" --where 2>/dev/null || true)
-    if [ -n "$W" ] && [ -f "$W/$SENTINEL" ]; then
-      CPS="$W"; echo "CPS=$CPS (branch 0: $LAUNCHER on PATH)"; return 0
-    fi
-  fi
 
   # Branch 1 — the string edit, VERIFIED rather than trusted. Free, and guaranteed to be the
   # same install as the file you just read, which no other branch can promise.
@@ -146,6 +125,40 @@ cps_resolve() {                    # $1 = the path you read THIS file at
   case "$PWD" in /sessions/*) SPLIT=1 ;; esac
   case "$HOME" in /sessions/*) SPLIT=1 ;; esac
   case "$CAND" in /sessions/*) SPLIT=0 ;; esac
+
+  # Branch 0 — ask the shell, which is the only party whose answer is already in the shell's own
+  # namespace. Claude Code puts <plugin root>/bin on the Bash tool's PATH, constructed for that
+  # shell rather than inherited, so a bare `cps` is looked up by the shell itself and NOTHING
+  # crosses the namespace boundary. On a split host that replaces the search below outright.
+  #
+  # DELIBERATELY BELOW BRANCH 1, AND GATED ON SPLIT. Branch 1 is the only branch that can promise
+  # the scripts belong to the install whose instructions you are reading; a launcher promises a
+  # working install, not THAT install. Run first, it silently preferred a marketplace copy over
+  # the checkout the model was reading -- reproduced with two installs and a `cps` pointing at the
+  # older one, which is the ordinary shape of a maintainer's own machine. Ordering it here costs
+  # nothing: where branch 1 can answer, the search never runs anyway.
+  #
+  # The SPLIT gate is the same consistency: with shared namespaces a read path that does not
+  # resolve is a WRONG path, and the single-hit case below refuses it rather than binding another
+  # copy. A launcher must not quietly do what that refusal exists to prevent.
+  #
+  # Overridable by name for the same reason ROOTS is: a branch that consults a PATH the caller
+  # cannot control cannot be tested, because the fixture cannot stop it finding the developer's
+  # own install and passing for the wrong reason.
+  #
+  # VERIFIED, not trusted, like every branch here: a PATH entry is advertised whether or not the
+  # directory behind it exists -- measured, 35 entries advertised and none present -- so a
+  # launcher that answers is still made to produce a path carrying the sentinel. `</dev/null` so
+  # an unrelated interactive `cps` cannot block the run waiting on input.
+  LAUNCHER="${CPS_LAUNCHER:-cps}"
+  if [ "$SPLIT" = 1 ] && command -v "$LAUNCHER" >/dev/null 2>&1; then
+    W=$("$LAUNCHER" --where </dev/null 2>/dev/null || true)
+    if [ -n "$W" ] && [ -f "$W/$SENTINEL" ]; then
+      B0="0: $LAUNCHER on PATH"
+      [ "$(basename "$W")" = "$PID" ] && B0="0: $LAUNCHER on PATH, id join on $PID"
+      CPS="$W"; echo "CPS=$CPS (branch $B0)"; return 0
+    fi
+  fi
 
   # TWO DESIGNS WERE INVESTIGATED AND RULED OUT HERE. Recorded because both look obviously better
   # than a search, and the next person will think of them:
@@ -486,8 +499,9 @@ assumed: a negation round against that structure returned one search-verified op
    the spread are guaranteed by construction. You still never read a pair.
 
 5. **Adjudicate those pairs.** *Tell each one what its verdicts feed: `plan_groups.py` partitions
-   on them, so a shard that returns short silently shrinks the final list — and the merge refuses
-   rather than absorbing it.* Dispatch **one `adjudicator` sub-agent per `cand-*.json` the script
+   on the joinable graph, so a pair you do not return is indistinguishable from a pair nobody
+   proposed and those two options are grouped as if unrelated — the merge refuses rather than
+   absorbing that.* Dispatch **one `adjudicator` sub-agent per `cand-*.json` the script
    wrote**, in one parallel batch — sub-agent *k* reads `cand-k.json` and writes `relations-k.json`.
    The shard count is not fixed: `shard_candidates.py` sizes it to keep each adjudicator near 126
    pairs and **prints it**, so read the count from its line rather than assuming three. Each is told to
@@ -531,7 +545,8 @@ assumed: a negation round against that structure returned one search-verified op
 
 6. **Partition with a script, then send the clusters out to be named.** *Tell each grouper what
    its naming feeds: the label becomes the family's heading in the report, and the lead it picks is
-   the option the reader is shown first and the only one Phase 3 checks.* Grouping used to be one
+   where the report starts unless a later repair moves it — and for a top-13 family it is the
+   option Phase 3 checks.* Grouping used to be one
    sub-agent call holding every option at once. Across recorded runs that was 62–86% of the wall
    clock, it exhausted the model's output budget on two of five dispatches, and it wrote nothing
    until it returned — so a failure forty-five minutes in cost forty-five minutes and produced

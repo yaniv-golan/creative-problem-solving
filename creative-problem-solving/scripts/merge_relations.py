@@ -73,15 +73,28 @@ def main(wd):
         k = os.path.basename(c)[5:-5]
         dealt = {frozenset((p.get("a"), p.get("b"))) for p in load(c, "pairs")}
         gap = dealt - back
-        if gap: missing.append((k, sorted(tuple(sorted(g)) for g in gap)))
+        if gap: missing.append((k, sorted(tuple(sorted(g)) for g in gap), len(dealt)))
     if missing:
-        lines = [f"FAIL: {sum(len(g) for _, g in missing)} pair(s) dealt to an adjudicator never came back."]
-        for k, gap in missing:
-            lines.append(f"  shard {k} is short {len(gap)}: " +
-                         ", ".join(f"{a}~{b}" for a, b in gap[:12]) +
-                         (f", and {len(gap) - 12} more" if len(gap) > 12 else ""))
-        lines.append("Re-dispatch the adjudicator for each shard named above with ONLY its missing "
-                     "pairs, have it write relations-<next-free-index>.json, then re-run this "
+        lines = [f"FAIL: {sum(len(g) for _, g, _ in missing)} pair(s) dealt to an adjudicator never came back."]
+        # A shard that returned NOTHING and one that returned all but a pair want different
+        # instructions. "Re-dispatch with ONLY its missing pairs" is right for the second and
+        # absurd for the first, where the truncated list would have the caller retype 126 pairs
+        # from a "and 114 more" line instead of pointing the adjudicator at the shard file.
+        whole = [k for k, g, n in missing if len(g) == n]
+        for k, gap, n in missing:
+            if len(gap) == n:
+                lines.append(f"  shard {k} returned NOTHING: all {n} pair(s) are missing.")
+            else:
+                lines.append(f"  shard {k} is short {len(gap)} of {n}: " +
+                             ", ".join(f"{a}~{b}" for a, b in gap[:12]) +
+                             (f", and {len(gap) - 12} more" if len(gap) > 12 else ""))
+        if whole:
+            lines.append("For the shard(s) that returned nothing, re-dispatch the adjudicator "
+                         "against cand-<k>.json IN FULL — do not retype the pairs.")
+        if any(len(g) != n for _, g, n in missing):
+            lines.append("For a shard that is merely short, re-dispatch it with ONLY its missing "
+                         "pairs.")
+        lines.append("Either way have it write relations-<next-free-index>.json, then re-run this "
                      "script. Do not hand-edit relations.json: it is rebuilt from the shards here, "
                      "and an edit is overwritten on the next run.")
         sys.exit("\n".join(lines))

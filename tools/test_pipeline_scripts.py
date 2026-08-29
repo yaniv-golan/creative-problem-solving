@@ -2024,6 +2024,9 @@ def t_shard_coverage_check():
     rc, out = run("merge_relations.py", d)
     check("a shard that returned nothing at all fails the merge too",
           rc != 0 and "shard 2" in out, out.strip()[:140])
+    # ...and is told to re-dispatch the shard FILE, not to retype pairs from a truncated list.
+    check("...and the remedy fits that shape rather than the short-shard one",
+          "returned NOTHING" in out and "IN FULL" in out, out.strip()[:200])
     # ...and the same remedy clears it, because the comparison is against every returned
     # relation rather than against the shard's own file.
     json.dump(rel(pairs[10:]), open(os.path.join(d, "relations-9.json"), "w"))
@@ -2604,7 +2607,7 @@ def t_cps_resolver():
         with open(stub, "w") as fh:
             fh.write('#!/bin/sh\n[ "$1" = "--where" ] && printf "%s\\n" "' + z + '"\n')
         os.chmod(stub, 0o755)
-        rc, out = resolve("/nowhere" + TAIL, empty, launcher=stub)
+        rc, out = resolve("/nowhere" + TAIL, empty, split=True, launcher=stub)
         check("a launcher on PATH resolves on branch 0", rc == 0 and "branch 0" in out and z in out,
               out.strip()[:120])
 
@@ -2616,9 +2619,32 @@ def t_cps_resolver():
         with open(stub2, "w") as fh:
             fh.write('#!/bin/sh\n[ "$1" = "--where" ] && printf "%s\\n" "' + hollow + '"\n')
         os.chmod(stub2, 0o755)
-        rc, out = resolve(z + TAIL, empty, launcher=stub2)
-        check("...but a launcher pointing at a tree with no scripts/ does not answer",
-              "branch 0" not in out, out.strip()[:120])
+        rc, out = resolve("/nowhere" + TAIL, os.path.join(base, "Z"), split=True, launcher=stub2)
+        check("...but a launcher pointing at a tree with no scripts/ falls through to the search",
+              rc == 0 and "branch 2" in out and z in out and "branch 0" not in out,
+              out.strip()[:140])
+
+        # BRANCH ORDER. A launcher is not proof of the SAME install -- only branch 1 can promise
+        # that. Run first it preferred a marketplace copy over the checkout the model was reading,
+        # which is the ordinary shape of a maintainer's machine. Two complete installs, read path
+        # at one, launcher at the other: the read path must win.
+        newer = mk("Skew", "plugin_X"); skill(newer); scripts(newer)
+        older = mk("SkewOld", "plugin_X"); skill(older); scripts(older)
+        stub3 = os.path.join(stub_dir, "cps-other")
+        with open(stub3, "w") as fh:
+            fh.write('#!/bin/sh\n[ "$1" = "--where" ] && printf "%s\\n" "' + older + '"\n')
+        os.chmod(stub3, 0o755)
+        rc, out = resolve(newer + TAIL, empty, launcher=stub3)
+        check("a launcher never preempts the install the model actually read",
+              rc == 0 and "branch 1" in out and newer in out and older not in out,
+              out.strip()[:140])
+
+        # ...and with shared namespaces a read path that does not resolve is a WRONG path. The
+        # single-hit case refuses it rather than binding another copy; a launcher must not quietly
+        # do what that refusal exists to prevent.
+        rc, out = resolve("/nowhere" + TAIL, empty, launcher=stub)
+        check("...nor answers at all when the namespaces are not split", rc == 2,
+              out.strip()[:140])
 
         # A ROOT CONTAINING A SPACE. Desktop's local agent mode stages plugins under
         # "Application Support", and a space-separated root list splits that into two roots that
@@ -3188,6 +3214,90 @@ def t_progress_names_the_next_stage():
         shutil.rmtree(d, True)
 
 
+def t_cps_launcher():
+    """bin/cps -- the launcher that lets the shell find the plugin by name.
+
+    It exists so the resolver's 196-line search is not on the hot path: Claude Code puts
+    <plugin root>/bin on the Bash tool's PATH, built for that shell, so a bare `cps` is looked up
+    in the shell's own namespace and no path crosses the file-tool boundary.
+
+    The empty-argument case is the one that shipped wrong. `-h`, `--help` and `""` were one
+    branch, so `cps typo` exited 127 while `cps "$UNSET"` printed usage and exited 0 -- the
+    near-miss loud, the likelier programmatic failure silent. A pipeline step that does nothing
+    and reports success is the exact failure this plugin exists to prevent.
+    """
+    print("\nbin/cps — the launcher, and the argument that used to pass silently")
+    cps = ROOT / "creative-problem-solving" / "bin" / "cps"
+    check("bin/cps sits beside .claude-plugin/, not at the repo root", cps.exists(),
+          "a bin/ anywhere else is on nobody's PATH — the single observed failure mode")
+    check("...and is executable", os.access(cps, os.X_OK), oct(cps.stat().st_mode)[-3:])
+
+    def call(*a):
+        r = subprocess.run([str(cps), *a], capture_output=True, text=True)
+        return r.returncode, r.stdout + r.stderr
+
+    rc, out = call("--where")
+    check("--where names the plugin root", rc == 0 and out.strip().endswith("creative-problem-solving"),
+          out.strip()[:120])
+    check("...and that root carries the scripts", os.path.isfile(os.path.join(out.strip(), "scripts",
+          "verify_pipeline.py")), out.strip()[:120])
+
+    rc, out = call("--list")
+    listed = set(out.split())
+    check("--list names the entry points", {"verify_pipeline", "build_report"} <= listed, sorted(listed))
+    check("...and omits the modules that are imported, not run",
+          not ({"robust_json", "verdicts"} & listed), sorted(listed))
+
+    rc, _ = call()
+    check("no arguments is a person asking for help, and exits 0", rc == 0, f"rc={rc}")
+
+    # THE REGRESSION. Grouped with -h, this returned 0.
+    rc, out = call("")
+    check("an EMPTY argument is a variable that did not expand, and refuses",
+          rc == 127, f"rc={rc} — a step that does nothing and reports success is the failure mode")
+    check("...and says why", "did not expand" in out, out.strip()[:120])
+
+    rc, out = call("no_such_script")
+    check("an unknown script refuses with the documented 127", rc == 127, f"rc={rc}")
+    check("...and lists what it could have run", "verify_pipeline" in out, out.strip()[:120])
+
+    # A NAME, not a path. Interpolated straight into "$ROOT/scripts/$name.py", a relative path
+    # reached outside the plugin entirely.
+    rc, out = call("../../../etc/passwd")
+    check("a path is not a script name", rc == 127 and "not a script name" in out, out.strip()[:120])
+    rc, _ = call("sub/dir")
+    check("...nor is a nested one", rc == 127, f"rc={rc}")
+
+    # BASH_SOURCE holds the invoking path, not the physical file, so a symlink on PATH -- the
+    # single most likely thing anyone does with a file called cps -- pointed ROOT at the symlink's
+    # grandparent. --where named the wrong tree and --list printed nothing, exit 0.
+    d = tempfile.mkdtemp()
+    try:
+        link = os.path.join(d, "cps")
+        os.symlink(str(cps), link)
+        r = subprocess.run([link, "--where"], capture_output=True, text=True)
+        check("invoked through a symlink, --where still names the plugin root",
+              r.stdout.strip() == str(cps.parent.parent), r.stdout.strip()[:120])
+        r = subprocess.run([link, "--list"], capture_output=True, text=True)
+        check("...and --list still finds the scripts", "verify_pipeline" in r.stdout,
+              r.stdout.strip()[:120])
+    finally:
+        shutil.rmtree(d, True)
+
+    # Parity: the launcher must not change what a script does or what it returns.
+    d = tempfile.mkdtemp()
+    try:
+        rc_l, out_l = call("verify_pipeline", d)
+        r = subprocess.run([sys.executable, str(SCRIPTS / "verify_pipeline.py"), d],
+                           capture_output=True, text=True)
+        check("a script run through the launcher returns what it returns directly",
+              rc_l == r.returncode, f"launcher={rc_l} direct={r.returncode}")
+        check("...and prints what it prints", out_l.strip() == (r.stdout + r.stderr).strip(),
+              out_l.strip()[:120])
+    finally:
+        shutil.rmtree(d, True)
+
+
 for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
           t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
           t_wp4_gates, t_rev6_report, t_relation_gate, t_reply_gate,
@@ -3198,6 +3308,7 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
           t_repair_stays_inside_the_pinned_component,
           t_band_header_states_what_was_verified, t_fabricated_id_stops_at_the_first_stage,
+          t_cps_launcher,
           t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
           t_out_path_echo, t_promoted_lead_gate,
           t_lead_assignment_complete, t_cps_resolver,
