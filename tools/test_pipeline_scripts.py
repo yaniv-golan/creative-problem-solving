@@ -1546,6 +1546,84 @@ def t_forced_merge_is_bounded_too():
     shutil.rmtree(wd)
 
 
+def t_repair_stays_inside_the_pinned_component():
+    """The lead repair may only merge families the proven infeasibility is actually about.
+
+    `worst_pinned_pair` runs only after `solve_leads` PROVED no assignment of distinct leads
+    exists, and that proof is always about one component -- the families that constrain each
+    other. But its score ranged over the whole partition, so it routinely picked the
+    highest-scoring pair from a component that was never stuck. Merging that pair cannot move the
+    proof that licensed the merge; it just fuses two families the reader would have seen
+    separately, and the loop goes round again.
+
+    Measured by decomposing exactly as `solve_leads` does at every repair call: on the 2026-08-28
+    run 6 of 20 repair merges joined two families where NEITHER was in a proven-infeasible
+    component, and the failing component's size did not move across them. Restricting to
+    in-component pairs drops exactly those -- 20 merges become 14, `critique-mf-stateA`'s 13
+    become 12, and `20260827-run1` is byte-identical.
+
+    The fixture is the canonical intransitive pinch (A,B,C: every lead choice collides, which
+    `t_infeasible_lead_core` records as reachable by construction) plus D and E, a SEPARATE and
+    perfectly solvable component that outscores it -- 3 of 4 cross pairs joining, score 0.75
+    against the pinch's 0.50. D and E have one separating cross pair, which is what keeps them
+    away from the pairwise-forced arm: that arm requires EVERY cross pair adjudicated joining, so
+    a fixture without it never reaches the function under test. An earlier version of this
+    fixture used two joining singletons and proved nothing for exactly that reason.
+
+    Two things are asserted because they fail differently: the irrelevant merge is not made, and
+    the pinch IS still repaired. A guard that refuses everything would pass the first alone.
+
+    NEGATIVE CONTROL, run 2026-08-29: with the restriction removed, the run writes 3 families --
+    D and E fused into one four-member family -- and the first assertion fails.
+    """
+    print("\nthe lead repair only merges inside the component that is proven stuck")
+    import importlib.machinery as _m
+    mf = _m.SourceFileLoader("mf_comp", str(SCRIPTS / "merge_families.py")).load_module()
+
+    A, B, C = ["p1-001", "p1-002"], ["p1-003"], ["p1-004"]
+    D, E = ["p1-005", "p1-008"], ["p1-006", "p1-007"]
+    rel = [("p1-001", "p1-003", "implementation_variant"),      # the pinch: no distinct leads
+           ("p1-002", "p1-004", "implementation_variant"),
+           ("p1-002", "p1-003", "distinct"), ("p1-001", "p1-004", "distinct"),
+           ("p1-003", "p1-004", "distinct"), ("p1-001", "p1-002", "distinct"),
+           ("p1-005", "p1-006", "implementation_variant"),      # D~E: solvable, higher scoring
+           ("p1-005", "p1-007", "implementation_variant"),
+           ("p1-008", "p1-006", "implementation_variant"),
+           ("p1-008", "p1-007", "distinct")]
+    relmap = {frozenset((a, b)): r for a, b, r in rel}
+
+    fams = [{"members": m, "label": f"fam {n}", "cid": "c001"}
+            for n, m in (("A", A), ("B", B), ("C", C), ("D", D), ("E", E))]
+    assign, proven = mf.solve_leads(fams, relmap)
+    check("the fixture really is stuck, or it proves nothing",
+          assign is None and proven, f"assign={assign} proven={proven}")
+    pinned = mf.pinned_components(fams, relmap)
+    check("...and only the A/B/C component is the stuck one",
+          [sorted(c) for c in pinned] == [[0, 1, 2]], f"pinned={[sorted(c) for c in pinned]}")
+
+    wd = tempfile.mkdtemp()
+    mem = [x for f in (A, B, C, D, E) for x in f]
+    json.dump({"clusters": [{"cid": "c001", "members": mem}]}, open(f"{wd}/clusters.json", "w"))
+    json.dump({"relations": [{"a": a, "b": b, "relation": r} for a, b, r in rel]},
+              open(f"{wd}/relations.json", "w"))
+    json.dump({"families": [{"cid": "c001", "label": f["label"], "lead": f["members"][0],
+                             "members": f["members"]} for f in fams]},
+              open(f"{wd}/group-result-1.json", "w"))
+    rc, out = run("merge_families.py", wd)
+    check("the run completes rather than refusing", rc == 0, f"rc={rc}: {out[:200]}")
+    got = sorted(sorted(f["members"]) for f in json.load(open(f"{wd}/families.json"))["families"])
+
+    check("the solvable component is left alone, not fused to raise the score",
+          sorted(D) in got and sorted(E) in got,
+          f"D and E did not both survive as families: {got}")
+    check("...and the pinch IS still repaired, so the guard refuses the wrong thing only",
+          any(set(A) | set(B) <= set(g) for g in got), f"the stuck pair was not merged: {got}")
+    check("every option still appears exactly once",
+          sorted(x for g in got for x in g) == sorted(mem),
+          f"{sorted(x for g in got for x in g)}")
+    shutil.rmtree(wd)
+
+
 def t_band_header_states_what_was_verified():
     """The header over the unverified band must describe the verdicts, not the plan.
 
@@ -3025,6 +3103,7 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
           t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
           t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
+          t_repair_stays_inside_the_pinned_component,
           t_band_header_states_what_was_verified, t_fabricated_id_stops_at_the_first_stage,
           t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
           t_out_path_echo, t_promoted_lead_gate,

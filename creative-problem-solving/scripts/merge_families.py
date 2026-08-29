@@ -29,6 +29,50 @@ def die(msg):
 LEAD_NODES = 200000   # completed searches on the one observed real instance took 9 nodes
 
 
+def lead_components(fams, rel):
+    """The families that constrain each other's leads, as index groups in root order.
+
+    Two families interact only if some member of one was adjudicated joining with some member of
+    the other, and on a real partition almost none do -- 127 families collapse to a handful of
+    interacting components. Both the lead search and the repair that runs when it fails need this
+    same decomposition, so it is spelled once. The repair needs it for a different reason than the
+    search does: see `pinned_components`.
+    """
+    n = len(fams)
+    joins = [[False] * n for _ in range(n)]
+    for i, j in itertools.combinations(range(n), 2):
+        if any(rel.get(frozenset((x, y))) in JOINING
+               for x in fams[i]["members"] for y in fams[j]["members"]):
+            joins[i][j] = joins[j][i] = True
+    seen, comps = set(), []
+    for root in range(n):
+        if root in seen: continue
+        comp, stack = [], [root]
+        seen.add(root)
+        while stack:
+            i = stack.pop(); comp.append(i)
+            for j in range(n):
+                if joins[i][j] and j not in seen:
+                    seen.add(j); stack.append(j)
+        comps.append(comp)
+    return comps
+
+
+def pinned_components(fams, rel):
+    """The components where distinct leads are PROVABLY impossible, as index sets.
+
+    A budget exhaustion is not a proof, and an unproven component is left out: the repair uses
+    this to decide which merges are relevant, and treating "unknown" as "infeasible" would let it
+    fuse families a longer search would have kept apart.
+    """
+    out = []
+    for comp in lead_components(fams, rel):
+        if len(comp) == 1: continue
+        assign, proven = solve_leads([fams[i] for i in comp], rel)
+        if assign is None and proven: out.append(set(comp))
+    return out
+
+
 def solve_leads(fams, rel, budget=None):
     """Assign every family a lead so no two leads were adjudicated the same intervention.
 
@@ -50,23 +94,8 @@ def solve_leads(fams, rel, budget=None):
     if n == 0: return {}, True
     budget = [LEAD_NODES if budget is None else budget]
 
-    joins = [[False] * n for _ in range(n)]
-    for i, j in itertools.combinations(range(n), 2):
-        if any(rel.get(frozenset((x, y))) in JOINING
-               for x in fams[i]["members"] for y in fams[j]["members"]):
-            joins[i][j] = joins[j][i] = True
-
     assign = {}
-    seen = set()
-    for root in range(n):
-        if root in seen: continue
-        comp, stack = [], [root]
-        seen.add(root)
-        while stack:
-            i = stack.pop(); comp.append(i)
-            for j in range(n):
-                if joins[i][j] and j not in seen:
-                    seen.add(j); stack.append(j)
+    for comp in lead_components(fams, rel):
         if len(comp) == 1:                       # nothing constrains it
             assign[comp[0]] = fams[comp[0]]["members"][0]
             continue
@@ -115,20 +144,49 @@ def worst_pinned_pair(fams, rel):
     pairs available -- the pair with the least room to be separated. Deterministic: ties break on
     canonical id order, because a merge decision that moves with dict ordering would make the
     whole partition non-reproducible, which two earlier designs were rejected for.
+
+    THE SEARCH IS RESTRICTED TO THE FAMILIES THE INFEASIBILITY IS ABOUT.
+
+    This is called only after `solve_leads` PROVED no assignment of distinct leads exists, and the
+    proof is always about one component -- the families that constrain each other. The score above
+    ranges over the whole partition, so the highest-scoring pair is frequently in a component that
+    was never stuck, and merging it cannot move the proof that licensed the merge. It just fuses
+    two families the reader would have seen separately and leaves the loop to go round again.
+
+    Measured on three preserved instances by decomposing exactly as `solve_leads` does at every
+    repair call: 6 of 20 merges on the 2026-08-28 run joined two families where NEITHER sat in a
+    proven-infeasible component, and the component's size was unchanged across the merge (66->66,
+    65->65, 58->58, 57->57, 54->54 twice). On `critique-mf-stateA` one of thirteen. Restricting to
+    in-component pairs drops those and nothing else: 20 repair merges become 14, 13 become 12, and
+    `20260827-run1` is byte-identical.
+
+    The restriction cannot make an input worse. When no in-component pair survives the guards the
+    search repeats unrestricted, so every merge the old code could reach is still reachable -- it
+    is a preference, not a bound. That second pass ran zero times on all three instances; it is
+    there so a component this function cannot help is left exactly as it was rather than turned
+    into a hard stop.
     """
-    best = None
-    for i, j in itertools.combinations(range(len(fams)), 2):
-        a, b = fams[i]["members"], fams[j]["members"]
-        tot = len(a) * len(b)
-        jn = sum(1 for x in a for y in b if rel.get(frozenset((x, y))) in JOINING)
-        if not jn: continue
-        # A merge is the only operation here that can raise a family's separating share, and the
-        # share was measured before this loop runs. Refuse the ones that would break it: the
-        # search then finds a different escape rather than handing the last gate a violation it
-        # names no working action for.
-        if not share_ok(a + b, rel): continue
-        key = (-jn / tot, -jn, min(a), min(b))
-        if best is None or key < best[0]: best = (key, i, j)
+    def pick(allowed):
+        best = None
+        for i, j in itertools.combinations(range(len(fams)), 2):
+            if not allowed(i, j): continue
+            a, b = fams[i]["members"], fams[j]["members"]
+            tot = len(a) * len(b)
+            jn = sum(1 for x in a for y in b if rel.get(frozenset((x, y))) in JOINING)
+            if not jn: continue
+            # A merge is the only operation here that can raise a family's separating share, and
+            # the share was measured before this loop runs. Refuse the ones that would break it:
+            # the search then finds a different escape rather than handing the last gate a
+            # violation it names no working action for.
+            if not share_ok(a + b, rel): continue
+            key = (-jn / tot, -jn, min(a), min(b))
+            if best is None or key < best[0]: best = (key, i, j)
+        return best
+
+    pinned = pinned_components(fams, rel)
+    best = pick(lambda i, j: any(i in c and j in c for c in pinned))
+    if best is None:
+        best = pick(lambda i, j: True)
     if best is None:
         # No joining evidence anywhere, so fall back to the two smallest -- but the share rule
         # still binds. This fallback used to merge unconditionally, which put the bound above
