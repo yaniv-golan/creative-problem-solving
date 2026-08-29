@@ -57,11 +57,20 @@ def main(wd):
     back = set()
     for rp in shards:
         back |= {frozenset((e.get("a"), e.get("b"))) for e in load(rp, "relations")}
+    # EVERY cand-*.json is checked, including one with no relations-<k>.json of its own. That skip
+    # used to be here, deferring a wholly-missing shard to the step 9 gate on the grounds that it
+    # was "not yet adjudicated" -- but step 5 dispatches the whole batch and merges once, so there
+    # is no legitimate half-adjudicated state for it to protect. What it actually bought was four
+    # stages of silence: an adjudicator that returned NOTHING was invisible here and surfaced at
+    # the end, after grouping, ranking and verification had been built on a short relation set.
+    # A shard that returned 116 of 117 failed loudly while one that returned 0 of 117 passed.
+    #
+    # Removing the skip is safe precisely BECAUSE the comparison above is against the union of
+    # every returned relation rather than against the shard's own file: the remedy this error
+    # names -- re-adjudicate into a new relations-<n>.json -- still clears it.
     missing = []
     for c in sorted(glob.glob(os.path.join(wd, "cand-*.json"))):
         k = os.path.basename(c)[5:-5]
-        if not os.path.exists(os.path.join(wd, f"relations-{k}.json")):
-            continue                                 # not yet adjudicated; the gate at step 9 owns that
         dealt = {frozenset((p.get("a"), p.get("b"))) for p in load(c, "pairs")}
         gap = dealt - back
         if gap: missing.append((k, sorted(tuple(sorted(g)) for g in gap)))

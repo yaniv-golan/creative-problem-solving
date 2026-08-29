@@ -62,9 +62,37 @@ cps_resolve() {                    # $1 = the path you read THIS file at
   # The COMPLETE root list, overridable as one variable. Not a default plus a hard-coded
   # tail: a search with roots the caller cannot control cannot be tested, because the fixture
   # cannot stop it reaching the real install and answering correctly for the wrong reason.
-  ROOTS="${CPS_SEARCH_ROOTS:-/sessions $HOME/.claude/plugins $HOME/.claude}"
+  #
+  # ONE ROOT PER LINE, not space-separated. Desktop's local agent mode stages plugins under
+  # "$HOME/Library/Application Support/Claude/local-agent-mode-sessions/<session>/<sub>/rpm/", and
+  # a space-separated list word-splits "Application Support" into two roots that do not exist.
+  # Measured on a machine with that shape: the old three roots returned ZERO hits while a
+  # complete install sat under Application Support -- branch 1 happened to save it, and would not
+  # have on a split host.
+  ROOTS="${CPS_SEARCH_ROOTS:-$(printf '%s\n' /sessions "$HOME/.claude/plugins" "$HOME/.claude" "$HOME/Library/Application Support/Claude")}"
   CAND="${READ_AT%/skills/creative-problem-solving/references/pipeline.md}"
   PID=$(basename "$CAND")
+
+  # Branch 0 — ask the shell, which is the only party whose answer is already in the shell's own
+  # namespace. Claude Code puts <plugin root>/bin on the Bash tool's PATH, constructed for that
+  # shell rather than inherited, so a bare `cps` is looked up by the shell itself and NOTHING
+  # crosses the namespace boundary. Measured correct on plain CLI, Cowork host-loop and Cowork
+  # cloud -- three different path shapes, each right for its own lane.
+  #
+  # Overridable by name for the same reason ROOTS is: a branch that consults a PATH the caller
+  # cannot control cannot be tested, because the fixture cannot stop it finding the developer's
+  # own install and passing for the wrong reason.
+  #
+  # VERIFIED, not trusted, like every branch below: a PATH entry is advertised whether or not the
+  # directory behind it exists -- measured, 35 entries advertised and none present -- so a
+  # launcher that answers is still made to produce a path carrying the sentinel.
+  LAUNCHER="${CPS_LAUNCHER:-cps}"
+  if command -v "$LAUNCHER" >/dev/null 2>&1; then
+    W=$("$LAUNCHER" --where 2>/dev/null || true)
+    if [ -n "$W" ] && [ -f "$W/$SENTINEL" ]; then
+      CPS="$W"; echo "CPS=$CPS (branch 0: $LAUNCHER on PATH)"; return 0
+    fi
+  fi
 
   # Branch 1 — the string edit, VERIFIED rather than trusted. Free, and guaranteed to be the
   # same install as the file you just read, which no other branch can promise.
@@ -147,8 +175,13 @@ cps_resolve() {                    # $1 = the path you read THIS file at
   # never on a directory name: skills are separately mounted at .claude/<...>/<sanitized skill
   # name>, which carries no scripts/, so a name match can succeed and still land somewhere
   # useless — the original failure with a green tick on it.
-  HITS=$(for R in $ROOTS; do
-           [ -d "$R" ] && find "$R" -maxdepth 12 -type f -path "*/$SENTINEL" 2>/dev/null
+  # A staged COPY of the scripts matches the sentinel exactly as a real install does -- one was
+  # found under a run's own outputs/_cps/scripts/. Two indistinguishable hits refuse below, so a
+  # copy would turn a working host into a refusing one. Match only where a plugin would put them:
+  # scripts/ directly under the plugin root, never nested inside another run's output tree.
+  HITS=$(printf '%s\n' "$ROOTS" | while IFS= read -r R; do
+           [ -n "$R" ] && [ -d "$R" ] &&
+             find "$R" -maxdepth 12 -type f -path "*/$SENTINEL" ! -path "*/outputs/*" 2>/dev/null
          done | sort -u)
 
   # Prefer the match whose plugin directory basename is the one the file tools reported. That

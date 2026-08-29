@@ -11,7 +11,7 @@ Fixtures are synthetic and deliberately so. Real run data belongs to whoever ran
 """
 import glob
 import importlib.machinery
-import itertools, json, os, random, shutil, subprocess, sys, tempfile
+import itertools, json, os, random, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -2014,6 +2014,23 @@ def t_shard_coverage_check():
     check("...and the remedy it names actually clears it", rc == 0, out.strip()[:200])
     shutil.rmtree(d, True)
 
+    # A shard that returned NOTHING used to pass here and surface four stages later. It was the
+    # quieter half of the same defect: 116 of 117 failed loudly, 0 of 117 did not.
+    d = tempfile.mkdtemp()
+    make_pools(d, 2, 6)
+    json.dump({"pairs": pairs[:10]}, open(os.path.join(d, "cand-1.json"), "w"))
+    json.dump({"pairs": pairs[10:]}, open(os.path.join(d, "cand-2.json"), "w"))
+    json.dump(rel(pairs[:10]), open(os.path.join(d, "relations-1.json"), "w"))   # shard 2 silent
+    rc, out = run("merge_relations.py", d)
+    check("a shard that returned nothing at all fails the merge too",
+          rc != 0 and "shard 2" in out, out.strip()[:140])
+    # ...and the same remedy clears it, because the comparison is against every returned
+    # relation rather than against the shard's own file.
+    json.dump(rel(pairs[10:]), open(os.path.join(d, "relations-9.json"), "w"))
+    rc, out = run("merge_relations.py", d)
+    check("...and re-adjudicating into a NEW index clears that too", rc == 0, out.strip()[:200])
+    shutil.rmtree(d, True)
+
 
 def t_infeasible_lead_core():
     """A proven-impossible lead assignment is merged, not refused with an impossible instruction.
@@ -2403,6 +2420,32 @@ def t_verify_pipeline():
     check("intact fixture passes", rc == 0, out.strip()[:100])
     shutil.rmtree(d, True)
 
+    # A re-merge after ranking, in the shape the OTHER gate cannot see. verify_pipeline already
+    # refuses when a top-13 lead went unverified, which is what a re-merge usually leaves behind.
+    # A re-merge that reshuffles membership without stranding a lead leaves no such trace: every
+    # count adds up and the report ships ranked on a grouping that no longer exists in that shape.
+    # Only the mtime says so.
+    def remerge_after_ranking(d, ids, fams):
+        fp = os.path.join(d, "families.json")
+        os.utime(fp, (time.time() + 5, time.time() + 5))
+    d = fresh(remerge_after_ranking)
+    rc, out = run("verify_pipeline.py", d)
+    check("families.json newer than ranked.json fails",
+          rc != 0 and "families.json is newer than ranked.json" in out, out.strip()[:90])
+    shutil.rmtree(d, True)
+
+    # ...and the one-second tolerance holds, so the ordinary sequence -- these files are written
+    # seconds apart by a legitimate run -- is not refused.
+    def within_tolerance(d, ids, fams):
+        rk = os.path.join(d, "ranked.json"); fp = os.path.join(d, "families.json")
+        base = time.time()
+        os.utime(rk, (base, base))
+        os.utime(fp, (base + 0.5, base + 0.5))
+    d = fresh(within_tolerance)
+    rc, out = run("verify_pipeline.py", d)
+    check("...but a sub-second gap is the ordinary path, not staleness", rc == 0, out.strip()[:90])
+    shutil.rmtree(d, True)
+
     # The shape that got past us: relations.json present, joinable.json never derived. The gate
     # was written `if os.path.exists(jpath)`, so the one run state it needed to catch was the one
     # state it ignored -- and three preserved runs went green while step 6 was not being done at
@@ -2520,7 +2563,7 @@ def t_cps_resolver():
     src = blocks[0].replace('cps_resolve "<the path you read this file at>" || true', "")
 
     TAIL = "/skills/creative-problem-solving/references/pipeline.md"
-    def resolve(read_at, roots, split=False):
+    def resolve(read_at, roots, split=False, launcher=None):
         """`split=True` models a host-loop shell: HOME under /sessions/, read path outside it.
 
         The resolver decides "different namespace" from the shell's own location versus the shape
@@ -2530,6 +2573,10 @@ def t_cps_resolver():
         situation and now gets a different answer.
         """
         env = dict(os.environ, CPS_SEARCH_ROOTS=roots)
+        # Branch 0 consults PATH, so it needs the same isolation ROOTS gets: default the fixture
+        # to a launcher name that cannot exist, or a developer with the plugin installed resolves
+        # on branch 0 and every branch below goes untested.
+        env["CPS_LAUNCHER"] = launcher or "cps-absent-in-fixture"
         if split: env["HOME"] = "/sessions/fake-session"
         r = subprocess.run(["sh", "-c", src + f'\ncps_resolve "{read_at}"\n'],
                            capture_output=True, text=True, env=env)
@@ -2546,6 +2593,52 @@ def t_cps_resolver():
             os.makedirs(root + "/scripts", exist_ok=True)
             open(root + "/scripts/verify_pipeline.py", "w").write("")
         empty = mk("empty")
+
+        # BRANCH 0 — a launcher on PATH answers before anything else is tried, and its answer is
+        # in the shell's own namespace, so this is the one branch that needs no namespace
+        # reasoning at all. Modelled with a stub because the real one is only on PATH once the
+        # plugin is installed.
+        z = mk("Z", "plugin_Z"); skill(z); scripts(z)
+        stub_dir = mk("stub")
+        stub = os.path.join(stub_dir, "cps-stub")
+        with open(stub, "w") as fh:
+            fh.write('#!/bin/sh\n[ "$1" = "--where" ] && printf "%s\\n" "' + z + '"\n')
+        os.chmod(stub, 0o755)
+        rc, out = resolve("/nowhere" + TAIL, empty, launcher=stub)
+        check("a launcher on PATH resolves on branch 0", rc == 0 and "branch 0" in out and z in out,
+              out.strip()[:120])
+
+        # ...and it is VERIFIED, not trusted. A PATH entry is advertised whether or not anything
+        # is behind it — measured, 35 advertised and none present — so a launcher pointing at a
+        # tree with no sentinel must fall through rather than answer.
+        hollow = mk("hollow")
+        stub2 = os.path.join(stub_dir, "cps-hollow")
+        with open(stub2, "w") as fh:
+            fh.write('#!/bin/sh\n[ "$1" = "--where" ] && printf "%s\\n" "' + hollow + '"\n')
+        os.chmod(stub2, 0o755)
+        rc, out = resolve(z + TAIL, empty, launcher=stub2)
+        check("...but a launcher pointing at a tree with no scripts/ does not answer",
+              "branch 0" not in out, out.strip()[:120])
+
+        # A ROOT CONTAINING A SPACE. Desktop's local agent mode stages plugins under
+        # "Application Support", and a space-separated root list splits that into two roots that
+        # do not exist -- measured: three roots, zero hits, a complete install present.
+        sp = mk("Space Root", "plugin_S"); skill(sp); scripts(sp)
+        rc, out = resolve("/nowhere" + TAIL, os.path.join(base, "Space Root"), split=True)
+        check("a search root containing a space is one root, not two",
+              rc == 0 and sp in out, out.strip()[:140])
+
+        # A STAGED COPY of the scripts under a run's own outputs/ matches the sentinel exactly as
+        # a real install does. Counting it gives two indistinguishable hits and turns a working
+        # host into a refusing one.
+        st = mk("Staged", "plugin_T"); skill(st); scripts(st)
+        os.makedirs(os.path.join(base, "Staged", "run1", "outputs", "_cps", "scripts"),
+                    exist_ok=True)
+        open(os.path.join(base, "Staged", "run1", "outputs", "_cps", "scripts",
+                          "verify_pipeline.py"), "w").write("")
+        rc, out = resolve("/nowhere" + TAIL, os.path.join(base, "Staged"), split=True)
+        check("...and a staged copy under outputs/ is not a second install",
+              rc == 0 and st in out, out.strip()[:140])
 
         # SHARED namespace (Claude Code): the read path is real and the scripts sit beside it.
         a = mk("A", "plugin_ABC"); skill(a); scripts(a)

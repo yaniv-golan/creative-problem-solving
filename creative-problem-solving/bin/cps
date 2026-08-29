@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# cps — run this plugin's pipeline scripts without resolving a path.
+#
+#   cps verify_pipeline "$BASE/$RUN/_work"
+#   cps shard_candidates "$BASE/$RUN/_work" --probe 60
+#   cps --where                      # print the plugin root this resolved to
+#
+# WHY THIS EXISTS. Every script here is otherwise called as
+# `python3 "$CPS/scripts/<name>.py"`, and `$CPS` costs a 196-line resolver in
+# references/pipeline.md because the path the model read the instructions at is a FILE-TOOL path
+# while the scripts are run by the SHELL, and on some hosts those are different filesystem
+# namespaces. Claude Code puts <plugin root>/bin on the Bash tool's PATH, built for that shell
+# rather than inherited -- so a bare `cps` is looked up by the shell, in the shell's own
+# namespace, and no path crosses the boundary at all. Measured correct on plain CLI, Cowork
+# host-loop and Cowork cloud, each with a different path shape.
+#
+# The resolver stays as the fallback. A PATH entry is advertised whether or not the directory
+# exists, a path carrying shell metacharacters is dropped silently, and the client version that
+# added bare-command lookup is not established -- so pipeline.md must keep working when
+# `command -v cps` finds nothing.
+#
+# DO NOT rename this after a CLI declared in plugin.json's `clis` map. Under Cowork's org-remote
+# lane that map makes the runtime materialise <plugin root>/bin/<key> itself, on its own
+# schedule. This plugin declares no `clis`, so `cps` does not collide; keep it that way.
+
+set -euo pipefail
+
+# ${BASH_SOURCE[0]} rather than $0: correct when the launcher is sourced as well as executed, and
+# unaffected by a caller that rewrites argv. The mount is read-only under Cowork, so this
+# directory can be read and executed but never written to -- no caching, no self-modification.
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+  cat <<USAGE
+cps — run a creative-problem-solving pipeline script.
+
+Usage:
+  cps <script> [args...]     run scripts/<script>.py (the .py is optional)
+  cps --where                print the resolved plugin root
+  cps --list                 list the scripts available
+  cps --help
+
+Exit codes:
+  0    the script succeeded
+  1    the script refused -- read its message; it names the remedy
+  78   python3 present but too old (3.8+ required)
+  127  python3 not found, or no such script
+
+The script's own exit code is passed through unchanged, so a refusal here means what it
+means when the script is called directly.
+USAGE
+}
+
+case "${1:-}" in
+  -h|--help|"") usage; exit 0 ;;
+  --where)      printf '%s\n' "$ROOT"; exit 0 ;;
+  --list)
+    for f in "$ROOT"/scripts/*.py; do
+      [ -e "$f" ] || continue
+      b="$(basename "$f" .py)"
+      case "$b" in robust_json|verdicts) continue ;;   # imported, not entry points
+      esac
+      printf '%s\n' "$b"
+    done
+    exit 0 ;;
+esac
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "cps: python3 not found on \$PATH." >&2
+  echo "  The pipeline can still run without the scripts -- take the scriptless fallback in" >&2
+  echo "  SKILL.md Phase 1 and say in one line which checks the run lost." >&2
+  exit 127
+fi
+
+# A version too old fails inside a script with a syntax or import error, several frames deep,
+# which reads as a broken plugin rather than a broken interpreter. Say it here instead.
+if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)'; then
+  echo "cps: python3 3.8+ required (found $(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])'))." >&2
+  exit 78
+fi
+
+name="${1%.py}"; shift
+target="$ROOT/scripts/$name.py"
+if [ ! -f "$target" ]; then
+  echo "cps: no such script '$name'. Available:" >&2
+  "${BASH_SOURCE[0]}" --list | sed 's/^/  /' >&2
+  exit 127
+fi
+
+exec python3 "$target" "$@"

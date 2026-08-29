@@ -379,6 +379,22 @@ def main(wd):
             f"motivated this wording, none could.")
 
     rkpath = os.path.join(wd, "ranked.json")
+
+    # The SAME staleness rule as the relations/families check above, one stage later, and it
+    # closes the half that one cannot see. `pipeline.md` warns that re-running merge_families.py
+    # after step 7 or 8 invalidates both, and concedes that only the VISIBLE half is caught: a
+    # top-13 lead nothing verified, which the missing-verification gate below refuses. A re-merge
+    # that reshuffles membership WITHOUT stranding a lead leaves no such trace -- every count
+    # still adds up, and the report ships ranked on families that no longer exist in that shape.
+    #
+    # Same one-second tolerance as above, for the same reason: these files are written seconds
+    # apart by a legitimate sequence, and a stricter comparison would refuse the ordinary path.
+    if os.path.exists(rkpath) and os.path.getmtime(fpath) > os.path.getmtime(rkpath) + 1:
+        die("families.json is newer than ranked.json, so the ranking describes a grouping that "
+            "has since changed. This is what a re-run of merge_families.py after step 7 does. "
+            "Re-run step 7 to re-rank, then step 8 against the new top 13 -- in that order. "
+            "Re-ranking alone is not enough if verification already ran against the old top 13.")
+
     order = load(rkpath, "ranked")
     if any(isinstance(x, dict) and "text" in x for x in order):
         die("ranked.json carries text — it must reference family ids only")

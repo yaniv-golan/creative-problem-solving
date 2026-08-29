@@ -1069,11 +1069,20 @@ _hp = re.compile(r"(?<![\w/])(/Users/|/opt/)")
 _leaks = []
 # scripts/ is included: a script's error messages and docstrings reach the model as tool output,
 # so a host path in one leaks by the same route as a host path in an instruction file.
+#
+# docs/ is included because it is TRACKED AND PUBLIC, not because the model loads it. The runtime
+# guard cannot reach a file no run reads; what a host path in docs/ leaks is the maintainer's
+# directory layout to everyone who clones. docs/internal/ is excluded and must stay excluded: it is
+# gitignored, it is where host paths legitimately live, and scanning it fails the build on the
+# working notes rather than on anything shipped.
+_DOCS_SKIP = os.path.join(REPO, "docs", "internal") + os.sep
 for _root in (os.path.join(plugin_name, "skills"), os.path.join(plugin_name, "agents"),
-              os.path.join(plugin_name, "commands"), os.path.join(plugin_name, "scripts")):
+              os.path.join(plugin_name, "commands"), os.path.join(plugin_name, "scripts"),
+              "docs"):
     _abs = os.path.join(REPO, _root)
     if not os.path.isdir(_abs): continue
     for _dir, _, _files in os.walk(_abs):
+        if (_dir + os.sep).startswith(_DOCS_SKIP): continue
         for _fn in _files:
             if not _fn.endswith((".md", ".txt", ".py")): continue
             _rel = os.path.relpath(os.path.join(_dir, _fn), REPO)
@@ -1082,9 +1091,10 @@ for _root in (os.path.join(plugin_name, "skills"), os.path.join(plugin_name, "ag
 if _leaks:
     for _rel, _i, _ex in _leaks[:4]:
         fail("%s:%d carries a host-path literal — it becomes model-visible text and trips the "
-             "runtime host-path guard: %s" % (_rel, _i, _ex))
+             "runtime host-path guard, or ships the maintainer's layout to everyone who clones: %s"
+             % (_rel, _i, _ex))
 else:
-    ok("no /Users or /opt literal in any shipped skill, agent or command file")
+    ok("no /Users or /opt literal in any shipped skill, agent, command or docs file")
 
 print()
 if failures:
