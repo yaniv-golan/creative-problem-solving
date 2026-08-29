@@ -7,6 +7,11 @@ without it, and every stage after generation depends on the file the stage befor
 This is the same pipeline whichever way the skill was invoked. The `/ideas` command exists only
 to make invocation reliable; it does not change what runs.
 
+Several rules below carry a short piece of evidence — a run that did the other thing. The full
+narratives live in `docs/INCIDENTS.md` **in the repository**, which does not ship with the skill and
+which you do not need: every rule here is complete as written. Read it when deciding whether a rule
+can be relaxed, not when following one.
+
 Requires sub-agent dispatch, `python3` and a Bash tool. Those three fail differently and the
 fallbacks are not interchangeable.
 
@@ -280,9 +285,8 @@ echo "PWD=$(pwd) BASE=$BASE RUN=$RUN"
 **Run this as the first command in its own call, and read the `PWD=` back.** `$BASE` is relative,
 so it is only meaningful against the directory the shell happened to start in — and each Bash call
 starts wherever the host puts it, not where the last one finished. A probe run after an earlier
-`cd` answers about the wrong place: on the run that produced this paragraph it resolved to a
-read-only location and `mkdir` was the only thing that noticed. If `PWD=` is not where you expect
-the run to live, fix that before generating anything, not after.
+`cd` answers about the wrong place — measured, and `mkdir` was the only thing that noticed. If
+`PWD=` is not where you expect the run to live, fix that before generating anything, not after.
 
 **`$RUN` carries no base, and that is the point.** The run is one directory with **two spellings**,
 and which one is correct depends on who is doing the writing:
@@ -422,7 +426,10 @@ assumed: a negation round against that structure returned one search-verified op
    would produce the same *shape* of answer as one you have already picked for this specific
    problem; biomimicry needs a verifiable organism, and Phase 3 checks it. You
    choose them — the sub-agents must not. Call the number you settled on N.
-3. **N Task calls in one parallel batch, to `generator`.** Each gets the brief, its single
+3. **N Task calls in one parallel batch, to `generator`.** *Tell each one what its pool feeds:
+   nothing downstream ever rewrites an option, so the sentence it writes is the sentence the reader
+   gets, and a pool that stops early shortens the final list rather than being topped up later.*
+   Each gets the brief, its single
    assigned lens, the obvious answer as a banned category, and **a quota of 30 options**. Tell
    it the first ten or so will be obvious and the quota exists to push past them — but that an
    option nobody would act on is not worth a slot, so it should stop reaching once the lens is
@@ -444,7 +451,9 @@ assumed: a negation round against that structure returned one search-verified op
    top 13 families gets checked at step 8 whether or not the generator argued for it. Claims
    inside nested variants are not checked — see step 8.
 
-4. **One `pair-proposer` proposes candidate relationships.** It reads all N pool files and proposes
+4. **One `pair-proposer` proposes candidate relationships.** *Tell it what its output feeds: a
+   script shards these pairs and an adjudicator judges every one, so a pair it never proposes is
+   never considered — recall here is the ceiling on everything after it.* It reads all N pool files and proposes
    pairs of ids that *might* be related. High recall: propose anything plausibly connected. It
    makes no decision about what to do with them and deletes nothing.
 
@@ -465,10 +474,9 @@ assumed: a negation round against that structure returned one search-verified op
    one WARN that has one.** `Raise --probe to lift the ceiling, or --shards to override
    deliberately` means what it says: the agreement probe caps how many shards can be cross-checked,
    so a large pool gets fewer, bigger shards than the 126-pair budget wants. Re-run the command
-   with `--probe` raised (the ceiling is a quarter of it) rather than accepting the excess. On
-   2026-08-28 a run took 12 shards at ~137 pairs each, 9% over, and passed the warning on to the
-   reader instead — every other WARN in this pipeline is for the reader to judge, and this one is
-   for you to fix before continuing.
+   with `--probe` raised (the ceiling is a quarter of it) rather than accepting the excess. A run
+   passed this one to the reader instead — every other WARN in this pipeline is for the reader to
+   judge, and this one is for you to fix before continuing.
 
    That drops repeated proposals, deals the rest into balanced shards, and plants the
    agreement probe — 48 pairs dealt to a *second* shard so two adjudicators judge them without
@@ -477,7 +485,9 @@ assumed: a negation round against that structure returned one search-verified op
    plant it by hand could burn forty minutes and fail at the last step; here both the count and
    the spread are guaranteed by construction. You still never read a pair.
 
-5. **Adjudicate those pairs.** Dispatch **one `adjudicator` sub-agent per `cand-*.json` the script
+5. **Adjudicate those pairs.** *Tell each one what its verdicts feed: `plan_groups.py` partitions
+   on them, so a shard that returns short silently shrinks the final list — and the merge refuses
+   rather than absorbing it.* Dispatch **one `adjudicator` sub-agent per `cand-*.json` the script
    wrote**, in one parallel batch — sub-agent *k* reads `cand-k.json` and writes `relations-k.json`.
    The shard count is not fixed: `shard_candidates.py` sizes it to keep each adjudicator near 126
    pairs and **prints it**, so read the count from its line rather than assuming three. Each is told to
@@ -519,7 +529,9 @@ assumed: a negation round against that structure returned one search-verified op
    result, who is the only one able to judge them. A warning nobody repeats is a warning nobody
    sees.
 
-6. **Partition with a script, then send the clusters out to be named.** Grouping used to be one
+6. **Partition with a script, then send the clusters out to be named.** *Tell each grouper what
+   its naming feeds: the label becomes the family's heading in the report, and the lead it picks is
+   the option the reader is shown first and the only one Phase 3 checks.* Grouping used to be one
    sub-agent call holding every option at once. Across recorded runs that was 62–86% of the wall
    clock, it exhausted the model's output budget on two of five dispatches, and it wrote nothing
    until it returned — so a failure forty-five minutes in cost forty-five minutes and produced
@@ -588,9 +600,9 @@ assumed: a negation round against that structure returned one search-verified op
    heading is the label of the family the final lead came from — chosen after the lead is settled,
    because a merge re-solves the lead over the union and it can land on a member from the absorbed
    side. The other family's label moves to `merged_labels` and the report prints it in the body.
-   Joining them with `"; "`, which is what this used to do, put three mechanisms in one `###`
-   heading on a recorded run: 38 of 99 labels over 200 characters, the longest 537. Nothing is
-   dropped — that rule is not relaxed here — it simply stops being part of the heading.
+   Joining them with `"; "`, which is what this used to do, compounds: a recorded run ended with 38
+   of 99 labels over 200 characters, three mechanisms to a heading. Nothing is dropped — that rule
+   is not relaxed here — it simply stops being part of the heading.
 
    **Re-running this after step 7 or 8 invalidates both.** It repairs leads by merging, so the
    family a lead belongs to can change — which restakes the ranking step 7 produced and the
@@ -640,6 +652,8 @@ assumed: a negation round against that structure returned one search-verified op
    option existed. A wrong grouping costs them a line of reading. The counts must match, and the
    script checks that they do.
 7. **A `ranker` orders the families** — not the options — and writes `$RUN/_work/ranked.json`.
+   *Tell it what its order feeds: the top 13 families are the ones whose leads get search-checked
+   and the ones the reader reads first; everything below still ships, in this order.*
    **Its dispatch carries the problem as the user stated it** (`brief.json`'s `verbatim_prompt`),
    never the invented premises of step 0c — see the rule there:
    family ids in order, ids only. A mechanism reached by six lenses gets one slot, not six.
@@ -662,7 +676,9 @@ assumed: a negation round against that structure returned one search-verified op
    Being already familiar to the reader is NOT a mark against a family. A well-known mechanism
    that is right for this problem beats a novel one that is wrong for it.
 
-8. **Dispatch `verifier` sub-agents for the top 13 families.** Take the first 13 family ids in
+8. **Dispatch `verifier` sub-agents for the top 13 families.** *Tell each one what its verdict
+   feeds: it is printed under the option in the report, and a refuted lead promotes the family's
+   next surviving member rather than removing the family.* Take the first 13 family ids in
    `ranked.json` — the families that fill the Top 3 and the next 10 — and from each take
    **`members[0]`**. That is 13 options; read their text from the pools.
 
@@ -778,8 +794,8 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     **Write `slots.json` with your file tools at the bare path `$RUN/_work/slots.json`, and pass
     the script the `$BASE/`-prefixed form above.** Two spellings of one file, per Step 0b — you
     write it, a script reads it, and on a split-namespace host no single string is right for both.
-    Left unsaid, this lands outside every directory the reader can see: on the run that produced
-    this paragraph it went to the session scratchpad, which is reclaimed at session end.
+    Left unsaid, this lands outside every directory the reader can see — measured: the session
+    scratchpad, which is reclaimed at session end, and the write reported success.
 
     **Overwrite it if you fill in more than one pass; never delete it.** Nothing under `outputs/`
     is deleted (Step 0b) and the harness enforces that — an in-place overwrite is fine, an `rm`
@@ -827,16 +843,15 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     is a reading aid, and silencing it costs you the thing it was pointing at.
 
     **Any edit after `--check` means running `--check` again.** The scan exists to prompt an edit,
-    so this is the ordinary path and not an exception. On the run that produced this line the
-    sequence was fill, check, *edit*, deliver — so the green certified a file that no longer
-    existed by the time it was sent. The edit itself was right; the missing re-check is the defect.
+    so this is the ordinary path and not an exception. A run went fill, check, *edit*, deliver, and
+    the green certified a file that no longer existed. The edit was right; the missing re-check is
+    the defect.
 
     **The file is the answer, and the reply is the file.** Emit its contents as your reply. Do
     not compose a second, shorter version: everything in the report has been through the checks
-    above, and a summary written afterwards has been through none of them. In the run that
-    produced this rule the reply was 1,282 characters of fresh prose, and two of the three
-    premises the pipeline had invented arrived in it as statements about the reader — none of
-    which appears in the checked file that way.
+    above, and a summary written afterwards has been through none of them. On the run that
+    produced this rule, two of the three premises the pipeline had invented reached the reader as
+    statements *about the reader* — none of which appears that way in the checked file.
 
     Write the reply you intend to send to a file first and check it:
 
@@ -851,10 +866,10 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     **So `cp report.md reply.md` is not the step, and running it is how this gate goes hollow.**
     Write into `reply.md` the message you are actually going to send, then check that. If what you
     intend to send is the report's contents — which is the answer — then send the report's
-    contents, and the copy is redundant rather than clever. This is not hypothetical: on
-    2026-08-28 a run copied the file, passed the check, and sent 2,155 characters of fresh summary
-    instead. `tests/scenarios/ideas-command.yaml` now asserts a band heading appears in the sent
-    message, because that is the one surface this script cannot reach.
+    contents, and the copy is redundant rather than clever. This is not hypothetical: a run copied the file, passed
+    the check, and sent a fresh summary anyway. `tests/scenarios/ideas-command.yaml` now asserts a
+    band heading appears in the sent message, because that is the one surface this script cannot
+    reach.
 
     **Then present the report file to the reader**, as well as sending its contents. Describe the
     outcome rather than naming a tool — the tool differs by host and a name that is right on one is
