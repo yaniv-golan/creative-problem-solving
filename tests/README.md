@@ -294,14 +294,33 @@ five assertions, under the same harness and baseline but on the **fallback agent
 sub-agents, **2736.7 s, $32.8139**. The earlier 2026-08-19 figure above — 356.5 s, $1.59 — is not
 comparable: the skill was never invoked on that run, which is the defect the prompt fix corrected.
 
-**What those two runs settle about bounding.** `ideas-command` gained `max_cost_usd` and a
+**`ideas-command`, n=3 by 2026-08-29.** Three live runs on the fallback agent binary (`2.1.247`):
+
+| run | result | tools | sub-agents | duration | cost |
+|---|---|---|---|---|---|
+| `local_auz35uofjm` | passed its assertions, but shipped a **summary** reply | 95 | 33 | 1634.4 s | $23.8071 |
+| `local_bcvj52lbcg` | 9/9 assertions, failed the **host-path guard** | 91 | 39 | 3688.3 s | $26.0143 |
+| `local_bev1b5usji` | **9/9 assertions, all four guards clean** | 87 | 40 | 1935.2 s | $30.1042 |
+
+The last is the first fully green run this scenario has had. It also confirms on real data what the
+unit tests assert: 99 families with **every label byte-identical to one a grouper wrote** (longest
+83 characters, against the 537 that started the review), 23 labels carried in `merged_labels`
+rather than concatenated into headings, 13 verifier notes written and 13 rendered, `slots.json`
+under `_work/`, and a 75,600-character reply carrying the report rather than a summary of it.
+
+**What those three runs settle about bounding.** `ideas-command` gained `max_cost_usd` and a
 `timeout_ms`, first set at $40 / 46 minutes from its own single observation and described as 1.5x
 headroom. `deliverable-composition` — the same pipeline behind a different prompt — then took
 2736.7 s, leaving that bound **23 seconds** of margin. So n=2 on one pipeline spans 1634-2737 s, a
-1.7x spread between two ordinary runs, and the bound is now 2x the worst observed rather than a
-fraction above the best: **90 minutes and $60**. A gate with 23 seconds of headroom reds a $30 run
-and looks like a skill defect. Tighten only with enough runs to know the distribution, and move the
-two together — they are one bound expressed twice.
+spread that n=3 widened further: **1634-3688 s on the same prompt, 2.3x**, against a cost range of
+only $23.81-$30.10, **1.26x**. The bound is 2x the worst observed rather than a fraction above the
+best: **120 minutes and $60**.
+
+**They are not one bound expressed twice** — an earlier note here said they were, and the runs
+refute it. The burn rates differ 2x ($0.0146/s and $0.0071/s), and the most expensive run was among
+the shortest. Duration and cost move independently, so a change to one is not a change to the
+other. A gate with 23 seconds of headroom, which is what pairing them produced, reds a $30 run and
+presents as a skill defect.
 
 > The run also carried three signals worth more than its cost: a shard budget exceeded by 9% whose
 > named remedy the pipeline never told the model to apply (now fixed); a verdict mix of **1.9%
