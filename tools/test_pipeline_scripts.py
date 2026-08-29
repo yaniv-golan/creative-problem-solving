@@ -2557,6 +2557,76 @@ def t_cps_resolver():
           "nothing distinguishes 'mis-derived' from 'genuinely absent'")
 
 
+def t_heading_follows_the_lead_across_a_merge():
+    """The heading must be the label of the family the FINAL lead came from.
+
+    This is the assertion `t_merged_labels_replace_concatenation` cannot make. In that fixture the
+    surviving lead happens to come from `fams[i]`, so deleting relabel() entirely leaves it green —
+    measured: the whole suite passes with the function body removed, with the closing
+    `for f in fams: relabel(f)` removed, and with the "; " concatenation restored at the forced
+    merge. A test that cannot tell the fix from the bug it replaced is not covering it.
+
+    So the shape here is built so the two answers DIFFER. Three options in one cluster:
+      a ~ b duplicate          -> the grouper splits them; the repair merges them back
+      a ~ c duplicate          -> the merged family cannot lead with `a` while c leads its own
+      b ~ c distinct           -> so the lead must move to `b`, which arrived from the ABSORBED side
+    `fams[i]` is the left family by combinations order, so taking its label gives 'left'; following
+    the lead gives 'right'. One is right and the other is the bug, and they are different strings.
+    """
+    print("\nthe heading follows the lead when a merge moves it")
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 2, 6)
+        a_, b_, c_ = ids[0], ids[1], ids[2]
+        joins = {frozenset((a_, b_)), frozenset((a_, c_))}
+        rels = [{"a": x, "b": y, "relation": "duplicate"} for x, y in
+                ((a_, b_), (a_, c_))]
+        rels += [{"a": x, "b": y, "relation": "distinct"}
+                 for x, y in itertools.combinations(ids, 2) if frozenset((x, y)) not in joins]
+        json.dump({"pairs": [{"a": r["a"], "b": r["b"]} for r in rels]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        json.dump({"relations": rels}, open(os.path.join(d, "relations.json"), "w"))
+        rc, out = run("plan_groups.py", d)
+        clusters = json.load(open(os.path.join(d, "clusters.json")))["clusters"]
+        home = next(x for x in clusters if a_ in x["members"])
+        # left / right / c each their own family, all from the cluster that holds them.
+        fams = [{"cid": home["cid"], "label": "left", "lead": a_, "members": [a_]},
+                {"cid": home["cid"], "label": "right", "lead": b_, "members": [b_]}]
+        if c_ in home["members"]:
+            fams.append({"cid": home["cid"], "label": "third", "lead": c_, "members": [c_]})
+        rest = [m for m in home["members"] if m not in (a_, b_, c_)]
+        if rest:
+            fams.append({"cid": home["cid"], "label": "rest", "lead": rest[0], "members": rest})
+        for x in clusters:
+            if x["cid"] != home["cid"]:
+                fams.append({"cid": x["cid"], "label": f"m{x['cid']}", "lead": x["members"][0],
+                             "members": x["members"]})
+        json.dump({"families": fams}, open(os.path.join(d, "group-result-1.json"), "w"))
+        rc, out = run("merge_families.py", d)
+        check("the merge completes", rc == 0, out.strip()[:140])
+        if rc != 0: return
+
+        got = json.load(open(os.path.join(d, "families.json")))["families"]
+        merged = next((f for f in got if {a_, b_} <= set(f["members"])), None)
+        check("a and b were merged back into one family", merged is not None,
+              f"sizes={[(f['label'][:12], f['members']) for f in got][:4]}")
+        if merged is None: return
+
+        origin = {m: f["label"] for f in fams for m in f["members"]}
+        lead = merged["members"][0]
+        check("the fixture actually moved the lead off the left family", lead == b_,
+              f"lead is {lead}, expected {b_} — the fixture no longer separates the two answers, "
+              f"so the assertion below would pass either way")
+        check("the heading is the ABSORBED family's label, not the surviving index's",
+              merged["label"] == origin[lead] == "right",
+              f"lead {lead} came from {origin[lead]!r} but the heading is {merged['label']!r}")
+        check("...and the other label survives beside it",
+              "left" in (merged.get("merged_labels") or []),
+              str(merged.get("merged_labels")))
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t_merged_labels_replace_concatenation():
     """A merged family leads with ONE mechanism, and the other framing survives beside it.
 
@@ -2959,7 +3029,8 @@ for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and
           t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
           t_out_path_echo, t_promoted_lead_gate,
           t_lead_assignment_complete, t_cps_resolver,
-          t_merged_labels_replace_concatenation, t_slots_fill_and_deletion,
+          t_merged_labels_replace_concatenation, t_heading_follows_the_lead_across_a_merge,
+          t_slots_fill_and_deletion,
           t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage,
           t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger):
     t()

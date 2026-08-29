@@ -428,6 +428,16 @@ def main(wd, expect):
 
     # Every lead is final by here -- the greedy passes, the exhaustive solve and both merge paths
     # have all run -- so this is the first point at which the heading can be chosen at all.
+    #
+    # THIS PASS IS THE AUTHORITY, and that has a consequence worth knowing before you audit it:
+    # the relabel() calls at the two merge sites are overwritten here, so restoring the old
+    # `"; "` concatenation at either of them changes the emitted labels by exactly nothing
+    # (measured: byte-identical output, zero labels containing a semicolon). A mutation test on
+    # those lines alone therefore stays green, and it is RIGHT to -- behaviour did not change.
+    # What must stay covered is this line and relabel() itself; removing either flips the heading
+    # to whichever family happened to be `fams[i]`, and
+    # t_heading_follows_the_lead_across_a_merge reds on both. The merge-site calls are kept
+    # because the error messages in the loops between here and there print `fams[i]["label"]`.
     for f in fams: relabel(f)
 
     # A label this script emits must be one a grouper actually wrote, byte for byte. That is the
