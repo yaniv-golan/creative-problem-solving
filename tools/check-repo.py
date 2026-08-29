@@ -1056,6 +1056,34 @@ if _marker:
              "live run at full price and neither is visible until it is spent."
              % (_where, _lit))
 
+# A host-path literal anywhere in shipped skill text becomes model-visible the moment the model
+# reads the file, and Cowork's runtime host-path guard fires on it. That is not hypothetical: a
+# comment in pipeline.md explaining the namespace split contained a literal `/Users/...`, and it
+# failed a $26 live run — every assertion passed and the guard did not.
+#
+# `analyze-skill --strict` does NOT catch this. It scans for `/sessions/...` leaks; the runtime
+# guard looks for `/Users` and `/opt`. Two scanners, two patterns, and this text passed one while
+# failing the other. This rule closes that gap, for free.
+print("\nno host-path literal in shipped skill text")
+_hp = re.compile(r"(?<![\w/])(/Users/|/opt/)")
+_leaks = []
+for _root in (os.path.join(plugin_name, "skills"), os.path.join(plugin_name, "agents"),
+              os.path.join(plugin_name, "commands")):
+    _abs = os.path.join(REPO, _root)
+    if not os.path.isdir(_abs): continue
+    for _dir, _, _files in os.walk(_abs):
+        for _fn in _files:
+            if not _fn.endswith((".md", ".txt")): continue
+            _rel = os.path.relpath(os.path.join(_dir, _fn), REPO)
+            for _i, _line in enumerate(read_text(_rel).splitlines(), 1):
+                if _hp.search(_line): _leaks.append((_rel, _i, _line.strip()[:70]))
+if _leaks:
+    for _rel, _i, _ex in _leaks[:4]:
+        fail("%s:%d carries a host-path literal — it becomes model-visible text and trips the "
+             "runtime host-path guard: %s" % (_rel, _i, _ex))
+else:
+    ok("no /Users or /opt literal in any shipped skill, agent or command file")
+
 print()
 if failures:
     print("FAILED (%d problem%s)" % (len(failures), "" if len(failures) == 1 else "s"))

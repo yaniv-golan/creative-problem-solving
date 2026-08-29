@@ -83,7 +83,10 @@ cps_resolve() {                    # $1 = the path you read THIS file at
   # Gated on visibility, and that gate is load-bearing. On a split-namespace host $CAND is a path
   # from the OTHER filesystem: `[ -d "$CAND" ]` is false there not because the install is odd but
   # because the shell cannot see it. Measured on Cowork host loop — the file tools report the
-  # plugin under /Users/... while the shell has it under /sessions/<id>/mnt/.remote-plugins/. If
+  # plugin somewhere under the user's own home directory (deliberately not spelled out here: a
+  # literal host path in this file becomes model-visible text and trips the runtime host-path
+  # guard, which is how this very line was caught) while the shell has the same plugin under
+  # /sessions/<id>/mnt/.remote-plugins/. If
   # this test ran unconditionally, every host-loop run would conclude "scriptless" and take the
   # degraded path, which is the exact silent downgrade this whole block exists to prevent.
   if [ -d "$CAND" ]; then
