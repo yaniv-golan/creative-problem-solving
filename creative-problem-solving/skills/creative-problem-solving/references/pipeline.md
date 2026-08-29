@@ -127,6 +127,13 @@ cps_resolve() {                    # $1 = the path you read THIS file at
   #      scopes it (session directories are per-uid and cross-session reads are refused, which is
   #      why a find over them returns only this session's).
   #
+  #      Cost, since nobody guesses it correctly in either direction: one guest held **522**
+  #      session directories, almost all permission-denied, and the number grows over time —
+  #      historical sessions persist, only active ones carry mounts. It stays fast anyway because
+  #      the refusal is at the DIRECTORY level: the walker is turned away at each root rather than
+  #      descending and failing per file. So the search is cheaper than the directory count
+  #      suggests, and it does grow, and both halves of that are easy to get wrong.
+  #
   #   2. AN ENVIRONMENT CHANNEL naming the executing plugin. There is none. `CLAUDE_PLUGIN_ROOT`
   #      is a load-time substitution into definition text and is absent from the shell (see the
   #      note at the end of this step); `CLAUDE_CODE_INVOKED_SKILLS` exists as a declared constant
