@@ -1067,13 +1067,15 @@ if _marker:
 print("\nno host-path literal in shipped skill text")
 _hp = re.compile(r"(?<![\w/])(/Users/|/opt/)")
 _leaks = []
+# scripts/ is included: a script's error messages and docstrings reach the model as tool output,
+# so a host path in one leaks by the same route as a host path in an instruction file.
 for _root in (os.path.join(plugin_name, "skills"), os.path.join(plugin_name, "agents"),
-              os.path.join(plugin_name, "commands")):
+              os.path.join(plugin_name, "commands"), os.path.join(plugin_name, "scripts")):
     _abs = os.path.join(REPO, _root)
     if not os.path.isdir(_abs): continue
     for _dir, _, _files in os.walk(_abs):
         for _fn in _files:
-            if not _fn.endswith((".md", ".txt")): continue
+            if not _fn.endswith((".md", ".txt", ".py")): continue
             _rel = os.path.relpath(os.path.join(_dir, _fn), REPO)
             for _i, _line in enumerate(read_text(_rel).splitlines(), 1):
                 if _hp.search(_line): _leaks.append((_rel, _i, _line.strip()[:70]))

@@ -26,11 +26,17 @@ on_unanswered: first
 # A gate with 23 seconds of headroom is a coin toss that reds a $30 run and looks like a skill
 # defect, which is the failure this file's own note warned about while setting the number anyway.
 #
-# n=2 on the same pipeline spans 1634-2737 s, a 1.7x spread between two ordinary runs. So the bound
-# is 2x the worst observed, not a fraction above the best: back to 90 minutes, and $60 for cost —
-# enough to catch a doubling, not so tight that ordinary variance trips it. Tighten only with
-# enough runs to know the distribution, and move both together.
-timeout_ms: 5400000
+# n=3, and the same rule applied to it. Observed on THIS scenario: 1634.4 s and 3688.3 s — a 2.3x
+# spread between two runs of the same prompt. `deliverable-composition`, the same pipeline behind a
+# different prompt, sat between them at 2736.7 s. The rule stated when this was last set is "2x the
+# worst observed"; the worst observed is now 3688 s, so the bound moves with it rather than staying
+# where an older maximum put it. 90 minutes would have left 1.46x on the longest run seen, which is
+# thinner than the variance already measured.
+#
+# Cost and duration are NOT one bound expressed twice — that was wrong when written here. The burn
+# rates differ 2x between those runs ($0.0146/s and $0.0071/s), so the longest run was the cheaper
+# one. They are two independent bounds and $60 still covers a doubling of the worst cost seen.
+timeout_ms: 7200000
 
 # Leading slash is load-bearing: mid-sentence slashes are not expanded by the agent binary.
 prompt: "/creative-problem-solving:ideas Our four independent bookshops are losing footfall, we cannot match online on price, and author events and a loyalty card are already spent. What else could we be?"
