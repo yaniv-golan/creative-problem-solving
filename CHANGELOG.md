@@ -70,6 +70,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   both said nine, and the checker computes it from the payload. Only the README was wrong.
 
 ### Fixed
+- **`INSTALL.md` said the skill both does and does not offer itself, in one sentence.** The
+  opening read "the skill does offer itself when you ask for options on an open-ended problem"
+  and then, after an aside, "the skill does not self-select on naturally-phrased questions (0 of
+  12 in testing)" — a botched edit that also contradicted `README.md`. The measurement supports
+  the second half: 0 of 12 across three problems. The first half described behaviour the skill
+  description has since been hardened against, which now tells a model not to select the skill
+  even when a prompt says the obvious answers are spent. Corrected to the single claim, with the
+  measurement kept at its real scope.
 
 - **The wholly-missing-shard message now actually fires.** The branch added for an adjudicator
   that returned nothing keyed on the gap being the whole shard, which the agreement probe makes

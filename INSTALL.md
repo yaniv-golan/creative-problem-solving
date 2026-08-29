@@ -10,9 +10,10 @@ The skill uses the open [Agent Skills](https://agentskills.io) standard, so most
 it the same way: point them at this repository, or drop the release zip in their skills folder.
 
 **Once installed there is nothing to configure.** There is, however, something to type. The
-skill does offer itself when you ask for options on an open-ended problem — see
-[when it runs](README.md#when-it-runs-and-when-it-refuses) — the skill does not self-select
-on naturally-phrased questions (0 of 12 in testing), and a full run takes about forty minutes,
+skill does not offer itself: it did not fire on naturally-phrased questions in testing (0 of 12
+across three problems), and its description tells a model not to select it even when a prompt
+says the obvious answers are spent — see
+[when it runs](README.md#when-it-runs-and-when-it-refuses). A full run takes about forty minutes,
 which is not something you want by surprise. **Invoking it explicitly is the intended path.** In
 Claude Code and Claude Desktop:
 
