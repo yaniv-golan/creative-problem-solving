@@ -114,6 +114,27 @@ cps_resolve() {                    # $1 = the path you read THIS file at
   case "$HOME" in /sessions/*) SPLIT=1 ;; esac
   case "$CAND" in /sessions/*) SPLIT=0 ;; esac
 
+  # TWO DESIGNS WERE INVESTIGATED AND RULED OUT HERE. Recorded because both look obviously better
+  # than a search, and the next person will think of them:
+  #
+  #   1. A MOUNT-TABLE LOOKUP instead of a search. If /proc/mounts carried the host path beside
+  #      each VM mount point, this becomes a rewrite: match the read path against the host side,
+  #      emit the VM side, no search at all — and it would work on the mount shapes that carry no
+  #      plugin id. It does not carry that. The source field on those entries is a fuse file
+  #      descriptor, not a path, so there is nothing to match against. Second, independent reason:
+  #      the table shows mounts belonging to OTHER concurrent sessions, so a lookup would need a
+  #      session filter written by hand — while the search needs none, because the kernel already
+  #      scopes it (session directories are per-uid and cross-session reads are refused, which is
+  #      why a find over them returns only this session's).
+  #
+  #   2. AN ENVIRONMENT CHANNEL naming the executing plugin. There is none. `CLAUDE_PLUGIN_ROOT`
+  #      is a load-time substitution into definition text and is absent from the shell (see the
+  #      note at the end of this step); `CLAUDE_CODE_INVOKED_SKILLS` exists as a declared constant
+  #      with no writer; `${CLAUDE_SKILL_DIR}` is another substitution token, not a variable.
+  #      **The model knows the path it read this file at, and nothing else does.** That is why
+  #      branch 1 is the primary path and everything below it is recovery: the identity channel is
+  #      the model passing what it already knows, not the environment.
+  #
   # Branch 2 — the shell searches for itself, because only the shell can answer where the shell
   # is. Match on the SENTINEL FILE,
   # never on a directory name: skills are separately mounted at .claude/<...>/<sanitized skill
