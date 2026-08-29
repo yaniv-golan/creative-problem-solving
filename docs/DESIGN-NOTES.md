@@ -151,6 +151,18 @@ score — including this skill's own — is a hypothesis.
 its gains from explicitly iterating *against* retrieved neighbours until a novelty
 threshold is met. Phase 0's retrieved-neighbour list is used that way deliberately.
 
+**Nothing is deleted for being a duplicate, and the rule is a script rather than a request.**
+Automated deduplication was tried and could not be trusted with the decision: asked to remove
+duplicates from one pool of options it returned wildly different survivor counts run to run, and
+most of what it called a duplicate turned out to be a variant worth reading. The per-run counts
+are in the changelog entry for the deduplication step. Two properties of the problem make this
+the wrong place for model judgement: a wrong merge is unrecoverable, while a wrong grouping costs
+a line of reading — the errors are not symmetric. So options that propose the same core
+intervention are grouped into a family and shown together with each variant stating what
+differs, every option stays visible, and an integrity script fails the run if any option is
+neither presented nor explicitly refuted. A model can be talked into believing two options are
+the same idea. A script counting files cannot.
+
 ## Eval history
 
 Everything referenced below is in the repo. Eval definitions in `evals/evals.json`, graded
