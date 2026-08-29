@@ -273,14 +273,21 @@ step may not inherit a variable set in an earlier one. What must not happen is a
 `$CPS` unset — `python3 "/scripts/shard_candidates.py"` is what that produces, and it is a
 confusing failure rather than a loud one.
 
-**Never write `${CLAUDE_PLUGIN_ROOT}` into a Bash command.** That token is substituted into the
-text of *definition* files at load time; this is a reference file, read at runtime, so it arrives
-here literally and expands to the empty string in a shell. Verified against the shipping binaries:
-it is set into exactly three spawn environments — plugin-declared commands, MCP stdio servers, an
-MCP headers helper — and the Bash tool's own child environment is not one of them. It is not
-available on the VM loop either, which an earlier reading of this claimed and which was withdrawn
-on re-derivation. The resolver above deliberately does not consult it: the ban is on *relying* on
-it, and there is nothing to rely on.
+**Never write `${CLAUDE_PLUGIN_ROOT}` into a Bash command, and do not debug it by checking whether
+it is empty.** That token is substituted into the text of *definition* files at load time; this is
+a reference file, read at runtime, so it arrives here literally. Claude Code does not put it into
+the Bash tool's child environment.
+
+**But "not exported" is not the same as "empty", and the difference is what costs a debugger.** A
+plugin's own hook can export environment into the session, and every later Bash call inherits it —
+so the variable can be **set and wrong**. Measured: in a shell running this skill, both
+`CLAUDE_PLUGIN_ROOT` and `CLAUDE_PLUGIN_DATA` were set, each to a *different* unrelated plugin's
+directory. A run that tests for empty gets back a confident, non-empty path into somebody else's
+install, and a script called against it fails against a real directory rather than a missing one.
+An earlier version of this paragraph asserted the empty case as verified, and was wrong.
+
+The resolver above deliberately does not consult it. The ban is on *relying* on it — not because
+there is nothing there, but because what is there may belong to another plugin entirely.
 
 ## Step 0b — one directory per run, resolved before any stage writes
 

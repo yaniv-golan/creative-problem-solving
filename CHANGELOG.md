@@ -10,14 +10,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - **`bin/cps`, so the shell can find the plugin by name.** Claude Code puts a plugin's `bin/` on
-  the Bash tool's `PATH`, built for that shell rather than inherited, so a bare `cps` is resolved
-  by the shell in its own namespace — which is exactly what Step 0's resolver spends 196 lines
-  reconstructing by hand on hosts where the file tools and the shell disagree about paths. The
-  resolver now tries `cps --where` as branch 0 on split-namespace hosts, below the read path and
-  gated, because only the read path can promise the scripts belong to the install whose
-  instructions are being read. Verified rather than trusted at every step: a `PATH` entry is
-  advertised whether or not the directory behind it exists. `bin/cps` is named in `SECURITY.md`
-  and CI now refuses an executable there that is not.
+  the Bash tool's `PATH`, built for that shell rather than inherited, so a bare `cps` resolves in
+  the shell's own namespace — which is what Step 0 otherwise reconstructs by hand on hosts where
+  the file tools and the shell disagree about paths. The resolver tries `cps --where` first on
+  those hosts, below the path it read the instructions at and gated on the namespaces being split:
+  only that path can promise the scripts belong to the same install as the instructions, and a
+  launcher on `PATH` proves a working install rather than that one. Its answer is verified against
+  a sentinel file and falls through to the existing search, because a `PATH` entry is advertised
+  whether or not anything is behind it and the entry is not present on every install route. So it
+  is an optimisation that usually fires, never a mechanism the run depends on.
+
+  `bin/cps` is named in `SECURITY.md` — it is the widest-reach file a plugin install delivers — and
+  CI refuses an executable there that is not. Why `${CLAUDE_PLUGIN_ROOT}` cannot do this job, and
+  why testing whether it is empty will not tell you it is wrong, is in `references/pipeline.md`
+  beside the rule that depends on it.
 
 ### Fixed
 

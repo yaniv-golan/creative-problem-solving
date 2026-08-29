@@ -11,8 +11,14 @@
 # while the scripts are run by the SHELL, and on some hosts those are different filesystem
 # namespaces. Claude Code puts <plugin root>/bin on the Bash tool's PATH, built for that shell
 # rather than inherited -- so a bare `cps` is looked up by the shell, in the shell's own
-# namespace, and no path crosses the boundary at all. Measured correct on plain CLI, Cowork
-# host-loop and Cowork cloud, each with a different path shape.
+# namespace, and no path crosses the boundary at all. Measured present for INSTALLED plugins on
+# plain CLI, Cowork host-loop and Cowork cloud, each with a different path shape.
+#
+# NOT universal, and the counter-case is the lane this was built for: a peer measured a
+# harness-staged LOCAL plugin whose bin/ was absent from PATH under host-loop while present under
+# container. So treat PATH as an optimisation that usually fires, never as the mechanism. That is
+# why Step 0 verifies `cps --where` against the sentinel and falls through to the search rather
+# than depending on this.
 #
 # The resolver stays as the fallback. A PATH entry is advertised whether or not the directory
 # exists, a path carrying shell metacharacters is dropped silently, and the client version that
