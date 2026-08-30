@@ -175,8 +175,8 @@ def _conflict_graph(clusters, rel):
     owner = {m: i for i, c in enumerate(clusters) for m in c}
     adj = {i: set() for i in range(len(clusters))}
     for pair, verdict in rel.items():
-        if verdict not in JOINING: continue
-        a, b = sorted(pair)
+        if verdict not in JOINING or len(pair) != 2: continue   # a self-pair joins nothing
+        a, b = pair
         ia, ib = owner.get(a), owner.get(b)
         if ia is None or ib is None or ia == ib: continue
         adj[ia].add(ib); adj[ib].add(ia)
@@ -230,17 +230,18 @@ def _search(dom, order, rel, budget):
     """Forward-checking DFS, smallest domain first. Returns (assignment | None, exhausted).
 
     `exhausted` distinguishes a tree that was fully explored -- which proves infeasibility -- from
-    one the budget cut off, which proves nothing. Reported explicitly rather than inferred from
-    what is left of the budget, because the two coincide on the last node.
+    one the budget cut off, which proves nothing. It is recorded when the cap is actually hit
+    rather than inferred from what is left of the budget: a tree whose last node spends the last
+    unit was fully explored, and `budget > 0` would call that a cutoff.
     """
-    sol = {}
+    sol, cut = {}, [False]
 
     def step(dom, remaining):
         if not remaining: return True
         i = min(remaining, key=lambda k: (len(dom[k]), k))
         rest = [k for k in remaining if k != i]
         for m in dom[i]:
-            if budget[0] <= 0: return False
+            if budget[0] <= 0: cut[0] = True; return False
             budget[0] -= 1
             nd, dead = dict(dom), False
             for j in rest:
@@ -254,11 +255,17 @@ def _search(dom, order, rel, budget):
         return False
 
     ok = step(dom, list(order))
-    return (dict(sol) if ok else None), budget[0] > 0
+    return (dict(sol) if ok else None), not cut[0]
 
 
 def choose_leads(clusters, rel, rounds=12):
     """Pick each cluster's lead so that no two leads were adjudicated as the same intervention.
+
+    Clusters are assumed DISJOINT, which `main` establishes before calling this. The assumption is
+    load-bearing rather than tidy: every argument here that a collision stays inside one component
+    runs through "the lead of cluster i belongs to cluster i", and an option in two clusters breaks
+    it -- edges get attributed to one of them, components split wrongly, and components solved in
+    isolation stop being independent.
 
     verify_pipeline refuses a run where two families lead with a `duplicate` or
     `implementation_variant` pair, because the report prints leads in full and the reader is then
@@ -302,12 +309,18 @@ def choose_leads(clusters, rel, rounds=12):
         # on "unknown" fuses clusters a longer search would have kept apart.
         comps, adj = _conflict_graph(clusters, rel)
         touched = {i for pair in viol for i in pair}
-        budget = [LEAD_NODES]
         cutoff, pinched = False, None
 
         for comp in comps:
             if not touched.intersection(comp):
                 continue          # nothing in it can collide, so its greedy leads stand
+            # A BUDGET PER COMPONENT, NOT ONE SHARED ACROSS THEM. Components are independent
+            # subproblems and `comps` runs in cluster-index order, so a shared budget let a hard
+            # component at low indices starve a later one that was infeasible in two nodes. That
+            # came back UNKNOWN and stopped the run -- and flipped to PROVEN when the same two
+            # components were numbered the other way round. `proven` licenses an irreversible
+            # merge; it must not turn on how the clusters happen to be numbered.
+            budget = [LEAD_NODES]
             dom = {i: sorted(clusters[i]) for i in comp}
             if not _propagate(dom, comp, adj, rel):
                 pinched = comp; break

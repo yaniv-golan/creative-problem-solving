@@ -142,10 +142,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
   **The PROVEN/UNKNOWN distinction is unchanged and now decided in three places** rather than
   inferred from what is left of the budget: a propagation wipeout and an exhausted tree both prove
-  infeasibility, a cutoff proves nothing. One infeasible component settles the instance even if
-  another was cut off, which the previous all-or-nothing search could never conclude, and the
-  reported collisions are now the pinched component's rather than the lexicographically least —
-  so the caller merges at the pinch instead of at an unrelated pair.
+  infeasibility, a cutoff proves nothing. The reported collisions are the pinched component's
+  rather than the lexicographically least, so the caller merges at the pinch instead of at an
+  unrelated pair. **Each component carries its own budget**: sharing one across them let a
+  search-hard component starve a later one that was infeasible in two nodes, which came back
+  UNKNOWN and flipped to PROVEN when the same two were numbered the other way round. A flag that
+  licenses an irreversible merge must not turn on cluster numbering. One infeasible component does
+  settle the instance even when another was cut off — but only once each is actually given the
+  budget to reach that conclusion.
 
 - **A component with no collision keeps its leads.** `choose_leads` documents that it overrides
   only where the gate would fail, 0-4 clusters on recorded runs. On success it replaced every

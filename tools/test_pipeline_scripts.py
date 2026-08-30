@@ -2351,11 +2351,47 @@ def t_lead_search_scales_and_preserves():
     bystanders = [[f"p3-{i:03d}a", f"p3-{i:03d}b", f"p3-{i:03d}c"] for i in range(60)]
     clusters = [pinched] + blockers + bystanders
 
-    t0 = _t.time(); leads, viol, proven = pg.choose_leads(clusters, rel); el = _t.time() - t0
+    leads, viol, proven = pg.choose_leads(clusters, rel)
     check("proves the pinch impossible rather than reporting UNKNOWN",
-          bool(viol) and proven, f"viol={len(viol)} proven={proven} in {el:.2f}s")
-    check("...and does it in under a second, with 60 bystander clusters present",
-          el < 1.0, f"{el:.2f}s")
+          bool(viol) and proven, f"viol={len(viol)} proven={proven}")
+
+    # Wall clock at the DEFAULT budget discriminates nothing: the old search also returned in
+    # 0.04s, because exhausting 20,000 nodes is quick. The blowup was never a slow return, it was
+    # a `proven=False` one. Raising the budget is what separates the two -- the old search walked
+    # 2,000,000 nodes of bystander product in ~6s and still concluded nothing, where inference
+    # settles this before any branching.
+    budget_was = pg.LEAD_NODES
+    try:
+        pg.LEAD_NODES = 2_000_000
+        t0 = _t.time(); _, v2, p2 = pg.choose_leads(clusters, rel); el = _t.time() - t0
+    finally:
+        pg.LEAD_NODES = budget_was
+    check("...settles it by inference, so a budget 100x larger costs no time",
+          el < 1.0 and bool(v2) and p2, f"{el:.2f}s proven={p2}")
+
+    # Two independent components, one infeasible in a handful of nodes and one search-hard. The
+    # hard one is numbered first. With a shared budget it ate the cap and the easy pinch came back
+    # UNKNOWN, so `proven` -- which licenses an irreversible merge -- turned on cluster numbering.
+    hard = [[f"h{i}-{c}" for c in range(8)] for i in range(9)]
+    relp = {frozenset((f"h{i}-{c}", f"h{j}-{c}")): "duplicate"
+            for i, j in itertools.combinations(range(9), 2) for c in range(8)}
+    easy = [[f"e{i}x", f"e{i}y"] for i in range(3)]
+    relp.update({frozenset((a, b)): "duplicate" for i, j in itertools.combinations(range(3), 2)
+                 for a in easy[i] for b in easy[j]})
+    _, _, p_hard_first = pg.choose_leads(hard + easy, relp)
+    _, _, p_easy_first = pg.choose_leads(easy + hard, relp)
+    check("proves an easy pinch regardless of which component is numbered first",
+          p_hard_first and p_easy_first, f"hard-first={p_hard_first} easy-first={p_easy_first}")
+
+    # A tree of exactly two nodes, explored on exactly two units of budget. Inferring "exhausted"
+    # from budget-left calls that a cutoff and reports UNKNOWN.
+    try:
+        pg.LEAD_NODES = 2
+        _, v3, p3 = pg.choose_leads(easy, relp)
+    finally:
+        pg.LEAD_NODES = budget_was
+    check("a tree exhausted on its last budgeted node is a proof, not a cutoff",
+          bool(v3) and p3, f"proven={p3}")
 
     # The docstring promises the search overrides only where the gate would fail. The shipped
     # success path replaced EVERY lead with the DFS's canonical choice, silently reassigning
@@ -2376,6 +2412,18 @@ def t_lead_search_scales_and_preserves():
     check("solves a collision greedy cannot", not viol2, f"viol={viol2}")
     check("...without disturbing a component that had no collision in it",
           leads2[4:] == alone, f"{leads2[4:]} != {alone}")
+
+    # A self-pair is a size-1 frozenset, and unpacking it into two names raised. Reaching the
+    # unpack needs an instance greedy cannot finish, so this rides the stall above rather than a
+    # two-cluster toy -- on a toy, greedy settles it and the component graph is never built, which
+    # is a test that cannot fail.
+    ok, detail = True, ""
+    try:
+        rel_self = dict(rel2); rel_self[frozenset(("c0m0",))] = "duplicate"
+        pg.choose_leads(stall, rel_self)
+    except Exception as exc:
+        ok = False; detail = f"{type(exc).__name__}: {exc}"
+    check("a self-pair in relations does not raise", ok, detail)
 
 
 def t_wp4_gates():
