@@ -14,7 +14,7 @@ import json, sys, os, glob, itertools
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from robust_json import load
+from robust_json import load, one_line
 # One definition of the rule this script exists to obey; see verdicts.py.
 from verdicts import JOINING, SHARE_MAX, share_breach
 from verdicts import relation_of
@@ -282,7 +282,11 @@ def main(wd, expect):
                     f"cluster — a shard may split what it was given, never reach outside it")
             claimed.add(src)
             for m in mem: seen[m] += 1
-            lab = f["label"].strip()
+            # ONE PLACE, because everything downstream derives from this value: grouper_labels,
+            # the family heading, and the per-member origin map all take `lab`. Normalising here
+            # keeps the byte-identity check at the end comparing like with like -- normalising at
+            # emission instead would make every label "invented" and stop the run.
+            lab = one_line(f["label"])
             grouper_labels.add(lab)
             # Every member remembers the label of the family it arrived in. Merging unions these
             # maps, so a chain of merges accumulates rather than overwriting -- and because the
@@ -362,7 +366,12 @@ def main(wd, expect):
     # Two families from the SAME cluster in that position are one family: they were together before
     # the split, and the adjudicators say their leads are the same move. Merging restores exactly
     # what the split separated. It takes no parameter and is bounded in the only direction that
-    # matters -- it can undo a split, never invent a merge across clusters.
+    # matters -- every merge it makes is one the adjudicated verdicts already assert, never a
+    # guess. It is NOT bounded to a single cluster: the loop below merges two families from
+    # DIFFERENT clusters when every adjudicated pair between them joins, counts those separately
+    # as `cross_merged` so that a run can report them, and the comment at that site says why the
+    # cluster of origin cannot change the answer. Saying "never across clusters" here would deny
+    # what the code thirty lines down does deliberately.
     merged_back = cross_merged = 0
     while True:
         leads = [f["members"][0] for f in fams]
@@ -516,8 +525,10 @@ def main(wd, expect):
     # because the error messages in the loops between here and there print `fams[i]["label"]`.
     for f in fams: relabel(f)
 
-    # A label this script emits must be one a grouper actually wrote, byte for byte. That is the
-    # property the old "; "-join broke, and it is checkable without guessing at length: a cap
+    # A label this script emits must be one a grouper actually wrote, byte for byte -- compared
+    # after the single edit this script makes to any label, the whitespace collapse at ingest,
+    # which both sides of this comparison have had. That is the property the old "; "-join broke,
+    # and it is checkable without guessing at length: a cap
     # would refuse the 223-char single label in val3-frozen and the four legitimate semicolon
     # labels in the 20260827 run, which is the unactionable-refusal shape this repo keeps paying
     # for. Byte identity cannot fire on correct output and cannot be satisfied by a concatenation.

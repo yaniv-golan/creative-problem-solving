@@ -8,7 +8,8 @@ it, and a reader watching has no way to tell. That failure has happened here bef
 
 So the progress line is produced by this script instead. Every number below is counted from a
 file on disk at the moment of printing, and the one piece of prose -- the family label -- is
-quoted verbatim from what the grouper wrote. Nothing here can claim a stage ran that did not
+quoted from what the grouper wrote, with its whitespace collapsed so that one label cannot
+become two lines of output. Nothing here can claim a stage ran that did not
 run, because a stage that did not run leaves no file to count.
 
 It also keeps the reading cheap: this script opens the pools, so the orchestrator does not have
@@ -23,7 +24,7 @@ quiet about its own misconfiguration never fires and nobody notices.
 import sys, glob, os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from robust_json import load, load_obj
+from robust_json import load, load_obj, one_line
 
 def line(wd, stage=None):
     # Silence is a legitimate answer here -- called before the first pool lands, there is
@@ -97,7 +98,7 @@ def line(wd, stage=None):
     nested = placed - len(fams)
     line = f"{placed} options from {L} {angle}, grouped into {len(fams)} families"
     line += f"; {nested} sit nested as variants." if nested > 0 else ", none of them nested."
-    label = (top.get("label") or "").strip().rstrip(".")
+    label = one_line(top.get("label") or "").rstrip(".")
     if conv > 1 and label:
         # A count, not an independence claim. Passes are isolated, but they are handed the
         # same sharpened brief -- only the lens differs -- so agreeing on a mechanism is weaker

@@ -128,6 +128,34 @@ project adheres to [Semantic Versioning](https://semver.org/).
   both said nine, and the checker computes it from the payload. Only the README was wrong.
 
 ### Fixed
+- **A family label a grouper wrote could carry a newline all the way to the reader.** Nothing in
+  `scripts/` scrubbed line breaks: `merge_families.py` took `.strip()`, which is leading and
+  trailing only. `build_report.py` prints the label as `### {rank}. {label}`, so a label with a
+  break ended that heading early and dropped whatever followed into the report as markdown of its
+  own — a sub-agent choosing the structure of a document it cannot see. The same label reaches a
+  watching reader through `progress.py`, which quotes it mid-run and says the quote is the
+  grouper's own words; a break there produced a second line of output that reads as the script's
+  own statement rather than as something quoted.
+
+  Repaired rather than refused, in `robust_json.one_line()` — the split that module already
+  applies to a BOM or a code fence, since a break in a label is unambiguous and touches nothing
+  about the content. It is applied at ingest, where the label enters `merge_families.py`, and not
+  at emission: every emitted label is checked for byte identity against the labels the shards
+  wrote, so cleaning one on the way out would find all of them invented and stop the run.
+  `progress.py` keeps its own call, because it reads `families.json` off disk and that file may
+  predate any of this. `build_report.py` had its own same-named helper doing the same job; it now
+  imports the shared one, so the tree carries one `one_line` rather than two that would drift —
+  and that file is injection-safe because the value is clean at ingest, not because of a guard of
+  its own.
+
+- **A comment in `merge_families.py` denied what the code below it does.** The block introducing
+  the merge loop said it "can undo a split, never invent a merge across clusters". Thirty lines
+  down, the loop merges two families from different clusters whenever every adjudicated pair
+  between them joins, counts those separately as `cross_merged`, and carries its own comment
+  explaining why the cluster of origin cannot change the answer. Both comments justify the same
+  loop and only one of them describes it. The bound is the verdicts, not the partition; the first
+  comment now says so and points at the second.
+
 - **`merge_families.py` carried the same two lead-search defects `plan_groups.py` had, and they were
   left standing when that side was fixed.** One budget shared across independent components, and
   `proven` inferred from what was left of it. So the two solvers disagreed on the same instance:

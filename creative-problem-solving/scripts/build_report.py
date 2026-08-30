@@ -24,17 +24,7 @@ that it would otherwise copy out by hand.
 import json, os, sys, glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from robust_json import load, load_obj
-
-def one_line(t):
-    """Whitespace to one line. No truncation.
-
-    There was a cap here -- 600 for a lead, 240 for a variant -- and it clipped a family lead
-    mid-sentence in the first live run. Generator length is advisory, so any cap eventually cuts
-    something, and "nothing is deleted" is a promise the README makes about this report. A long
-    option reads badly; a truncated one is a different option.
-    """
-    return " ".join((t or "").split())
+from robust_json import load, load_obj, one_line
 
 def source_link(url):
     """A source rendered as its domain, linking to the full URL.

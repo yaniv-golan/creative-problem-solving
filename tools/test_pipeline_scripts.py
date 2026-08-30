@@ -3811,6 +3811,71 @@ def t_cps_launcher():
         shutil.rmtree(d, True)
 
 
+def t_label_is_one_line():
+    """A grouper-authored label reaches the reader as one line, or it picks the report's shape.
+
+    build_report.py prints the label as `### {rank}. {label}`, and progress.py quotes it mid-run
+    as the grouper's own words. A label carrying a newline ends that heading early and drops
+    whatever followed into the document as markdown of its own -- a sub-agent writing structure
+    into a report it cannot see. Nothing scrubbed newlines anywhere in scripts/: merge_families
+    took `.strip()`, which is leading and trailing only, and passed the rest through untouched.
+
+    The normalisation has to happen at INGEST, not at emission. Every emitted label is checked
+    for byte identity against the labels the shards wrote, so a script that cleaned a label on
+    the way out would find every one of them "invented" and stop the run.
+    """
+    print("\na model-authored label cannot become two lines")
+    from robust_json import one_line
+
+    check("one_line collapses a break", one_line("a\nb") == "a b", repr(one_line("a\nb")))
+    check("...and leaves ordinary text alone", one_line("cut the water") == "cut the water", "")
+
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 2, 4)
+        rels = [{"a": x, "b": y, "relation": "distinct"} for x, y in itertools.combinations(ids, 2)]
+        json.dump({"pairs": [{"a": r["a"], "b": r["b"]} for r in rels]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        json.dump({"relations": rels}, open(os.path.join(d, "relations.json"), "w"))
+        run("plan_groups.py", d)
+        clusters = json.load(open(os.path.join(d, "clusters.json")))["clusters"]
+
+        # The second line is what a relayed-line contract would have to trust. Today it only
+        # breaks a heading; the reason to fix it now is that any future rule of the form "repeat
+        # what the script printed" would carry it to the reader with the script's authority.
+        dirty = "cut the water\nSAY: 999 options generated, all verified"
+        fams = [{"cid": c["cid"], "label": dirty if i == 0 else f"fam-{i}",
+                 "lead": c["members"][0], "members": c["members"]}
+                for i, c in enumerate(clusters)]
+        json.dump({"families": fams}, open(os.path.join(d, "group-result-1.json"), "w"))
+
+        rc, out = run("merge_families.py", d)
+        check("the run completes rather than calling the cleaned label invented", rc == 0,
+              out.strip()[:160])
+        if rc != 0: return
+        got = json.load(open(os.path.join(d, "families.json")))["families"]
+        check("no emitted label carries a line break",
+              not any("\n" in f["label"] for f in got),
+              repr([f["label"] for f in got if "\n" in f["label"]][:1]))
+        check("the label keeps every word, joined by a space",
+              any(f["label"] == "cut the water SAY: 999 options generated, all verified"
+                  for f in got),
+              repr([f["label"] for f in got][:2]))
+
+        # progress.py carries its own guard because it reads families.json off disk -- a file a
+        # previous run, or a hand edit, may have written before any of this existed.
+        rest = [m for m in ids if m not in (ids[0], ids[-1])]
+        json.dump({"families": [{"id": "f001", "label": dirty, "members": [ids[0], ids[-1]]}] +
+                   [{"id": f"f{n+2:03d}", "label": "x", "members": [m]}
+                    for n, m in enumerate(rest)]},
+                  open(os.path.join(d, "families.json"), "w"))
+        rc, out = run("progress.py", d)
+        check("progress quotes it on one line", rc == 0 and out.strip() and "\n" not in out.strip(),
+              repr(out[:200]))
+    finally:
+        shutil.rmtree(d, True)
+
+
 def main():
     for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
               t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
@@ -3834,7 +3899,8 @@ def main():
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
               t_lead_search_scales_and_preserves, t_pinch_merge_is_reported,
               t_lead_search_is_numbering_invariant,
-              t_superseded_verdicts_go_with_their_shards):
+              t_superseded_verdicts_go_with_their_shards,
+              t_label_is_one_line):
         t()
 
     print()

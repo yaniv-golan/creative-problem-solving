@@ -66,6 +66,37 @@ def _no_dupe_keys(pairs):
         seen.add(k)
     return dict(pairs)
 
+# ---------------------------------------------------------------- text a model wrote
+
+def one_line(text):
+    """Collapse a model-authored string to a single line, for values that get printed.
+
+    Same repair-not-refuse split as the JSON above: a newline inside a family label is wrapper
+    noise -- unambiguous, and nothing to do with the content -- so it is repaired here rather
+    than failing a stage that costs minutes to re-run.
+
+    It has to be repaired somewhere. build_report.py prints a label as `### {rank}. {label}`, so
+    an embedded newline ends that heading early and drops whatever followed into the report as
+    markdown of its own: a grouper choosing the structure of a document it cannot see. The same
+    label reaches a watching reader through progress.py, which quotes it mid-run and says the
+    quote is the grouper's own words -- a promise that only holds while the quote is one line.
+
+    Runs of spaces collapse too. A markdown renderer already collapses them, so nothing the
+    reader sees changes, and every emitted value becomes one predictable line.
+
+    NO TRUNCATION, and that is the older half of this function's history: build_report.py capped
+    what it rendered at 600 characters for a lead and 240 for a variant, and clipped a family
+    lead mid-sentence on the first live run. Generator length is advisory, so any cap eventually
+    cuts something, and "nothing is deleted" is a promise the README makes about the report. A
+    long option reads badly; a truncated one is a different option.
+
+    `str(x or "")` rather than `str(x)`, so None renders as empty rather than as the word "None"
+    -- build_report.py passes verifier notes and option text straight in, and those are absent
+    often enough that the difference is a line in the report, not a hypothetical.
+    """
+    return " ".join(str(text or "").split())
+
+
 def load_obj(path):
     """Read path and return a JSON **object**, or die naming the stage that wrote the file.
 
