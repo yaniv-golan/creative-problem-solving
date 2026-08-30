@@ -1061,20 +1061,47 @@ elif not _bad:
 # files that must agree, and nothing tied them together — a reword of the heading would red a $24
 # scenario at full price, and the heading has already been revised once.
 print("\nthe live lane's transcript marker is a string the report actually emits")
-_marker = None
-for _f in sorted(glob.glob(os.path.join(REPO, "tests", "scenarios", "*.yaml"))):
-    _m = re.search(r'transcript_contains:\s*"([^"]+)"', read_text(os.path.relpath(_f, REPO)))
-    if _m: _marker = (_m.group(1), os.path.relpath(_f, REPO))
-if _marker:
-    _lit, _where = _marker
-    _br = read_text(os.path.join(plugin_name, "scripts", "build_report.py"))
-    if _lit in _br:
-        ok("%s's marker %r is emitted by build_report.py" % (_where, _lit))
-    else:
+
+# Extracted so it can be tested. The check itself scans the real repo, which holds exactly one
+# marker -- so "two markers in one file" and "no marker at all" are unassertable against the tree
+# and were, before this, unassertable at all. tools/test_hooks.py drives this on fixture text.
+def transcript_markers(texts):
+    """Every transcript_contains literal in the given (label, text) pairs.
+
+    ACCUMULATES. This used to `search` and assign, inside a loop over files, so only the LAST
+    file's FIRST marker was ever validated: a second marker in the same file, or any marker in an
+    earlier file, went unchecked while the check printed green.
+
+    BOTH QUOTE STYLES. The old pattern was double-quote only, and these scenarios use single-quoted
+    scalars elsewhere -- so `transcript_contains: 'Top 3'` was invisible to it.
+    """
+    out = []
+    for _label, _text in texts:
+        for _q, _lit in re.findall(r"""transcript_contains:\s*(["'])(.+?)\1""", _text):
+            out.append((_lit, _label))
+    return out
+
+_texts = [(os.path.relpath(_f, REPO), read_text(os.path.relpath(_f, REPO)))
+          for _f in sorted(glob.glob(os.path.join(REPO, "tests", "scenarios", "*.yaml")))]
+_markers = transcript_markers(_texts)
+_br = read_text(os.path.join(plugin_name, "scripts", "build_report.py"))
+# Guarded on finding none, which the version before this did not do: deleting or rewording the
+# assertion made the whole check evaporate silently. Ten lines above, this same file states the
+# rule -- "a rule that examined nothing must not look clean" -- and enforces it.
+if not _markers:
+    fail("no scenario asserts `transcript_contains` any more. That assertion is the live lane's "
+         "only check on the SENT message -- build_report.py --check-reply reads the file you "
+         "wrote, not what you sent -- so losing it silently removes the one surface that catches "
+         "a report replaced by a summary.")
+else:
+    _bad = [(l, w) for l, w in _markers if l not in _br]
+    for _lit, _where in _bad:
         fail("%s asserts the sent message contains %r, and build_report.py never emits that "
              "string. Either the heading was reworded or the assertion was mistyped; both red a "
              "live run at full price and neither is visible until it is spent."
              % (_where, _lit))
+    if not _bad:
+        ok("all %d transcript marker(s) are emitted by build_report.py" % len(_markers))
 
 # A host-path literal anywhere in shipped skill text becomes model-visible the moment the model
 # reads the file, and Cowork's runtime host-path guard fires on it. That is not hypothetical: a

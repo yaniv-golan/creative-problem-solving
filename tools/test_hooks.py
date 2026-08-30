@@ -44,7 +44,46 @@ def commit(repo, message, filename="f.txt", content="x"):
     return git(repo, "log", "-1", "--format=%B").stdout
 
 
+def t_transcript_markers():
+    """check-repo.py's transcript-marker reader, on fixture text.
+
+    The check itself scans the real repo, which holds exactly ONE marker — so its two failure
+    modes could not be asserted against the tree, and were asserted nowhere. It failed open twice:
+    it `search`ed and assigned inside a loop over files, so only the last file's first marker was
+    ever validated, and when nothing matched it emitted neither ok nor fail, so deleting the
+    assertion made the check evaporate silently.
+    """
+    import importlib.machinery, importlib.util
+    _src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "check-repo.py")
+    # check-repo.py runs its checks at import against the real repo, so it cannot be imported.
+    # Read the one function out of it instead — which is why F6 extracted it in the first place.
+    _text = open(_src, encoding="utf-8").read()
+    _start = _text.index("def transcript_markers(")
+    _end = _text.index("\n_texts = ", _start)
+    _ns = {"re": __import__("re")}
+    exec(compile(_text[_start:_end], "check-repo.py", "exec"), _ns)
+    tm = _ns["transcript_markers"]
+
+    check("a double-quoted marker is found",
+          tm([("a.yaml", '  - transcript_contains: "## The rest"')]) == [("## The rest", "a.yaml")])
+    check("a SINGLE-quoted marker is found too",
+          tm([("a.yaml", "  - transcript_contains: 'Top 3'")]) == [("Top 3", "a.yaml")],
+          "the old pattern was double-quote only, and these scenarios use single quotes elsewhere")
+    two = tm([("a.yaml", '- transcript_contains: "one"\n- transcript_contains: "two"')])
+    check("TWO markers in one file are both returned", [l for l, _ in two] == ["one", "two"],
+          "the old reader kept only the first")
+    many = tm([("a.yaml", '- transcript_contains: "early"'), ("z.yaml", '- transcript_contains: "late"')])
+    check("a marker in a NON-LAST file survives", [l for l, _ in many] == ["early", "late"],
+          "the old reader overwrote it with the last file's")
+    check("no marker anywhere returns empty, so the caller can refuse", tm([("a.yaml", "prompt: hi")]) == [])
+    check("...and the shipped check does refuse on empty",
+          "no scenario asserts `transcript_contains` any more" in _text,
+          "without a fail branch, deleting the assertion removes the check silently")
+
+
 def main():
+    t_transcript_markers()
+
     # --- the installer reaches .git/hooks at all ------------------------------------------
     repo = scratch_repo()
     hook = os.path.join(repo, ".git", "hooks", "prepare-commit-msg")
