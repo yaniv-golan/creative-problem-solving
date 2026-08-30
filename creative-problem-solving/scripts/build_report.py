@@ -16,7 +16,8 @@ that it would otherwise copy out by hand.
 
   build_report.py <work-dir> [--out outputs/report.md]
   build_report.py --slots <report.md>      # list the {{...}} tokens still to fill
-  build_report.py --fill <report.md> --slots-json <slots.json>   # fill them, refusing unknown keys
+  build_report.py --fill <report.md> --slots-json <slots.json>   # fill them; refuses a key that
+                                                                 # was never a slot, or an empty value
   build_report.py --check <report.md>      # every {{...}} filled in, and the options intact
   build_report.py --check-reply <reply.md> --against <report.md>   # the reply carries the report
 """
@@ -503,7 +504,7 @@ def slots_in(path):
 
 
 def fill(path, slots_path):
-    """Fill slots from a JSON map, refusing any key that matches nothing in the file.
+    """Fill slots from a JSON map, refusing a key that was never a slot and a value that is empty.
 
     The failure this exists for: `for k, v in R.items(): if k in t: t = t.replace(k, v)`. A key
     reconstructed from memory matches nothing, the loop skips it in silence, and the model's
@@ -534,20 +535,67 @@ def fill(path, slots_path):
                  f"token, verbatim, to the text that replaces it.")
 
     present = set(SLOT_RE.findall(body))
-    unknown = [k for k in slots if k not in present]
+
+    # A KEY THAT IS NOT IN THE BODY IS EITHER ALREADY FILLED OR WAS NEVER A SLOT, and the two want
+    # opposite answers. This used to refuse both with the never-a-slot message, so a plain retry of
+    # the Bash call -- and the multi-pass fill step 10 explicitly endorses -- failed with a
+    # diagnosis naming the wrong cause. The manifest settles it: it carries the skeleton this
+    # report was built from, so a key that appears there was a real slot and has since been filled.
+    #
+    # Absent manifest falls back to the old behaviour rather than refusing. Adding a hard
+    # requirement here would be a new refusal at step 10 of a forty-minute run, and --fill has
+    # never needed the file before.
+    was_slot, why = set(), "no manifest beside the report, so a filled key cannot be told from a typo"
+    try:
+        _man = json.load(open(path + ".manifest.json", encoding="utf-8"))
+        was_slot = set(SLOT_RE.findall("\n".join(_man.get("skeleton") or [])))
+        why = ""
+    except Exception:
+        pass
+
+    unknown = [k for k in slots if k not in present and k not in was_slot]
     if unknown:
         ex = "; ".join(repr(k) for k in unknown[:3])
         sys.exit(f"FAIL: {len(unknown)} key(s) in {slots_path} match no placeholder in {path}: "
                  f"{ex}\n      The build step prints every token verbatim; copy them rather than "
                  f"retyping. A key that matches nothing is silently skipped by a replace loop, "
-                 f"which is the failure this refusal exists to catch.")
+                 f"which is the failure this refusal exists to catch."
+                 + (f"\n      ({why}.)" if why else ""))
 
+    # AN EMPTY OR NON-STRING VALUE DELETES THE SLOT, which is the failure --fill exists to prevent:
+    # the token goes, nothing replaces it, and --check passes because the {{ scan finds nothing and
+    # the words removed are far under the floor. A deleted slot is not recoverable from the
+    # artifact (see the note below --check), so it has to be refused here or not at all.
+    #
+    # Non-strings are refused rather than coerced, the same rule and for the same reason as
+    # verify_pipeline's verdict fields: str(v) turns None into "None" and [] into "[]", each of
+    # which lands in the report as literal text under a heading the reader trusts.
+    bad = [k for k, v in slots.items()
+           if not isinstance(v, str) or not v.strip()]
+    if bad:
+        ex = "; ".join(f"{k!r}: {slots[k]!r}" for k in bad[:3])
+        sys.exit(f"FAIL: {len(bad)} value(s) in {slots_path} are empty or not text: {ex}\n"
+                 f"      Filling a slot with nothing DELETES it: the token disappears, --check "
+                 f"passes because no token remains, and the judgement that belonged there is gone "
+                 f"with no way to notice from the report. Every slot is required content -- if you "
+                 f"have nothing to say in one, that is a finding about the run, not a value.")
+
+    # Counted from `present`, the token set read BEFORE any substitution. Counting inside the loop
+    # would over-report if a value happened to contain another token's literal text, and counting
+    # len(slots) reported substitutions that did not happen once already-filled keys are allowed.
+    filled = [k for k in slots if k in present]
     for k, v in slots.items():
-        body = body.replace(k, str(v))
+        body = body.replace(k, v)
     open(path, "w", encoding="utf-8").write(body)
 
+    already = [k for k in slots if k not in present]
     left = list(dict.fromkeys(SLOT_RE.findall(body)))
-    print(f"{path}: filled {len(slots)} slot(s), {len(left)} left")
+    print(f"{path}: filled {len(filled)} slot(s), {len(left)} left")
+    if already:
+        print(f"WARN: {len(already)} key(s) were ALREADY filled and did nothing this pass. If you "
+              f"meant to fill a different slot, its text has gone to the wrong place and only you "
+              f"can see that -- --check cannot, because no token is left behind:")
+        for k in already[:5]: print(f"    {k}")
     for tok in left: print(f"    {tok}")
 
 

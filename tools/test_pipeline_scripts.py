@@ -3058,6 +3058,63 @@ def t_slots_fill_and_deletion():
         shutil.rmtree(d, True)
 
 
+def t_fill_refuses_an_empty_value_and_survives_a_retry():
+    """--fill's two halves: a value that deletes a slot, and a key that was already filled.
+
+    An empty value was accepted and the token replaced with nothing -- the exact failure --fill
+    exists to prevent, and undetectable afterwards: --check's {{ scan finds no token and the words
+    removed are far under the floor. str(v) also coerced, so null wrote the literal "None" into
+    the report under a heading the reader trusts.
+
+    And re-running the same fill refused with the never-a-slot message, naming the wrong cause on
+    a plain retry -- or on the multi-pass fill step 10 endorses. The manifest's skeleton tells the
+    two apart.
+    """
+    print("\n--fill refuses a value that would delete a slot, and survives a retry")
+    d = tempfile.mkdtemp()
+    try:
+        rp = os.path.join(d, "r.md")
+        open(rp, "w").write("# R\n\n{{CLOSING — one line}}\n\n{{OTHER — x}}\n\npadding\n")
+        json.dump({"skeleton": ["# R", "{{CLOSING — one line}}", "{{OTHER — x}}"]},
+                  open(rp + ".manifest.json", "w"))
+        sp = os.path.join(d, "s.json")
+
+        def fill(mapping):
+            json.dump(mapping, open(sp, "w"))
+            return run("build_report.py", "--fill", rp, "--slots-json", sp)
+
+        for label, val in [("empty", ""), ("whitespace", "   "), ("null", None),
+                           ("a number", 0), ("a list", [])]:
+            rc, out = fill({"{{CLOSING — one line}}": val})
+            check(f"a value that is {label} refuses", rc != 0 and "empty or not text" in out,
+                  out.strip()[:110])
+        check("...and the report is untouched", "{{CLOSING — one line}}" in open(rp).read())
+
+        rc, out = fill({"{{CLOSING — one line}}": "real", "{{OTHER — x}}": "more"})
+        check("a good fill still fills", rc == 0 and "filled 2 slot(s)" in out, out.strip()[:110])
+
+        # THE RETRY. Same command again: nothing to do, but nothing wrong either.
+        rc, out = fill({"{{CLOSING — one line}}": "real", "{{OTHER — x}}": "more"})
+        check("re-running the same fill does not refuse", rc == 0, out.strip()[:140])
+        check("...and reports filling NOTHING rather than counting the keys",
+              "filled 0 slot(s)" in out, out.strip()[:140])
+        check("...and WARNs that they were already filled",
+              "ALREADY filled" in out, out.strip()[:140])
+
+        # A key that was never a slot still refuses, with the message written for it.
+        rc, out = fill({"{{NEVER — a slot}}": "x"})
+        check("a key that was never a slot still refuses",
+              rc != 0 and "match no placeholder" in out, out.strip()[:110])
+
+        # No manifest: fall back rather than inventing a refusal at step 10 of a paid run.
+        os.remove(rp + ".manifest.json")
+        rc, out = fill({"{{CLOSING — one line}}": "real"})
+        check("with no manifest it falls back to refusing, and says why",
+              rc != 0 and "no manifest beside the report" in out, out.strip()[:140])
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t_verifier_note_reaches_the_reader():
     """Verifiers were already writing qualifications into a key nothing read.
 
@@ -3424,6 +3481,7 @@ def main():
               t_lead_assignment_complete, t_cps_resolver,
               t_merged_labels_replace_concatenation, t_heading_follows_the_lead_across_a_merge,
               t_slots_fill_and_deletion,
+              t_fill_refuses_an_empty_value_and_survives_a_retry,
               t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage,
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
               t_superseded_verdicts_go_with_their_shards):

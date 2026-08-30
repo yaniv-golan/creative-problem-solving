@@ -825,7 +825,12 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     keeping: it is the judgement you applied, in the form you applied it, beside the run it
     belongs to.
 
-    It refuses any key that matches no placeholder, and prints what is still outstanding. A
+    It refuses a key that was never a placeholder in this report, and prints what is still
+    outstanding. A key you already filled on an earlier pass is not that — it is reported and
+    skipped, so re-running the same fill is safe. **It also refuses an empty value**: filling a
+    slot with nothing deletes it, `--check` then passes because no token is left, and the
+    judgement that belonged there is gone with no way to see it from the report. Every slot is
+    required content; if you have nothing for one, that is a finding about the run. A
     partial fill is fine — filling some by hand and the rest from a file is normal. **The shape
     that fails silently is a loop over remembered keys** — `for k, v in R.items(): if k in t: t =
     t.replace(k, v)` — where a key reconstructed from memory matches nothing, is skipped without a
