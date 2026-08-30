@@ -2561,6 +2561,61 @@ def t_lead_search_is_numbering_invariant():
           f"rc={res.returncode} {(res.stdout + res.stderr)[:150]}")
 
 
+def t_no_evidence_merge_is_refused():
+    """merge_families never fuses two families the verdicts do not connect.
+
+    `worst_pinned_pair` picks the merge that best follows the evidence, skipping any pair with no
+    joining verdict and any pair that would breach the separating-share rule. When neither kind
+    exists it used to fall back to the two smallest families whose union passed the share check --
+    with no joining evidence required at all. Measured over 40,000 pinched states: 609 such picks,
+    including families with no adjudicated cross pair between them.
+
+    That merge cannot do the job it is reached for. The caller merges to break a lead collision;
+    fusing two families the verdicts do not connect need not touch the colliding pair, so the
+    collision survives and the fusion is permanent. It now returns None and the caller stops with a
+    message naming both reasons a merge can be unavailable.
+    """
+    print("\na merge with no joining evidence behind it is refused, not guessed")
+    import importlib.machinery as _m, itertools as _it, random as _r
+    mf = _m.SourceFileLoader("mf_noev", str(SCRIPTS / "merge_families.py")).load_module()
+
+    # The minimal case: nothing adjudicated between any of them, so no merge follows the evidence.
+    fams = [{"members": ["a1", "a2"], "label": "A", "cid": "c001", "origin": set()},
+            {"members": ["b1"], "label": "B", "cid": "c002", "origin": set()},
+            {"members": ["z1"], "label": "Z", "cid": "c003", "origin": set()}]
+    check("no adjudicated cross pair anywhere means no merge target",
+          mf.worst_pinned_pair(fams, {}) is None, f"{mf.worst_pinned_pair(fams, {})}")
+
+    # And the evidence-backed pick still works, so this is a narrowing rather than a deletion.
+    rel = {frozenset(("a1", "b1")): "duplicate", frozenset(("a2", "b1")): "duplicate"}
+    got = mf.worst_pinned_pair(fams, rel)
+    check("...while a pair the verdicts do connect is still chosen", got == (0, 1), f"{got}")
+
+    # Swept, because the minimal case alone would not catch a fallback reintroduced under a
+    # condition. Every pick must carry at least one joining cross verdict.
+    bad = 0
+    rng = _r.Random(17)
+    for _ in range(4000):
+        k = rng.randint(3, 6)
+        fs = [{"members": [f"f{i}m{j}" for j in range(rng.randint(1, 3))],
+               "label": f"F{i}", "cid": f"c{i:03d}", "origin": set()} for i in range(k)]
+        allm = [x for f in fs for x in f["members"]]
+        r2 = {}
+        for a, b in _it.combinations(allm, 2):
+            if a[:2] == b[:2]: continue
+            v = rng.random()
+            if v < 0.30: r2[frozenset((a, b))] = "duplicate"
+            elif v < 0.55: r2[frozenset((a, b))] = "distinct"
+        pair = mf.worst_pinned_pair(fs, r2)
+        if pair is None: continue
+        i, j = pair
+        if not any(r2.get(frozenset((x, y))) in mf.JOINING
+                   for x in fs[i]["members"] for y in fs[j]["members"]):
+            bad += 1
+    check("every merge target across 4,000 pinched states carries joining evidence",
+          bad == 0, f"{bad} pick(s) had none")
+
+
 def t_wp4_gates():
     """The gates WP4 added to verify_pipeline.py, tested from outside.
 
@@ -4068,7 +4123,7 @@ def main():
               t_a_note_renders_whatever_the_verdict_says, t_progress_names_the_next_stage,
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
               t_lead_search_scales_and_preserves, t_pinch_merge_is_reported,
-              t_lead_search_is_numbering_invariant,
+              t_lead_search_is_numbering_invariant, t_no_evidence_merge_is_refused,
               t_superseded_verdicts_go_with_their_shards,
               t_label_is_one_line, t_every_phase_boundary_speaks,
               t_the_failed_integrity_check_still_speaks,

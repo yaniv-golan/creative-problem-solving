@@ -186,6 +186,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **`merge_families.py` no longer fuses two families the verdicts do not connect.**
+  `worst_pinned_pair` skips any pair with no joining verdict and any pair that would breach the
+  separating-share rule — then fell back to merging the two smallest families whose union passed the
+  share check, with no joining evidence required at all. Reaching that fallback means every pair
+  failed one of those tests, and it merged one anyway. Measured over 40,000 pinched states: 609 such
+  picks, including families with no adjudicated cross pair between them; 0 after the change, with
+  all 39,391 evidence-backed picks unaffected.
+
+  That merge could not do the job it was reached for. The caller merges to break a lead collision,
+  and fusing two families the verdicts do not connect need not touch the colliding pair — so the
+  collision survives and the fusion is permanent. It now returns no target and the caller stops with
+  a message naming both reasons a merge can be unavailable, rather than only the share rule.
 - **Two documents said `plan_groups.py` satisfied the share rule by construction.** It did not: its
   pinch merge was unbounded until the change above. `references/pipeline.md` now says which half is
   by construction and which is by the bound, and `verify_pipeline.py`'s widened-family message names

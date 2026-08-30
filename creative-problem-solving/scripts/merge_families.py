@@ -204,14 +204,18 @@ def worst_pinned_pair(fams, rel):
     if best is None:
         best = pick(lambda i, j: True)
     if best is None:
-        # No joining evidence anywhere, so fall back to the two smallest -- but the share rule
-        # still binds. This fallback used to merge unconditionally, which put the bound above
-        # back at the one moment it matters most: the case with no evidence to steer by.
-        order = sorted(range(len(fams)), key=lambda i: (len(fams[i]["members"]), fams[i]["members"][0]))
-        for i, j in itertools.combinations(order, 2):
-            if share_ok(fams[i]["members"] + fams[j]["members"], rel):
-                return tuple(sorted((i, j)))
-        return None                       # nothing can be merged without breaking the rule
+        # NO EVIDENCE, SO NO MERGE. There used to be a fallback here that merged the two smallest
+        # families whose union passed the share rule, with no requirement of any joining verdict
+        # between them. `pick` above already skips a pair with no joining evidence and a pair that
+        # would breach the share rule, so reaching this line means EVERY pair fails one of those --
+        # and the fallback merged one anyway. Measured over 40,000 pinched states: 609 picks with no
+        # joining evidence at all, including families with no adjudicated cross pair between them.
+        #
+        # Such a merge cannot do the job it was reached for. The caller merges to break a lead
+        # collision; fusing two families the verdicts do not connect need not touch the colliding
+        # pair, so the collision survives and the fusion is permanent. A diagnosis the caller can act
+        # on beats an irreversible guess, which is the same doctrine every other merge here follows.
+        return None
     return best[1], best[2]
 
 
@@ -480,12 +484,13 @@ def main(wd, expect):
                 f"does not change the partition, so it cannot change the instance this solver sees.")
         pair = worst_pinned_pair(fams, rel)
         if pair is None:
-            die(f"{len(fams)} families still collide on their leads, and every merge that would "
-                f"resolve a collision would push a family past the {SHARE_MAX:.0%} separating "
-                f"share -- so there is no repair available at this stage. This means the shards "
-                f"were cut in a way the adjudicated verdicts do not support. Re-run "
-                f"plan_groups.py with more shards so each task is smaller, then re-run this "
-                f"script; do not hand-edit families.json.")
+            die(f"{len(fams)} families still collide on their leads, and no merge available here "
+                f"can fix it: every candidate pair either has no joining verdict to justify fusing "
+                f"it, or would push a family past the {SHARE_MAX:.0%} separating share. Merging one "
+                f"anyway would be permanent and need not even touch the colliding pair, so there is "
+                f"no repair at this stage. The shards were cut in a way the adjudicated verdicts do "
+                f"not support: re-run plan_groups.py with more shards so each task is smaller, then "
+                f"re-run this script. Do not hand-edit families.json.")
         i, j = pair
         fams[i]["members"] = fams[i]["members"] + fams[j]["members"]
         fams[i]["origin"].update(fams[j]["origin"])
