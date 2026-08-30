@@ -45,6 +45,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   and the one place host paths legitimately live.
 
 ### Changed
+- **The README states rather than argues.** It had been explaining why each design decision was
+  allowed — nine `because` clauses — and following statements with a sentence making sure the
+  reader drew the right conclusion. The rationale belongs in `DESIGN-NOTES.md`, which carries it;
+  the README now says what the skill does and lets it land. A paragraph describing verification
+  and family grouping was also cut whole: the mermaid diagram forty lines below showed the same
+  mechanism, and the paragraph sat under "When it runs, and when it refuses", which is about
+  invoking the skill rather than how it works. The two facts it alone carried moved into "What
+  you get". Sentences average 21 words, from 24. 2,682 words to 2,531.
 - **"Does it actually work?" answers the question it asks.** It opened with "Partly", which is
   ambiguous between *works for some kinds of question* — true, and supported: it wins on open
   strategic problems and loses on bounded ones — and *we only partly know whether it works*,

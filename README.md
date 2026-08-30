@@ -8,11 +8,11 @@
 [![Agent Skills Compatible](https://img.shields.io/badge/Agent_Skills-compatible-4A90D9)](https://agentskills.io)
 [![CI](https://github.com/yaniv-golan/creative-problem-solving/actions/workflows/ci.yml/badge.svg)](https://github.com/yaniv-golan/creative-problem-solving/actions/workflows/ci.yml)
 
-**Gets you options you hadn't already thought of.** You describe a problem you're stuck on; it
+**Gets you options you hadn't already thought of.** You describe a problem you're stuck on. It
 comes back with structurally different things you could do — not five variations on the obvious
-answer with different headings. A full run takes about forty minutes and hands back one long
-document: hundreds of options across nine lenses, grouped into families, ranked, with the
-leading ones fact-checked.
+answer with different headings. A run takes about forty minutes and hands back one long document:
+hundreds of options across nine lenses, grouped into families, ranked, the leading ones
+fact-checked.
 
 **Tested on Claude.** It is built on the open [Agent Skills](https://agentskills.io) standard
 and should run on other hosts that implement it, but none have been tested — and `/ideas` needs
@@ -94,31 +94,20 @@ are compressing. We've tried raising utilisation and hiring cheaper juniors. I d
 think this model survives four more years — what else could we be?
 ```
 
-Both are the kind of problem it is for. Neither would start a run without the first few words,
-and that is the point.
+Both are the kind of problem it is for, and neither would start a run without the first few
+words.
 
 **It deliberately refuses** problems with one right answer, debugging, executing an
 already-chosen idea, or anything where you want a decision rather than options. Asked
 "Postgres or MongoDB for session storage?", it declines and just answers the question.
 
-**Grounded, and nothing thrown away.** Before generating, it retrieves what already exists and
-hands that list to every pass as a difference constraint — *your ideas must not be any of these*. Afterwards it checks by search the borrowed mechanism behind the lead option of each of the top
-13 families. Nested variants and the surrounding judgement are not checked, and everything below
-that line ships labelled unverified — naming which options were checked beats implying all of them
-were. **Nothing is deleted for being a duplicate.** Options proposing the same intervention are
-grouped into a family and shown together, each variant stating what differs; a mechanism reached
-from several unlike angles gets one place in the ranking, and every one of them stays visible. An
-integrity script enforces it, because a wrong merge is unrecoverable and a wrong grouping costs a
-line of reading — the evidence is in [`DESIGN-NOTES.md`](docs/DESIGN-NOTES.md).
-
 ## How a run works
 
 You give it the problem in your own words. It restates that as the job to be done, names the
-obvious answer and bans it, then sends the problem to nine lenses at once — inversion, first
-principles, biomimicry and six more — each worked by an agent that cannot see what the others
-are writing. That isolation is why the options come back different in kind: what a pass cannot
-see, it cannot drift toward. Everything generated is kept, paired off, judged blind, grouped by
-script, and ranked.
+obvious answer, and bans it. Then it sends the problem to nine lenses at once — inversion, first
+principles, biomimicry and six more. Each is worked by an agent that cannot see what the others
+are writing: what a pass cannot see, it cannot drift toward. Everything generated is kept, paired
+off, judged blind, grouped by script, and ranked.
 
 ```mermaid
 %% Source of truth for these stages is
@@ -153,29 +142,36 @@ flowchart TD
     GATE --> OUT[/"every option the run generated, grouped and ranked"/]
 ```
 
-Rounded boxes are a model judging; the square one is a script counting. That split is what the
-run can and cannot be argued out of. Some steps are omitted here for readability; the stages as
-the model runs them are in
+Rounded boxes are a model judging; the square one is a script counting. Some steps are omitted
+here for readability; the stages as the model runs them are in
 [`references/pipeline.md`](creative-problem-solving/skills/creative-problem-solving/references/pipeline.md).
 
 ## What you get
 
 - **Your brief gets attacked before the solution space does.** It restates your problem as the
-  job to be done, drops the loaded words from your phrasing — models reliably echo your
-  vocabulary back at you — names the obvious answer so you can measure distance from it, and
+  job to be done and drops the loaded words from your phrasing, since models reliably echo your
+  vocabulary back at you. It names the obvious answer so you can measure distance from it, and
   tests the constraints you ruled out. "It's not the money" is a conclusion, not a fact.
+- **Grounded before it generates.** It retrieves what already exists and hands that list to every
+  pass as a difference constraint: *your ideas must not be any of these*.
 - **Options that differ in kind, not in degree.** One isolated sub-agent per lens, dispatched in
   a single parallel batch, each told which lens to use and forbidden the obvious answer. They
   cannot see each other, so they cannot drift toward one another.
 - **Ideas you can act on or reject, not admire.** The ones it leads with carry a causal
-  mechanism, a precondition, a failure mode and who would have to run it — and the report cannot
-  be finished without them, because the script that builds it leaves those fields as blanks and
-  refuses a report that still has one. The next ten get a sentence each on why they rank there,
-  and everything after that is listed in rank order. Options that quietly disqualify themselves —
-  "that's a different firm now" — are named as such.
-- **Claims you can check.** Never "this is novel" — instead "I found no prior art, here's where
-  I looked, and here's who'd already be doing it if it were obvious." When prior art *is* found
-  the idea is labelled **buyable rather than inventable**, which is usually more useful.
+  mechanism, a precondition, a failure mode and who would have to run it. The script that builds
+  the report leaves those four fields blank and refuses a report that still has one. The next ten
+  get a sentence each on why they rank there, and everything after that is listed in rank order.
+  Options that quietly disqualify themselves — "that's a different firm now" — are named as such.
+- **Claims you can check.** Never "this is novel." Instead: "I found no prior art, here's where
+  I looked, and here's who'd already be doing it if it were obvious." When prior art *is* found,
+  the idea is labelled **buyable rather than inventable** — usually the more useful answer.
+- **You are told what was checked.** Search checks the borrowed mechanism behind the lead option
+  of each top-ranked family. Nested variants and the surrounding judgement are not checked, and
+  everything below that line ships labelled unverified. Naming which options were checked beats
+  implying all of them were.
+- **Nothing is deleted for being a duplicate.** Options proposing the same intervention are
+  grouped into one family, each variant stating what differs, and every one of them stays
+  visible. An integrity script enforces it.
 
 ## What you don't
 
@@ -191,16 +187,15 @@ varies a lot. Across five recorded runs the share of judged pairs called outrigh
 ranged from 19.5% down to 0.7%, and the grouped list came out anywhere from 3.3x shorter to
 **1.4x shorter**. In the two runs at the bottom of that range, **about 90% of families held a
 single option** — the report is then essentially the full list with a handful of near-repeats
-tucked together. That is an ordinary outcome rather than a broken one: options drawn from nine
-deliberately unlike angles often are not versions of each other.
+tucked together. Options drawn from nine deliberately unlike angles often are not versions of
+each other.
 
 **No count of "distinct options" is reported anywhere**, because that number is not measurable.
 
-Against those, one thing you do get: **every run reports how much to trust its own grouping.**
-Forty-eight pairs are deliberately planted twice, so that two adjudicators who cannot see each
-other judge the same pair, and the agreement rate is printed in the answer — so far it runs at
-roughly 80-90%. A run where fewer than forty of them came back from two different adjudicators
-fails, instead of printing a rate it cannot support.
+**Every run reports how much to trust its own grouping.** Forty-eight pairs are planted twice,
+so two adjudicators who cannot see each other judge the same pair. The agreement rate is printed
+in the answer, and so far runs at roughly 80-90%. A run where fewer than forty come back from two
+different adjudicators fails instead of printing a rate it cannot support.
 
 ## Reading the output
 
@@ -221,18 +216,17 @@ Well enough to be worth forty minutes on an open strategic problem — on eviden
 that you should know its shape before you trust it.
 
 **One measurement covers the pipeline you would install.** Two full runs have completed end to
-end; two more stalled and were fixed. On 50 blind cards from one problem, one judge: all 25 of
-the pipeline's options were new to the reader, and 15 were ones he would not spend anyone's time
-on — 10 he would — against a plain model's 9 of 25 worth bringing, at twenty times the
-wall-clock. Novelty and usefulness came out close to orthogonal on that data, which is why
-unusualness is explicitly not a ranking tiebreak. A per-lens quota and the survivability ranking
-both landed after that read, and neither has been measured.
+end; two more stalled and were fixed. Then 50 blind cards from one problem, one judge. All 25 of
+the pipeline's options were new to the reader; 15 were ones he would not spend anyone's time on,
+leaving 10 he would. A plain model's 25 yielded 9 worth bringing — and the pipeline spent twenty
+times the wall-clock to get there. Novelty and usefulness came out close to orthogonal there, which is why unusualness
+is explicitly not a ranking tiebreak. A per-lens quota and the survivability ranking both landed
+after that read, and neither has been measured.
 
 **Two places it has lost.** On the retention problem above, the baseline refused the "it's not
-the money" premise and was right to, while the skill took it at face value; that loss is what
-produced the premise-testing step you see in that example. And on bounded questions a plain
-answer beats it — 17/18 to 14/18. Nothing stops you spending forty minutes on a question that
-deserved five; that judgement is yours.
+the money" premise and was right to; the skill took it at face value. That loss produced the
+premise-testing step you see in that example. And on bounded questions a plain answer beats it —
+17/18 to 14/18.
 
 **The graded evals measure the 0.1.0 pipeline, not this one.** Re-running them is sequenced
 after this release, starting with the negative-trigger case and the bounded case a plain answer
@@ -242,18 +236,17 @@ not in the pipeline is in [`DESIGN-NOTES.md`](docs/DESIGN-NOTES.md).
 
 ## Requirements
 
-**The skill alone is prose** — nine files, nothing executable. That is what the release zip and
-the `.agents/skills/` mirror contain, and any host implementing the Agent Skills standard should
-be able to load it. Claude is the only one this has been tested on.
+**The skill alone is prose** — nine files, nothing executable, and that is what the release zip
+and the `.agents/skills/` mirror contain. Any host implementing the Agent Skills standard should
+load it. Claude is the only one this has been tested on.
 
-**The `/ideas` pipeline asks for more**, because the things that make it auditable are not prose:
+**The `/ideas` pipeline asks for more:**
 
 - **Sub-agent dispatch.** Generation runs one isolated agent per lens; without dispatch the
   skill falls back to sequential passes and is required to tell you it did.
 - **`python3` and a Bash tool.** Stdlib-only scripts do the set bookkeeping — sharding pairs,
   merging verdicts, partitioning options into clusters, building the report, checking the run.
-  They exist because a model that skipped a stage describes having run it exactly as convincingly
-  as one that ran it, and a stage that did not run leaves nothing to count.
+  A stage that did not run leaves nothing to count.
 - **Web search**, where the host provides it — WebSearch specifically, not WebFetch. Where there
   is none, the skill says so in one line and states borrowed mechanisms as principles rather
   than citations.
