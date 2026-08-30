@@ -18,9 +18,15 @@ import pytest
 HERE = Path(__file__).resolve().parent
 SUITES = ["test_pipeline_scripts.py", "test_hooks.py", "test_diversity.py"]
 
+# check-repo.py is a suite too -- it asserts 32 things about the tree and exits non-zero -- but its
+# name matches no discovery pattern, so `pytest tools/` ran everything EXCEPT the repo checks. CI
+# calls it directly, so nothing was broken; what was wrong is that the one command a contributor
+# reaches for was a subset of the gate without saying so.
+SUITES += ["check-repo.py"]
+
 
 def pytest_collect_file(file_path, parent):
-    if file_path.name in SUITES:
+    if file_path.name in SUITES and file_path.parent.name == "tools":
         return SuiteFile.from_parent(parent, path=file_path)
     return None
 

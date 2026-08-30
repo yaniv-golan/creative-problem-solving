@@ -3260,6 +3260,32 @@ def t_a_note_renders_whatever_the_verdict_says():
     finally:
         shutil.rmtree(d, True)
 
+    # THE OTHER HALF: a note the report genuinely CANNOT place. A note renders in a family's
+    # block, which only the lead gets, so a note on a non-lead member has nowhere to go. The run
+    # used to absorb it into "each is rendered under its option in the report" — a blanket claim
+    # over notes that did not render. It must be named instead.
+    d = tempfile.mkdtemp()
+    try:
+        ids, fams = full_fixture(d, multi=True)
+        multi = [f for f in fams if len(f["members"]) > 1]
+        check("the fixture has a family with a non-lead member to put a note on", bool(multi),
+              "every family is a singleton; this case cannot be built from it")
+        if multi:
+            follower = multi[0]["members"][1]
+            vf = os.path.join(d, "verified-1.json")
+            v = json.load(open(vf))
+            v["checked"].append({"id": follower, "query": "q", "verdict": "unclear",
+                                 "note": "a note nothing can render"})
+            json.dump(v, open(vf, "w"))
+            rc, out = run("verify_pipeline.py", d)
+            check("a note on a non-lead member is named as unplaceable",
+                  "cannot place" in out and follower in out, out.strip()[:200])
+            check("...and is NOT counted among the notes said to render",
+                  "1 of" in out or "0 of" in out,
+                  [l for l in out.split("\n") if "rendered under its option" in l][:1])
+    finally:
+        shutil.rmtree(d, True)
+
 
 def t_superseded_shards_do_not_linger():
     """A re-sharding that produces FEWER shards must not leave the old ones matching cand-*.json.
@@ -3350,6 +3376,37 @@ def t_superseded_verdicts_go_with_their_shards():
         rc, out = run("merge_relations.py", d)
         check("a live shard that came back short is no longer masked by stale verdicts",
               rc != 0 and "shard 2" in out, out.strip()[:160])
+
+        # THE REMEDY THIS ERROR NAMES MUST CLEAR IT. Asserted here and not only in
+        # t_shard_coverage_check, because a future edit to the sweep would be checked against the
+        # control's fixture rather than this one -- and a refusal whose named action does not
+        # clear it is worse than the defect it catches.
+        json.dump({"relations": [{"a": a, "b": b, "relation": "distinct"}
+                                 for a, b in [drop]]},
+                  open(os.path.join(d, "relations-9.json"), "w"))
+        rc, out = run("merge_relations.py", d)
+        check("...and the remedy it names clears it", rc == 0, out.strip()[:160])
+
+        # AND THE PROBE IS UNTOUCHED. The stale file used to pad the union; the point of renaming
+        # it is that an intact run counts exactly what the sharder planted, no more.
+        planted = json.load(open(os.path.join(d, "agreement.json")))["probe_pairs"]
+        for k, ps in cur.items():
+            json.dump({"relations": [{"a": a, "b": b, "relation": "distinct"} for a, b in ps]},
+                      open(os.path.join(d, f"relations-{k}.json"), "w"))
+        os.remove(os.path.join(d, "relations-9.json"))
+        # ANTI-VACUITY: a duplicate verdict file DOES move this number, so the equality above is
+        # a real constraint rather than two constants that happen to agree.
+        json.dump({"relations": [{"a": a, "b": b, "relation": "distinct"} for a, b in cur["1"]]},
+                  open(os.path.join(d, "relations-77.json"), "w"))
+        run("merge_relations.py", d)
+        _moved = json.load(open(os.path.join(d, "agreement.json")))["probe_pairs"]
+        os.remove(os.path.join(d, "relations-77.json"))
+        rc, out = run("merge_relations.py", d)
+        intact = json.load(open(os.path.join(d, "agreement.json")))["probe_pairs"]
+        check("a duplicate verdict file DOES move the probe count", _moved != planted,
+              f"planted={planted} with-duplicate={_moved} — if equal, the check below is vacuous")
+        check("an intact run's probe count is what the sharder planted, not what stale files add",
+              rc == 0 and intact == planted, f"planted={planted} intact={intact} {out.strip()[:110]}")
     finally:
         shutil.rmtree(d, True)
 

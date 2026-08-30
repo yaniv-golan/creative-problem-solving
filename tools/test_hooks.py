@@ -53,15 +53,21 @@ def t_transcript_markers():
     ever validated, and when nothing matched it emitted neither ok nor fail, so deleting the
     assertion made the check evaporate silently.
     """
-    import importlib.machinery, importlib.util
+    import ast, re as _re
     _src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "check-repo.py")
-    # check-repo.py runs its checks at import against the real repo, so it cannot be imported.
-    # Read the one function out of it instead — which is why F6 extracted it in the first place.
+    # check-repo.py runs its checks at import against the real repo, so it cannot be imported and
+    # the one function has to be lifted out. Located by PARSING rather than by slicing between two
+    # string landmarks: the landmark version broke on any edit to the line after the function, and
+    # a test that reds when its neighbour moves reads as a failure of the thing under test.
     _text = open(_src, encoding="utf-8").read()
-    _start = _text.index("def transcript_markers(")
-    _end = _text.index("\n_texts = ", _start)
-    _ns = {"re": __import__("re")}
-    exec(compile(_text[_start:_end], "check-repo.py", "exec"), _ns)
+    _fn = next((n for n in ast.parse(_text).body
+                if isinstance(n, ast.FunctionDef) and n.name == "transcript_markers"), None)
+    check("check-repo.py still defines transcript_markers as a module-level function", _fn is not None,
+          "renamed or inlined — this test cannot reach it, and F6's two failure modes go untested")
+    if _fn is None:
+        return
+    _ns = {"re": _re}
+    exec(compile(ast.Module(body=[_fn], type_ignores=[]), "check-repo.py", "exec"), _ns)
     tm = _ns["transcript_markers"]
 
     check("a double-quoted marker is found",
