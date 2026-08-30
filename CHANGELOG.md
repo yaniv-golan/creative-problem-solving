@@ -45,6 +45,22 @@ project adheres to [Semantic Versioning](https://semver.org/).
   and the one place host paths legitimately live.
 
 ### Changed
+- **"Does it actually work?" answers the question it asks.** It opened with "Partly", which is
+  ambiguous between *works for some kinds of question* — true, and supported: it wins on open
+  strategic problems and loses on bounded ones — and *we only partly know whether it works*,
+  which is what the section then spent its length demonstrating. It now opens by saying which
+  claim it is making. The 0.1.0 paragraph, whose numbers are better than anything the current
+  pipeline can show, drops to a sentence and a link; keeping a superseded architecture's
+  strongest results inline was flattering in the one section whose job is not to be. 357 words
+  to 282.
+
+- **The "roughly 21 useful ideas against 18" figure is no longer stated in the README.** The
+  measurement it derives from is 25 pipeline options with 15 not worth the reader's time, against
+  a plain model's 9 of 25 — that is 10 against 9, and no derivation from those to 21 against 18
+  is recorded anywhere in this repository. The README now gives the counted numbers and shows the
+  subtraction. The derived pair is left as-is in this file and in `DESIGN-NOTES.md`, which record
+  what was said at the time; it should not be repeated in user-facing prose until someone can
+  reproduce the step. Note that the counted result is the weaker of the two.
 
 - **The README stages its caveats instead of applying them all at the front door.** Every
   qualification landed at the same altitude as every claim, including in the first screen, where

@@ -217,34 +217,28 @@ get it as a file to keep. [Where a run writes its files →](INSTALL.md#where-a-
 
 ## Does it actually work?
 
-Partly, and the honest version is worth two minutes.
+Well enough to be worth forty minutes on an open strategic problem — on evidence thin enough
+that you should know its shape before you trust it.
 
-**What is measured about the pipeline you would install is thin, and it is all here.** Two full
-runs have completed end to end; two more stalled and were fixed. On 50 blind cards from one
-problem, one judge: the pipeline's 25 options were **all** new to the reader and 15 were ones he
-would not spend anyone's time on, against a plain model's 9 of 25 worth bringing. That is roughly **21 useful ideas against 18, at twenty times the wall-clock**.
-Novelty and usefulness turned out close to orthogonal on that data, which is why unusualness is
-explicitly not a ranking tiebreak. Two things landed after that measurement — a per-lens quota
-and the survivability ranking — and neither has been measured.
+**One measurement covers the pipeline you would install.** Two full runs have completed end to
+end; two more stalled and were fixed. On 50 blind cards from one problem, one judge: all 25 of
+the pipeline's options were new to the reader, and 15 were ones he would not spend anyone's time
+on — 10 he would — against a plain model's 9 of 25 worth bringing, at twenty times the
+wall-clock. Novelty and usefulness came out close to orthogonal on that data, which is why
+unusualness is explicitly not a ranking tiebreak. A per-lens quota and the survivability ranking
+both landed after that read, and neither has been measured.
 
-**Two places it has lost.** On the retention problem shown above, the baseline refused the "it's
-not the money" premise and was right to, while the skill took it at face value; that loss is
-what produced the premise-testing step you see in that example. And on bounded questions a plain
+**Two places it has lost.** On the retention problem above, the baseline refused the "it's not
+the money" premise and was right to, while the skill took it at face value; that loss is what
+produced the premise-testing step you see in that example. And on bounded questions a plain
 answer beats it — 17/18 to 14/18. Nothing stops you spending forty minutes on a question that
 deserved five; that judgement is yours.
 
-**The graded evals have not been re-run against this architecture, and that is a decision rather
-than an oversight.** Everything in [`evals/`](evals/README.md) measures the pipeline as it stood
-at 0.1.0. The cases are runnable now, one `cowork-harness run` each, and they are sequenced
-after this release. First back are the negative-trigger case and the bounded case where a plain
-answer beat the skill — the honest two to start with.
-
-The 0.1.0 architecture measured better than this one does on paper — 6.60 structurally distinct
-options against a plain prompt's 4.00, with a judge splitting ten unlabelled answers 10/10 along
-the arms — and it also produced three findings that cut the other way, including a
-pre-registered second prompt that did not clear. Every number and every counter-finding is in
-[`evals/`](evals/README.md). Why category negation is in the skill but not in the pipeline is in
-[`DESIGN-NOTES.md`](docs/DESIGN-NOTES.md).
+**The graded evals measure the 0.1.0 pipeline, not this one.** Re-running them is sequenced
+after this release, starting with the negative-trigger case and the bounded case a plain answer
+won — the honest two to begin with. Every 0.1.0 number, including the three findings that cut
+against the skill, is in [`evals/`](evals/README.md). Why category negation is in the skill but
+not in the pipeline is in [`DESIGN-NOTES.md`](docs/DESIGN-NOTES.md).
 
 ## Requirements
 
