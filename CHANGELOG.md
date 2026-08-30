@@ -186,6 +186,31 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **The pinch merge is bounded by the separating-share rule.** Merging two clusters whose every lead
+  choice collides was the one merge in the pipeline bounded by nothing — every other is bounded that
+  way — and it wrote a cluster over the rule on 489 of 10,000 random instances, worst 60% against a
+  15% limit. It now merges only a pair whose union stays inside the rule, in the same order as
+  before, and refuses with a diagnosis when no pair qualifies.
+
+  **Nothing downstream was catching it.** The obvious argument for merging anyway — a widened family
+  dies at a later gate — is false: a grouper that splits the fused cluster back along its seam yields
+  two families that both pass, and `agents/grouper.md` tells it to split when unsure. The breach was
+  silent, not deferred, and the refusal message says so rather than promising a later failure.
+
+  **The bound is the whole change; ranking the candidates was measured and rejected.** Ordering by
+  joining density picks a pair that does not resolve the collision, so the loop iterates again —
+  2 merges where the plain order needs 1 — and it drove an instance whose every candidate was legal
+  into a refusal. A pinch merge is irreversible, so more merges is a safety regression. Acceptance
+  test over 4,000 generated instances: never merges more than before, never refuses where the
+  previous behaviour finished legally, and all 8 preserved datasets byte-identical.
+
+  The bound is vacuous below `SHARE_MIN_ADJUDICATED`, which is where the only preserved instance
+  sits. Whether a floor written for reporting a breach should also gate a merge decision is left
+  open rather than settled quietly.
+
+- **`t_pinch_merge_is_reported` pinned a merge that broke the rule.** Its fixture fused a family at
+  40% separating share — the repo's own demonstration of the feature demonstrated the defect. It is
+  kept as the refusal case, and a second fixture covers a merge that stays within the rule.
 - **A family label a grouper wrote could carry a newline all the way to the reader.** Nothing in
   `scripts/` scrubbed line breaks: `merge_families.py` took `.strip()`, which is leading and
   trailing only. `build_report.py` prints the label as `### {rank}. {label}`, so a label with a

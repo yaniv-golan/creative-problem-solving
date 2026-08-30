@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load
 # The share rule and the verdict vocabulary, defined once in verdicts.py. This file used to
 # carry its own copy of both plus its own share_ok, mirroring verify_pipeline.py by hand.
-from verdicts import JOINING, SEPARATING, share_ok  # noqa: F401
+from verdicts import JOINING, SEPARATING, SHARE_MAX, share_ok, share_breach  # noqa: F401
 from verdicts import relation_of
 
 # Disagreement weights. `duplicate` is the strongest evidence of sameness and `distinct` the
@@ -428,12 +428,42 @@ def main(wd, max_task, split_over):
     # action, was not true (the cross verdicts were implementation_variant and distinct, not all
     # the same intervention), and cost about eleven minutes of improvised repair.
     #
-    # Merging follows the same doctrine merge_families.py already applies: when nothing can
-    # separate two groups' leads, they are one group, and merging contradicts no verdict. Only a
-    # COMPLETED search licenses it.
+    # Merging follows the doctrine merge_families.py applies: when nothing can separate two groups'
+    # leads, they are one group. Only a COMPLETED search licenses it, and -- as of this change -- only
+    # where the merge keeps the result inside the separating-share rule.
+    #
+    # It does NOT follow that merging contradicts no verdict. This comment used to say so and the
+    # repo's own preserved data refutes it: on the critique-repro run the fused family contains a
+    # pair the adjudicators called `distinct`. That is the price of the merge, not an argument that
+    # there is no price -- which is why the share rule now bounds it and the summary names it.
+    #
+    # BOUNDED BY THE SHARE RULE, AND BY NOTHING ELSE. Every other merge in this codebase is bounded
+    # that way; this one was not, and wrote a cluster over the rule on 489 of 10,000 random
+    # instances, worst 60% against a 15% limit. Ranking the candidates by anything cleverer was
+    # measured and rejected: ordering by joining density picks a pair that does not resolve the
+    # collision, so the loop iterates again -- 2 merges where the plain order needs 1 (seed 702) --
+    # and drives an instance every one of whose candidates was legal into a refusal (seed 250). A
+    # pinch merge is the one irreversible act here, so more merges is a safety regression.
+    #
+    # The bound is vacuous below verdicts.SHARE_MIN_ADJUDICATED, which is where the only preserved
+    # instance sits (3 adjudicated pairs in the union). Whether that floor -- written for REPORTING a
+    # breach -- should also gate a merge DECISION is a live question, and not one this bound settles.
     merged_pinch = 0
     while viol and proven:
-        i, j = min(((a, b) for a, b in viol), key=lambda p: (clusters[p[0]][0], clusters[p[1]][0]))
+        # Same order as before among the pairs that pass, so the choice is unchanged wherever the
+        # least pair was already within the rule.
+        legal = [(a, b) for a, b in viol if share_ok(sorted(clusters[a] + clusters[b]), rel)]
+        if not legal:
+            s_, j_, sh_ = share_breach(sorted(clusters[viol[0][0]] + clusters[viol[0][1]]), rel)
+            die(f"{len(viol)} cluster pair(s) collide on every lead choice, and merging any of them "
+                f"would push a cluster past the {SHARE_MAX:.0%} separating-share rule (the first "
+                f"would reach {sh_:.0%}, {s_} separating of {s_ + j_} adjudicated). So the verdicts "
+                f"support neither separating these clusters nor joining them, and there is no repair "
+                f"at this stage. Nothing downstream would catch it either: a grouper that splits the "
+                f"fused cluster back along its seam yields two families that both pass, so this "
+                f"would ship silently rather than fail later. Re-adjudicate the pairs inside these "
+                f"clusters, or re-run with a larger candidate set so the partition has more to go on.")
+        i, j = min(legal, key=lambda p: (clusters[p[0]][0], clusters[p[1]][0]))
         clusters[i] = sorted(clusters[i] + clusters[j])
         clusters.pop(j)
         merged_pinch += 1

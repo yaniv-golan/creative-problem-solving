@@ -2428,44 +2428,57 @@ def t_lead_search_scales_and_preserves():
 
 
 def t_pinch_merge_is_reported():
-    """A pinch merge is the one irreversible thing plan_groups does, and it was silent.
+    """A pinch merge is named in the summary, and refused when it would break the share rule.
 
-    Two clusters whose every lead pair collides cannot be separated, so they are reported as one
-    family -- a fusion no later stage can detect and no reader was told about. `merged_pinch` was
-    counted and never printed, so a run that fused two families looked exactly like one that did
-    not, in the summary and in clusters.json alike.
+    Merging two clusters whose every lead pair collides is the one irreversible thing plan_groups
+    does -- two families the adjudicators kept apart become one, and no later stage can tell. It was
+    counted and never printed, so a run that fused families looked exactly like one that did not.
 
-    The fixture is a real end-to-end run rather than a direct `choose_leads` call, because the
-    partition absorbs most pinches before the lead search ever sees them: a pinch has to survive
-    agglomeration, which needs the intransitivity the doctrine comment describes. This input was
-    found by fuzzing for exactly that and is pinned here so the path stays covered.
+    It was also unbounded, where every other merge in the codebase is bounded by the separating-share
+    rule: 489 of 10,000 random instances wrote a cluster over it, worst 60% against a 15% limit. The
+    seed-5 fixture below is the one this test used to pin as a *successful* merge, and it fused a
+    family at 40% -- the repo's own demonstration of the feature was a demonstration of the defect.
+    It is kept, now as the refusal case.
+
+    Both fixtures drive the real end-to-end script rather than calling choose_leads, because the
+    partition absorbs most pinches before the lead search sees them: reaching one needs the
+    intransitivity the doctrine comment describes. They were found by sweeping the generator.
     """
-    print("\na pinch merge is named in the summary rather than counted silently")
+    print("\na pinch merge is named in the summary, and refused when it would breach the share rule")
     import random as _r, itertools as _it, subprocess as _sp, tempfile as _tf
-    rng = _r.Random(5)
-    n = rng.randint(8, 14)
-    ids = [f"p{1+i//5}-{i%5:03d}" for i in range(n)]
-    rel = []
-    for a, b in _it.combinations(ids, 2):
-        r = rng.random()
-        rel.append({"a": a, "b": b, "relation":
-                    "duplicate" if r < 0.18 else "implementation_variant" if r < 0.42
-                    else "shared_component" if r < 0.6 else "distinct"})
-    d = _tf.mkdtemp(); w = os.path.join(d, "_work"); os.makedirs(w)
-    pools = {}
-    for i in ids: pools.setdefault(i.split("-")[0], []).append({"id": i})
-    for k, (pk, items) in enumerate(sorted(pools.items()), 1):
-        json.dump({"items": items, "lens": pk, "pool": k},
-                  open(os.path.join(w, f"pool-{k}.json"), "w"))
-    json.dump({"relations": rel}, open(os.path.join(w, "relations.json"), "w"))
-    res = _sp.run([sys.executable, str(SCRIPTS / "plan_groups.py"), w],
-                  capture_output=True, text=True)
-    check("the fixture still reaches a pinch merge at all",
-          res.returncode == 0 and "pinch merge" in res.stdout,
-          f"rc={res.returncode} out={res.stdout[-200:]}")
+
+    def _run(seed):
+        rng = _r.Random(seed)
+        n = rng.randint(8, 14)
+        ids = [f"p{1+i//5}-{i%5:03d}" for i in range(n)]
+        rel = []
+        for a, b in _it.combinations(ids, 2):
+            r = rng.random()
+            rel.append({"a": a, "b": b, "relation":
+                        "duplicate" if r < 0.18 else "implementation_variant" if r < 0.42
+                        else "shared_component" if r < 0.6 else "distinct"})
+        d = _tf.mkdtemp(); w = os.path.join(d, "_work"); os.makedirs(w)
+        pools = {}
+        for i in ids: pools.setdefault(i.split("-")[0], []).append({"id": i})
+        for k, (pk, items) in enumerate(sorted(pools.items()), 1):
+            json.dump({"items": items, "lens": pk, "pool": k},
+                      open(os.path.join(w, f"pool-{k}.json"), "w"))
+        json.dump({"relations": rel}, open(os.path.join(w, "relations.json"), "w"))
+        res = _sp.run([sys.executable, str(SCRIPTS / "plan_groups.py"), w],
+                      capture_output=True, text=True)
+        return res.returncode, res.stdout + res.stderr
+
+    rc, out = _run(24)
+    check("a within-rule pinch merge still completes the run",
+          rc == 0 and "pinch merge(s)" in out, f"rc={rc} {out[-160:]}")
     check("...and the summary says clusters were fused, not just that clusters exist",
-          "pinch merge(s)" in res.stdout and "one family" in res.stdout,
-          res.stdout[-200:])
+          "one family" in out, out[-160:])
+
+    rc2, out2 = _run(5)
+    check("a pinch merge that would breach the separating-share rule is refused",
+          rc2 != 0 and "separating-share rule" in out2, f"rc={rc2} {out2[-200:]}")
+    check("...and the refusal does not claim a later gate would have caught it",
+          "ship silently" in out2 and "would have" not in out2, out2[-200:])
 
 
 def t_lead_search_is_numbering_invariant():
