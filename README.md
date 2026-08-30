@@ -15,8 +15,8 @@ hundreds of options across nine lenses, grouped into families, ranked, the leadi
 fact-checked.
 
 **Tested on Claude.** It is built on the open [Agent Skills](https://agentskills.io) standard
-and should run on other hosts that implement it, but none have been tested — and `/ideas` needs
-sub-agent dispatch, `python3` and web search.
+and should run on other hosts that implement it, but none have been tested — and a full run
+needs sub-agent dispatch, `python3` and web search however you ask for it.
 
 **[Install →](INSTALL.md)**
 
@@ -32,37 +32,42 @@ What can we actually do about this?
 
 It refuses to take your framing on trust, and tells you what to measure first:
 
-> **Before any of this: you don't yet know which clock is running.** Four candidates — (a) it's
-> a calendar artefact, a vesting event or a hiring-cohort spike rather than an experience curve;
-> (b) the build they were hired for shipped and the job went custodial; (c) someone above them
-> stopped growing the size of decisions they own; (d) the company stopped opening new hard
-> problems faster than they finish them. Cheapest way to separate them: plot every departure
-> against two dates — their start date, and the date their biggest project shipped or got
-> cancelled.
+> **"It's not the money" may be a conclusion rather than a fact.** Benchmarks price year-one
+> offers — at month 18 a competing offer carries a fresh four-year grant and a signing bonus
+> against a grant that is part-vested at an old strike, so matched-at-hire can be unmatched now.
+> Comparing unvested value ahead of each departing person against the offer they took is a cheap
+> check, and if it comes back large it changes which half of this list matters.
 
 Then it gives you options that differ in kind, each with what has to be true, how it fails, and
 who would actually have to run it:
 
-> ### Treat unsolved problems as a stock with a depletion rate
+> ### Assign a persistent, exclusive domain, client, or system to own
 >
-> A strong person consumes the hard problems that existed when they arrived, at a rate. If you
-> open new fronts more slowly than that, a fixed-tenure exit is arithmetic, not sentiment — and
-> every people-side intervention is treating a roadmap problem with an HR instrument. Count it
-> directly: how many genuinely unsolved, consequential problems are open right now, and how many
-> people do you have who could lead one? Below 1:1 and the 18-month number is your answer rather
-> than your mystery.
-> - What has to be true: your market supports opening new fronts.
-> - Failure mode / cost: opening fronts you can't fund produces a graveyard of cancelled
->   projects, which loses the same people faster.
-> - Who runs it: the CEO. This is a company-shape decision, not a management one.
+> Like cleaner wrasse who hold fixed reef stations that client fish return to repeatedly, assign
+> each senior engineer a standing internal 'client' unit whose problems route only through them.
+>
+> *Checked — [ncbi.nlm.nih.gov](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3123342/)*
+>
+> *Note — The biology is confirmed, with a wrinkle the analogy leans on: the literature
+> distinguishes 'resident' clients, which depend on one local station, from 'visitor' clients,
+> which have access to several and choose among cleaners. So exclusive routing describes only
+> part of the natural system.*
+>
+> It changes what the seat is rather than what it costs, and drawing a permanent ownership
+> boundary is something an engineering manager can do this quarter without asking anyone.
+> - **What has to be true:** There is a domain narrow enough to be one person's and consequential
+>   enough that owning it is real authority.
+> - **Failure mode / cost:** A bus factor of one, and an owner who becomes a bottleneck; the
+>   cleaner-wrasse literature carries the same warning in reverse — the highest-value clients keep
+>   the right to switch stations, so the internal counterparty needs an escape route or the
+>   arrangement turns into a toll booth.
+> - **Who runs it:** Whoever controls team and system boundaries — a head of engineering, or an
+>   EM with a charter they can sign.
 
-Verbatim from a graded run on the 0.1.0 pipeline, which reported a handful of options after
-pruning the rest; a run today presents every option it generated. The
-[full answer](evals/transcripts/iteration-5/eval-5-holdout-retention/with_skill/outputs/response.md)
-is in this repo, next to
-[what the same model produced without the skill](evals/transcripts/iteration-5/eval-5-holdout-retention/without_skill/outputs/response.md).
-On this particular problem the baseline won a point worth reading — see
-[Does it actually work?](#does-it-actually-work) below.
+Verbatim from a run on 2026-08-30: 270 options across nine lenses, grouped into 113 families,
+44 minutes. The
+[full report](evals/transcripts/capture-2026-08-30-retention/outputs/report.md) is in this repo
+with [what the run measured about itself](evals/transcripts/capture-2026-08-30-retention/capture_metadata.json).
 
 ## When it runs, and when it refuses
 
@@ -194,8 +199,10 @@ each other.
 
 **Every run reports how much to trust its own grouping.** Forty-eight pairs are planted twice,
 so two adjudicators who cannot see each other judge the same pair. The agreement rate is printed
-in the answer, and so far runs at roughly 80-90%. A run where fewer than forty come back from two
-different adjudicators fails instead of printing a rate it cannot support.
+in the answer, and across five recorded runs has landed between **75% and 85%** — so roughly one
+judged pair in five is a coin toss between two readers of the same evidence. A run where fewer
+than forty come back from two different adjudicators fails instead of printing a rate it cannot
+support.
 
 ## Reading the output
 
@@ -220,13 +227,15 @@ end; two more stalled and were fixed. Then 50 blind cards from one problem, one 
 the pipeline's options were new to the reader; 15 were ones he would not spend anyone's time on,
 leaving 10 he would. A plain model's 25 yielded 9 worth bringing — and the pipeline spent twenty
 times the wall-clock to get there. Novelty and usefulness came out close to orthogonal there, which is why unusualness
-is explicitly not a ranking tiebreak. A per-lens quota and the survivability ranking both landed
-after that read, and neither has been measured.
+is explicitly not a ranking tiebreak. The per-lens quota and the survivability ranking are
+unmeasured.
 
-**Two places it has lost.** On the retention problem above, the baseline refused the "it's not
-the money" premise and was right to; the skill took it at face value. That loss produced the
-premise-testing step you see in that example. And on bounded questions a plain answer beats it —
-17/18 to 14/18.
+The run shown at the top of this page was graded against two claims and met both: that it tests
+a ruled-out premise instead of obeying it, and that at least one option questions the framing.
+One run is not a rate.
+
+**On bounded questions a plain answer beats it** — 17/18 to 14/18. The forty minutes is the
+whole cost, and on a question that deserved five it is a bad trade.
 
 **The graded evals measure the 0.1.0 pipeline, not this one.** Re-running them is sequenced
 after this release, starting with the negative-trigger case and the bounded case a plain answer
@@ -240,7 +249,7 @@ not in the pipeline is in [`DESIGN-NOTES.md`](docs/DESIGN-NOTES.md).
 and the `.agents/skills/` mirror contain. Any host implementing the Agent Skills standard should
 load it. Claude is the only one this has been tested on.
 
-**The `/ideas` pipeline asks for more:**
+**A full run asks for more:**
 
 - **Sub-agent dispatch.** Generation runs one isolated agent per lens; without dispatch the
   skill falls back to sequential passes and is required to tell you it did.

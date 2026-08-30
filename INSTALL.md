@@ -4,7 +4,7 @@
 other hosts because the skill uses the open [Agent Skills](https://agentskills.io) standard and
 *should* work on them — ChatGPT most likely, others probably — but none of them have been
 verified, and a host missing sub-agent dispatch, `python3` or web search runs a weaker version of
-`/ideas` than the one described. If you try one, a report either way is genuinely useful.
+the pipeline than the one described, however you ask for it. If you try one, a report either way is genuinely useful.
 
 The skill uses the open [Agent Skills](https://agentskills.io) standard, so most hosts install
 it the same way: point them at this repository, or drop the release zip in their skills folder.
@@ -171,7 +171,7 @@ tool restrictions described above are not in force. Where `commands/` is not reg
 no `/ideas`; ask for the skill by name instead. Claude is the only host any of this has been
 tested on.
 
-Everything below `/ideas` degrades rather than breaking: a host with no sub-agent dispatch, no
+Every requirement below degrades rather than breaking: a host with no sub-agent dispatch, no
 Bash tool or no web search still runs the skill, and the skill is required to name the downgrade
 in one line rather than describing a run it did not have. Those three degrade differently, and
 `references/pipeline.md` says how for each — including what a zip or `.agents/` install gives up
@@ -181,7 +181,7 @@ ship with the plugin.
 
 ## Where a run writes its files
 
-`/ideas` writes everything it produces under `outputs/<timestamp>/` in its working directory:
+A run writes everything it produces under `outputs/<timestamp>/` in its working directory:
 the report, every option generated, the adjudicators' verdicts, and `_work/brief.json`, which
 holds your problem as you stated it.
 
@@ -189,7 +189,7 @@ holds your problem as you stated it.
 deliberate. The integrity check counts what is on disk, so a stage file that was tidied away is
 indistinguishable from a stage that never ran, and a pipeline able to delete its own evidence
 cannot prove it did not skip a step. Old run directories accumulate; they are small, and
-clearing them is your call, not the run's. If you invoke `/ideas` inside a git repository, add
+clearing them is your call, not the run's. If you start a run inside a git repository, add
 `outputs/` to its `.gitignore` — the contents are yours, and committing them is rarely what you
 want.
 

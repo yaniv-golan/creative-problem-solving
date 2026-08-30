@@ -1,0 +1,130 @@
+{
+  "probe_pairs": 48,
+  "self_judged_excluded": 0,
+  "agreed": 37,
+  "disagreed": 11,
+  "agreement_rate": 0.7708333333333334,
+  "resolved_toward_separation": [
+    {
+      "pair": [
+        "p6-001",
+        "p9-020"
+      ],
+      "verdicts": [
+        "distinct",
+        "implementation_variant"
+      ],
+      "kept": "distinct"
+    },
+    {
+      "pair": [
+        "p1-024",
+        "p8-026"
+      ],
+      "verdicts": [
+        "duplicate",
+        "implementation_variant"
+      ],
+      "kept": "implementation_variant"
+    },
+    {
+      "pair": [
+        "p1-004",
+        "p5-005"
+      ],
+      "verdicts": [
+        "duplicate",
+        "implementation_variant"
+      ],
+      "kept": "implementation_variant"
+    },
+    {
+      "pair": [
+        "p6-001",
+        "p8-021"
+      ],
+      "verdicts": [
+        "implementation_variant",
+        "shared_component"
+      ],
+      "kept": "shared_component"
+    },
+    {
+      "pair": [
+        "p1-027",
+        "p2-005"
+      ],
+      "verdicts": [
+        "distinct",
+        "implementation_variant"
+      ],
+      "kept": "distinct"
+    },
+    {
+      "pair": [
+        "p1-024",
+        "p2-021"
+      ],
+      "verdicts": [
+        "distinct",
+        "implementation_variant"
+      ],
+      "kept": "distinct"
+    },
+    {
+      "pair": [
+        "p1-004",
+        "p8-006"
+      ],
+      "verdicts": [
+        "implementation_variant",
+        "shared_component"
+      ],
+      "kept": "shared_component"
+    },
+    {
+      "pair": [
+        "p1-004",
+        "p8-009"
+      ],
+      "verdicts": [
+        "duplicate",
+        "implementation_variant"
+      ],
+      "kept": "implementation_variant"
+    },
+    {
+      "pair": [
+        "p2-021",
+        "p5-006"
+      ],
+      "verdicts": [
+        "distinct",
+        "implementation_variant"
+      ],
+      "kept": "distinct"
+    },
+    {
+      "pair": [
+        "p1-004",
+        "p9-027"
+      ],
+      "verdicts": [
+        "implementation_variant",
+        "shared_component"
+      ],
+      "kept": "shared_component"
+    },
+    {
+      "pair": [
+        "p2-021",
+        "p2-028"
+      ],
+      "verdicts": [
+        "duplicate",
+        "implementation_variant"
+      ],
+      "kept": "implementation_variant"
+    }
+  ]
+}

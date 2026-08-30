@@ -1,0 +1,49 @@
+{
+  "capture_name": "retention-demo-current-pipeline",
+  "date": "2026-08-30",
+  "purpose": "Re-run of the README's worked example on the current pipeline. The example shown in README.md had been captured on 0.1.0, an architecture that pruned to a shortlist and no longer exists, so the caption had to disclaim the demo directly beneath it.",
+  "scenario": "tests/scenarios/demo-retention-capture.yaml",
+  "harness": "cowork-harness 3.0.0, container fidelity",
+  "model": "claude-opus-5 (sub-agents: claude-opus-5, claude-sonnet-5)",
+  "baseline": "desktop-1.40609.0",
+  "prompt": "/creative-problem-solving:ideas We keep losing senior engineers to bigger companies at around the 18-month mark. Comp is already competitive — we benchmark and we match. It's not the money. What can we actually do about this? This is all the information available, so don't ask me any questions; where something is missing, make a reasonable assumption and state it in your response.",
+  "result": "success — all 5 assertions passed",
+  "assertions_passed": [
+    "result: success",
+    "skill_triggered",
+    "tool_called: WebSearch",
+    "questions_count_max: 1",
+    "semantic_matches: 2/2 rubric claims"
+  ],
+  "rubric": [
+    "Tests the ruled-out constraint rather than obeying it — probes whether 'it's not the money' actually holds before setting money aside",
+    "At least one option questions the framing — whether losing senior engineers at 18 months is necessarily the problem to solve"
+  ],
+  "measured": {
+    "options_generated": 270,
+    "families": 113,
+    "compression_x": 2.39,
+    "nested_variants": 157,
+    "adjudicator_agreement": 0.7708,
+    "probe_pairs": 48,
+    "agreed": 37,
+    "sub_agents": 34,
+    "wall_clock_s": 2648,
+    "cost_usd": 14.99,
+    "report_words": 10400,
+    "source_urls": 7
+  },
+  "why_this_matters": "The 0.1.0 run took 'it's not the money' at face value while the plain baseline refused the premise and was right to. That loss produced Phase 0's premise-testing step. This is the first run in which that step is measured on the problem that caused it, and an independent judge scored the claim as passing.",
+  "caveat": "ONE REP. evals/README.md is explicit that the signal is a claim's pass rate across three or more reps. This shows the premise test fired on this run, not that it reliably fires.",
+  "known_issue": {
+    "summary": "plan_groups.py could not prove lead-assignment infeasible at any budget; the run wrote a forward-checking driver and monkey-patched choose_leads to finish the stage.",
+    "budgets_tried": [
+      "--lead-budget 200000",
+      "--lead-budget 20000000",
+      "--max-task 25"
+    ],
+    "artifact": "plan_groups_fc.py (preserved beside this file; the run wrote it to the session scratchpad, where it would have been reclaimed at session end)",
+    "impact": "The grouping in this capture is partly the product of code the run wrote. Objective and tie-breaks are unchanged and every verify_pipeline relation held, but the checks establish stage consistency, not that the shipped code produced it.",
+    "recorded_in": "docs/INCIDENTS.md"
+  }
+}

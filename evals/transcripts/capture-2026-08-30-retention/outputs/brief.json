@@ -1,0 +1,9 @@
+{"verbatim_prompt": "We keep losing senior engineers to bigger companies at around the 18-month mark. Comp is already competitive — we benchmark and we match. It's not the money. What can we actually do about this? This is all the information available, so don't ask me any questions; where something is missing, make a reasonable assumption and state it in your response.",
+ "reading": "Reading this as: at ~18 months the job stops supplying new scope, judgement and reputational standing faster than a larger employer offers to supply them, so the question is what the work itself must supply in years 3-4 — not what it pays.",
+ "invented": [
+   "World-level premise given to generators: the largest employers in this market can outbid any smaller one on cash indefinitely, so matching a benchmark is table stakes rather than an advantage.",
+   "World-level premise given to generators: an engineer's next employer is reachable through a roughly two-week hiring process, so the exit cost of leaving is near zero.",
+   "World-level premise given to generators: the most legible proof of seniority in this field is a large employer's name on a resume, and smaller employers cannot mint that signal.",
+   "Assumption stated to the reader: the employer is smaller than the companies it loses people to, and 18 months is roughly when an engineer has mastered the local system.",
+   "Assumption stated to the reader: 'senior engineers' means individual contributors rather than engineering managers."
+ ]}

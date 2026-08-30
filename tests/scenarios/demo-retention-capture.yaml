@@ -1,0 +1,57 @@
+# A CAPTURE RUN, not a regression test. Its product is the transcript, not the green.
+#
+# WHY IT EXISTS. The README's worked example is a 0.1.0 run — an architecture that pruned to a
+# shortlist and no longer exists. The caption has to say so, which argues with the demo directly
+# beneath it. This scenario re-runs the same problem on current code so the example shows the
+# pipeline a reader would actually install.
+#
+# WHY NOT eval-5. `../../evals/scenarios/eval-5-holdout-retention.yaml` carries this problem as a
+# BARE prompt, because it was written when the skill still self-selected. It does not now (0 of 12
+# on naturally-phrased questions), so eval-5 as written measures the plain-answer path and cannot
+# produce a pipeline run. eval-5 is also held out from tuning and is generated from evals.json —
+# editing it would both break CI and destroy what it measures. Hence a separate file.
+#
+# THE COMMAND PREFIX IS LOAD-BEARING — do not "tidy" it away. The description is explicit-only:
+# without an explicit ask the model is RIGHT to answer directly, and the run reds with something
+# indistinguishable from a pipeline regression, at full price. check-repo.py gates this statically.
+#
+# THE DON'T-ASK TAIL IS LOAD-BEARING. A prompt that draws a clarifying gate ends the run at the
+# gate and captures nothing. ../../evals/README.md has the worked case.
+#
+# THE RUBRIC IS COPIED VERBATIM from eval-5, claims 1 and 4, so the bar is identical rather than
+# a friendlier one written after the fact. Claim 1 is the point of this run: the 0.1.0 answer took
+# "it's not the money" at face value and the plain baseline did not, which is the loss that
+# produced Phase 0's premise-testing step. This is the first time that fix is measured on the
+# problem that caused it.
+#
+# ONE RUN IS NOT A MEASUREMENT (../../evals/README.md). A single green here says this run tested
+# the premise, not that the pipeline reliably does. Read the rate across reps before claiming more.
+# BASELINE DIFFERS FROM THE OTHER SCENARIOS, deliberately. They pin desktop-1.37937.1, whose
+# agent binary (2.1.246) is an empty directory on this machine — the run dies in resolveAgentBinary
+# before the agent starts. This capture pins the baseline that is actually installed and that
+# `doctor` validates. That is also the right pin on the merits: this run's product is a demo of
+# what someone installing TODAY receives, so it should run on today's platform rather than on the
+# one the older comparability-bound scenarios share.
+name: demo-retention-capture
+session: ../sessions/default.yaml
+baseline: desktop-1.40609.0
+fidelity: container
+on_unanswered: first
+
+prompt: |
+  /creative-problem-solving:ideas We keep losing senior engineers to bigger companies at
+  around the 18-month mark. Comp is already competitive — we benchmark and we match. It's
+  not the money. What can we actually do about this? This is all the information available,
+  so don't ask me any questions; where something is missing, make a reasonable assumption
+  and state it in your response.
+
+assert:
+  - result: success
+  # Without this a rep that answered from priors looks like a valid capture.
+  - skill_triggered: creative-problem-solving
+  - tool_called: WebSearch
+  - questions_count_max: 1
+  - semantic_matches:
+      rubric:
+        - "Tests the ruled-out constraint rather than obeying it — probes whether 'it's not the money' actually holds (e.g. by comparing multi-year total comp, not year-one offers) before setting money aside. Proposing a compensation mechanism is acceptable IF that test supports it; what fails is accepting the premise untested"
+        - "At least one option questions the framing — whether losing senior engineers at 18 months is necessarily the problem to solve, or whether the real issue sits upstream"

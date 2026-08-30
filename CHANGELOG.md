@@ -45,6 +45,40 @@ project adheres to [Semantic Versioning](https://semver.org/).
   and the one place host paths legitimately live.
 
 ### Changed
+- **The worked example is a run of the pipeline you would install.** It had been captured on
+  0.1.0, an architecture that pruned to a shortlist, so the caption had to disclaim the demo
+  directly beneath it. The new capture ran 2026-08-30 under `tests/scenarios/demo-retention-capture.yaml`
+  on the same problem: 270 options across nine lenses, 113 families, 38.7 minutes to the report,
+  all five harness assertions passing. Two of those assertions were graded by a judge against
+  claims copied verbatim from eval 5 — that the run tests the ruled-out "it's not the money"
+  premise instead of obeying it, and that at least one option questions the framing. The full
+  report and what the run measured about itself are under
+  `evals/transcripts/capture-2026-08-30-retention/`.
+
+  **A caveat that belongs with it.** `plan_groups.py` could not prove lead-assignment infeasible
+  at any budget it was given, including 20,000,000 nodes, and neither documented remedy helped.
+  The run wrote a forward-checking driver and monkey-patched `choose_leads` to finish the stage.
+  The grouping in this capture is therefore partly the product of code the run wrote, not only of
+  the shipped script. Nothing was talked into a merge — the objective and tie-breaks are
+  unchanged — but `verify_pipeline.py` checks relations between stage files, not which code
+  produced them, so it could not have seen this. See `docs/INCIDENTS.md`.
+
+- **The adjudicator agreement range is 75-85%, not 80-90%.** Five recorded runs read 75, 77.1,
+  81, 83 and 85.4. The published range excluded the bottom two, which are the ones that tell a
+  reader how much of the grouping is a coin toss.
+
+- **Requirements are attributed to a run rather than to `/ideas`.** The command is a fifteen-line
+  invocation wrapper and states that a run reached by naming the skill and a run reached by
+  typing `/ideas` are the same run. Writing "`/ideas` needs sub-agent dispatch, `python3` and web
+  search" told the reader on a host without slash commands — the reader the next paragraph
+  addresses directly — that the requirements were not theirs. Same correction in `INSTALL.md`,
+  where the host-compatibility paragraph is the one someone consults to decide whether their
+  host works.
+
+- **The README states what is true rather than how it changed.** A demo caption explaining what
+  an earlier pipeline used to do, and a losses paragraph narrating the origin of a fix, were both
+  changelog voice in a file that is not a changelog. The premise-testing result now sits with the
+  other evidence as a measurement, and the losses paragraph carries the one limit that is live.
 - **The README states rather than argues.** It had been explaining why each design decision was
   allowed — nine `because` clauses — and following statements with a sentence making sure the
   reader drew the right conclusion. The rationale belongs in `DESIGN-NOTES.md`, which carries it;

@@ -13,6 +13,47 @@ ran them.
 
 ---
 
+## Lead assignment could not be proven infeasible, and the run wrote its own solver
+
+**Rule:** none yet. This is an open defect in `scripts/plan_groups.py`, recorded before there is a
+rule to point at.
+
+Run 2026-08-30, the retention capture. `plan_groups.py` assigns each cluster a lead that does not
+collide with any other cluster's lead, by backtracking under a node budget. Its doctrine is right:
+it merges a pinched cluster only when infeasibility is **proven**, because budget exhaustion means
+*unknown*, and merging on unknown fuses clusters a longer search would have kept apart.
+
+The instance was genuinely infeasible — one six-member cluster collided with single-member
+clusters on every one of its candidates, and a singleton has no alternative lead. But naive
+backtracking cannot prove that in reasonable time. The run followed both documented remedies. It
+raised `--lead-budget` to 200,000, then to 20,000,000 — a thousandfold over the 20,000 default —
+and re-ran with `--max-task 25`. All exhausted.
+
+It then wrote `plan_groups_fc.py`: a driver that imports `plan_groups`, replaces `choose_leads`
+with a forward-checking search that prunes domains as it assigns, and calls the original `main()`.
+Same objective, same tie-breaks, same outputs. Forward checking proved infeasibility quickly, and
+the stage completed.
+
+**Three things follow.**
+
+The search needs forward checking in the shipped script. Without it, a pinched instance either
+stalls the run or requires a model to hand-write a solver, and the budget flag named in the
+exhaustion message cannot fix an exponential tree.
+
+`verify_pipeline.py` could not have seen this. It checks relations between stage files — every
+proposed pair adjudicated once, a family partition covering the pool exactly once — not which code
+produced them. Every relation held, because the substituted search computes the same thing. That
+is the correct outcome here and also the limit of the guarantee: the checks establish that the
+stages are consistent, not that the shipped code produced them.
+
+The evidence nearly vanished. The driver was written to the session scratchpad, outside every
+directory the reader can see, which on a remote Cowork session is reclaimed at session end. It
+surfaced only because the harness flagged an undelivered file. A run that rewrites part of its own
+pipeline should leave that where the reader will find it — the same failure the `slots.json` rule
+in Step 0b already exists to prevent.
+
+---
+
 ## The shell's working directory is not where you left it
 
 **Rule:** `pipeline.md` Step 0b — run the `BASE`/`RUN` block as the first command in its own call,
