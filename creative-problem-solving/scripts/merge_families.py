@@ -211,13 +211,20 @@ def worst_pinned_pair(fams, rel):
         # and the fallback merged one anyway. Measured over 40,000 pinched states: 609 picks with no
         # joining evidence at all, including families with no adjudicated cross pair between them.
         #
-        # Such a merge OFTEN DOES break the collision -- measured over generated pinched states,
-        # roughly two thirds of these were load-bearing, and refusing costs those runs a hard stop.
-        # That is the cost, and it is worth paying: fusing two families the adjudicators called
+        # WHAT THE 609 FIGURE BELOW IS, AND IS NOT. It counts calls to this function over 40,000
+        # generated family sets -- NOT events a run can reach. `main` asks for a pair only when
+        # `solve_leads` finds no assignment AND proved none exists, and in every one of those 609
+        # `solve_leads` DID find an assignment. Zero were reachable. Two review rounds argued about
+        # whether such a merge is load-bearing (53%? two thirds?) using populations that contain no
+        # reachable case at all, and this comment carried both figures in turn.
+        #
+        # Sweeps that filter for reachability find it very rare: 13 firings in 432,000 states in one
+        # sweep, 0 in 48,000 in another. So this refusal guards a shape nobody has observed a run
+        # reach -- and is worth keeping on those terms, not on a measured frequency. The reason is
+        # unchanged and does not depend on the count: fusing two families the adjudicators called
         # `distinct`, or never compared at all, permanently answers a question the evidence did not
         # ask. A caller told why can re-adjudicate; a reader handed a fused family never learns there
-        # was a question. An earlier version of this comment said the merge could not work, which was
-        # a stronger and false claim.
+        # was a question.
         return None
     return best[1], best[2]
 
@@ -483,8 +490,11 @@ def main(wd, expect):
                 f"({ex}). Re-run merge_families.py with --lead-budget set higher than "
                 f"{LEAD_NODES}. The search prunes as it assigns, so a raised budget buys a deeper "
                 f"tree rather than a wider re-enumeration. This message used to also suggest "
-                f"re-running plan_groups.py with more shards: sharding sizes the grouping tasks and "
-                f"does not change the partition, so it cannot change the instance this solver sees.")
+                f"re-running plan_groups.py with more shards. A smaller --max-task DOES re-cut the "
+                f"grouping tasks and so changes the families this script is handed -- which is the "
+                f"action the two messages below name -- but it cannot help HERE: this search is "
+                f"over the families as given, and re-cutting tasks does not change the partition "
+                f"they came from.")
         pair = worst_pinned_pair(fams, rel)
         if pair is None:
             die(f"{len(fams)} families still collide on their leads, and no merge here is one the "
@@ -493,9 +503,11 @@ def main(wd, expect):
                 f"merge might well clear the collision -- that is not the difficulty. Fusing two "
                 f"families the adjudicators called apart, or never compared, is permanent and "
                 f"answers a question the evidence did not ask, so this stops instead. The shards "
-                f"were cut in a way the verdicts do not support: re-run plan_groups.py with more "
-                f"shards so each task is smaller, then re-run this script. Do not hand-edit "
-                f"families.json.")
+                f"were cut in a way the verdicts do not support: re-run plan_groups.py with a "
+                f"smaller --max-task so each grouping task is smaller, then re-run this script. "
+                f"(That flag re-cuts the tasks the groupers are given, which is what changes the "
+                f"families handed here -- it does not change the partition, so it will not move the "
+                f"lead search in plan_groups.py itself.) Do not hand-edit families.json.")
         i, j = pair
         fams[i]["members"] = fams[i]["members"] + fams[j]["members"]
         fams[i]["origin"].update(fams[j]["origin"])
@@ -517,9 +529,9 @@ def main(wd, expect):
             f"script's own merges ({ex}). Both merge paths are bounded by that rule, so reaching "
             f"this is a bug in merge_families.py, not something the shards can be blamed for -- "
             f"please report it with the group-result-*.json files. To get the run moving: re-run "
-            f"plan_groups.py with more shards so each task is smaller, which changes the families "
-            f"this script is handed. Do not hand-edit families.json, and do not re-run this script "
-            f"unchanged -- it is deterministic and will stop here again.")
+            f"plan_groups.py with a smaller --max-task, which re-cuts the grouping tasks and so "
+            f"changes the families this script is handed. Do not hand-edit families.json, and do "
+            f"not re-run this script unchanged -- it is deterministic and will stop here again.")
 
     # Every lead is final by here -- the greedy passes, the exhaustive solve and both merge paths
     # have all run -- so this is the first point at which the heading can be chosen at all.

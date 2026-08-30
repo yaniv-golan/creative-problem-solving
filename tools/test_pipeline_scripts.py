@@ -1540,8 +1540,17 @@ def t_forced_merge_is_bounded_too():
     check("it refuses rather than writing a family that breaks the rule",
           rc != 0 and not os.path.exists(f"{wd}/families.json"),
           f"rc={rc}, families.json written={os.path.exists(f'{wd}/families.json')}")
-    check("the refusal names an action the caller can take",
-          "plan_groups.py with more shards" in out, f"got: {out[:200]}")
+    # ASSERT THE FLAG EXISTS, not just that a sentence is present. This assertion used to match
+    # "plan_groups.py with more shards" -- a phrase naming no flag that script accepts, so it
+    # certified actionability by matching text that had none. plan_groups.py's own doctrine says an
+    # error naming a flag the script does not accept is the unactionable kind that gets worked
+    # around instead of obeyed; this now checks the named flag against that script's argv parsing.
+    import re as _re
+    _flags = set(_re.findall(r'"(--[a-z-]+)"',
+                            Path(SCRIPTS / "plan_groups.py").read_text(encoding="utf-8")))
+    _named = set(_re.findall(r"(--[a-z-]+)", out))
+    check("the refusal names a flag plan_groups.py actually accepts",
+          _named and _named <= _flags, f"message names {sorted(_named)}, script accepts {sorted(_flags)}")
     check("...and is NOT the internal-bug backstop, which would mean the merge happened",
           "bug in merge_families.py" not in out, f"reached the post-merge backstop: {out[:200]}")
     shutil.rmtree(wd)
@@ -2566,25 +2575,35 @@ def t_lead_search_is_numbering_invariant():
     json.dump({"relations": [{"a": "p1-000", "b": "p1-001", "relation": "distinct"}]},
               open(os.path.join(w, "relations.json"), "w"))
     res = _sp.run([sys.executable, str(SCRIPTS / "plan_groups.py"), w], capture_output=True, text=True)
-    # The baseline check is the LAST check in check-repo.py, so an uncaught raise there pre-empts the
-    # failure summary and discards every genuine finding above it -- a warn-only check that exits 1
-    # is worse than the red build it refuses to be. It reads a file this repo does not own, so
-    # schema drift is the expected case rather than the exotic one.
-    import json as _json
-    for _shape in ('[1,2]', '"x"', '42', '{"agentBinary":"/a/b"}', '{"agentBinary":[1]}',
-                   '{"agentBinary":{"stagedPath":7}}', '{"agentBinary": nul', '{"agentBinary":null}'):
-        _crash = None
-        try:
-            _doc = _json.loads(_shape)
-            _ab = _doc.get("agentBinary") if isinstance(_doc, dict) else None
-            _st = _ab.get("stagedPath") if isinstance(_ab, dict) else None
-            os.path.expanduser(_st if isinstance(_st, str) else "")
-        except (ValueError, OSError, AttributeError, TypeError):
-            pass                              # the check catches exactly these
-        except Exception as _e:
-            _crash = type(_e).__name__
-        check(f"a malformed baseline shaped {_shape[:24]!r} does not escape the guard",
-              _crash is None, f"raised {_crash}")
+    # The baseline check reads a file this repo does not own, so schema drift is the expected case.
+    # An earlier version of this test re-implemented the guard inline and asserted no exception
+    # escaped -- but its own `except` swallowed exactly the exceptions the bug raised, so it was
+    # green against the buggy code, green against the fix, and green if the fix were reverted. This
+    # runs check-repo.py itself against a planted malformed baseline, which is the only way to
+    # observe the behaviour that matters: the check is the LAST one in the file, so a raise there
+    # pre-empts the failure summary and discards every genuine finding above it.
+    import subprocess as _sp2, tempfile as _tf2, shutil as _sh2
+    _shapes = ['[1,2]', '"x"', '42', '{"agentBinary":"/a/b"}', '{"agentBinary":[1]}',
+               '{"agentBinary":{"stagedPath":7}}', '{"agentBinary": nul', '{"agentBinary":null}']
+    _bad = []
+    for _shape in _shapes:
+        _fake = _tf2.mkdtemp()
+        os.makedirs(os.path.join(_fake, "node_modules", "cowork-harness", "baselines"))
+        _bin = os.path.join(_fake, "bin"); os.makedirs(_bin)
+        # A shim whose realpath sits beside node_modules, so the resolver's walk finds baselines/.
+        _shim = os.path.join(_fake, "node_modules", "cowork-harness", "cli.js")
+        open(_shim, "w").write("#!/bin/sh\nexit 0\n"); os.chmod(_shim, 0o755)
+        os.symlink(_shim, os.path.join(_bin, "cowork-harness"))
+        for _v in ("desktop-1.37937.1", "desktop-1.40609.0"):
+            open(os.path.join(_fake, "node_modules", "cowork-harness", "baselines",
+                              _v + ".json"), "w").write(_shape)
+        _env = dict(os.environ, PATH=_bin + os.pathsep + os.environ.get("PATH", ""))
+        _res = _sp2.run([sys.executable, str(ROOT / "tools" / "check-repo.py")],
+                        capture_output=True, text=True, env=_env, cwd=str(ROOT))
+        if "Traceback" in _res.stderr:
+            _bad.append((_shape[:22], _res.stderr.strip().splitlines()[-1][:60]))
+    check("check-repo.py survives a malformed baseline of any shape",
+          not _bad, "; ".join("%s -> %s" % x for x in _bad[:3]))
 
     check("a repeated option id is refused rather than shipped in two clusters",
           res.returncode != 0 and "more than once" in (res.stdout + res.stderr),

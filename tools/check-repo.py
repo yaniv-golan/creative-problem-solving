@@ -1194,6 +1194,12 @@ else:
     for _f in _scen:
         # Strip surrounding quotes: `baseline: "desktop-x"` is valid YAML, and a bare \S+ capture
         # keeps the quotes, so the lookup misses and the scenario is reported as unshipped.
+        # NOTE the limit of this guard: two earlier checks read the same glob unguarded
+        # (`_rel, _txt = ...` in the triggering-assertion check, and the `_texts` comprehension in
+        # the transcript-marker check), and both run before this one. An unreadable scenario file
+        # therefore raises there, not here. Guarding only this reader was the wrong half of the
+        # problem; it is kept because it is correct, but the claim that it prevents a lost failure
+        # summary belongs to whichever reader runs first.
         try:
             _txt = read_text(os.path.relpath(_f, REPO))
         except OSError:
@@ -1207,9 +1213,6 @@ else:
         if not os.path.exists(_bj):
             _absent.append((os.path.basename(_f), _m.group(1)))
             continue
-        # A baseline file this repo does not own can be truncated, or carry a null agentBinary. This
-        # check exists to WARN so a contributor is never blocked by their own machine's state --
-        # handing them a traceback instead would be worse than the failure it refuses to be.
         # A baseline file this repo does not own can be truncated, a list, a bare string, or carry an
         # agentBinary of any shape at all -- schema drift in someone else's release is exactly the
         # case this cannot assume away. Type-check rather than duck-type: an AttributeError here is

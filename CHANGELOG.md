@@ -214,6 +214,31 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **The 609 no-evidence merges were never reachable, so neither argument about them held.**
+  `merge_families.main` asks for a merge target only when `solve_leads` finds no assignment and
+  proved none exists. In all 609 states behind that figure, `solve_leads` found one — the fallback
+  could not have fired in a single case. Two rounds then argued whether such a merge is load-bearing
+  (53%, then two thirds) from a population containing none of the event. The refusal stands, on the
+  basis it always had: fusing families the adjudicators called apart permanently answers a question
+  the evidence did not ask. The count no longer pretends to measure how often that happens.
+
+- **A refusal named `--shards`, which `plan_groups.py` does not accept.** Its flags are `--max-task`,
+  `--split-over` and `--lead-budget`; the knob for task size is a *smaller* `--max-task`. Three
+  messages in `merge_families.py` disagreed about this — one saying re-sharding cannot help, two
+  saying it changes the families — and the test guarding actionability matched a phrase naming no
+  flag at all. All three now name `--max-task` and agree on what it does, and the test checks the
+  named flag against that script's argv parsing rather than a substring.
+
+- **The test added for the malformed-baseline fix could not fail.** Its own `except` clause swallowed
+  exactly the exceptions the bug raised, so it was green before the fix, after it, and would be
+  green if the fix were reverted — and it re-implemented the guard inline rather than running
+  `check-repo.py`. It now plants a malformed baseline and runs the real script, and fails against
+  the pre-hardening commit with the `AttributeError` it exists to catch.
+
+- **The guard added for an unreadable scenario file was on the wrong reader.** Two earlier checks
+  read the same glob unguarded and run first, so that is where an unreadable file raises. The guard
+  is correct and kept; the claim that it prevents a lost failure summary is not, and the code says
+  which reader owns that.
 - **The previous commit corrected seven claims and applied four of them only to the changelog.** The
   refuted numbers stayed in `plan_groups.py`'s doctrine comment and in a test docstring — including
   the 56% figure that commit itself called "the whole argument for leaving the floor alone", left
@@ -248,12 +273,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   picks, including families with no adjudicated cross pair between them; 0 after the change, with
   all 39,391 evidence-backed picks unaffected.
 
-  **It often did break the collision, and that is not the point.** Driving the real merge loop over
-  38,000 pinched states, 53% of the no-evidence merges were load-bearing — the run completed only
-  because of them, and refusing costs those runs a hard stop. The argument is not that the merge
-  fails; it is that fusing two families the adjudicators called `distinct`, or never compared at
-  all, is a permanent answer to a question the evidence did not ask. A caller told why can
-  re-adjudicate; a reader handed a fused family never learns there was a question.
+  **The 609 counts probe calls, not reachable events — and that undoes both arguments made about
+  it.** `main` asks for a merge target only when `solve_leads` finds no assignment *and* proved none
+  exists; in all 609, `solve_leads` found one. **Zero were reachable.** Two rounds argued over
+  whether such a merge is load-bearing (53%? two thirds?) from a population containing no reachable
+  case. Sweeps that filter for reachability make it very rare — 13 firings in 432,000 states in one,
+  0 in 48,000 in another. So this guards a shape no run has been observed to reach, and is kept on
+  that basis rather than on a frequency. The reason does not depend on the count: fusing two
+  families the adjudicators called `distinct`, or never compared at all, permanently answers a
+  question the evidence did not ask.
 
   **A recorded partition produces the pick, though no recorded run reached it.** Called against the
   preserved `dense-frozen` families, the fallback picks 17 and 18 — *"Batch first and second review into one scarce-review"* and
