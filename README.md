@@ -118,10 +118,11 @@ off, judged blind, grouped by script, and ranked.
 %% Source of truth for these stages is
 %% creative-problem-solving/skills/creative-problem-solving/references/pipeline.md.
 %% Change them there and this diagram is stale.
+%% Keep node labels short — GitHub's renderer clips a line past ~25 characters.
 flowchart TD
     accTitle: How an /ideas run works
 
-    B(["your framing is attacked first · the obvious answer is named, then banned"])
+    B(["your framing<br/>is attacked first"])
 
     subgraph GEN ["nine lenses chosen for your problem · one isolated agent each, all at once"]
         G1(["inversion"])
@@ -131,7 +132,7 @@ flowchart TD
     end
     B --> G1 & G2 & G3 & G4
 
-    G1 & G2 & G3 & G4 --> PP(["options that might be versions of each other are paired off"])
+    G1 & G2 & G3 & G4 --> PP(["possible versions<br/>of each other paired off"])
     PP --> A1 & A2 & A3
 
     subgraph ADJ ["three judges, none able to see another's pile · some pairs judged twice"]
@@ -140,15 +141,19 @@ flowchart TD
         A3(["pile 3"])
     end
 
-    A1 & A2 & A3 --> PG["a script does the grouping, so nothing can talk it into a merge<br/>a shared mechanism becomes one family, variants nested underneath<br/>nothing is dropped for being a duplicate"]
-    PG --> RK(["ranked by whether the idea survives a room full of people<br/>arguing with it — not by how unusual it is"])
-    RK --> VF(["the lead option of each of the top 13 families is checked by search<br/>everything else ships labelled unverified"])
-    VF --> GATE{"checks that can refuse to produce a report"}
-    GATE --> OUT[/"every option the run generated, grouped and ranked"/]
+    A1 & A2 & A3 --> PG["a script groups<br/>into families"]
+    PG --> RK(["ranked by<br/>survivability"])
+    RK --> VF(["top families<br/>checked by search"])
+    VF --> GATE{"integrity gate"}
+    GATE --> OUT[/"every option,<br/>grouped and ranked"/]
 ```
 
-Rounded boxes are a model judging; the square one is a script counting. Some steps are omitted
-here for readability; the stages as the model runs them are in
+Rounded boxes are a model judging; the square one is a script counting. What the boxes leave out:
+the obvious answer is named and then banned before any lens runs; nothing is dropped for being a
+duplicate, only nested under the family it varies; the ranking is survivability, not novelty;
+search checks the lead option of each of the top 13 families and everything else ships labelled
+unverified; and the gate can refuse to produce a report at all. Some steps are omitted here for
+readability; the stages as the model runs them are in
 [`references/pipeline.md`](creative-problem-solving/skills/creative-problem-solving/references/pipeline.md).
 
 ## What you get
