@@ -26,6 +26,7 @@ import os
 import ast
 import importlib.machinery
 import re
+import shutil
 import subprocess
 import sys
 
@@ -1146,6 +1147,73 @@ if _leaks:
              % (_rel, _i, _ex))
 else:
     ok("no /Users or /opt literal in any shipped skill, agent, command or docs file")
+
+print("\nevery scenario's pinned baseline has a staged agent binary on this machine")
+
+# A LOCAL PRE-FLIGHT, AND IT NEVER FIRES IN CI -- said here because a check that cannot run where
+# people expect it to must not be described as a gate. The integrity job has checkout and
+# setup-python only: no node, no harness, so the baselines directory is absent and this skips.
+#
+# What it catches is real and cost a paid run to learn: a Desktop update deletes the previous
+# version's staged agent, a scenario still pins that version, and `cowork-harness run` dies in
+# resolveAgentBinary before the agent starts -- seconds after `doctor` reported ready, because
+# doctor validates the agent for ITS OWN current baseline, not for what each scenario pins.
+#
+# Test the BINARY path with exists(), not isdir(): the pruned case leaves the version DIRECTORY
+# behind and empty, so a directory test passes on exactly the case that fails. (The harness itself
+# uses a plain existsSync on the same path.) This is sufficient only because every scenario here is
+# `fidelity: container`; a hostloop tier resolves nativeStagedPath through a different rule.
+# RESOLVE FROM THE CLI ON PATH, not from whatever install happens to be found first. This machine
+# has 18 cowork-harness copies under ~/.npm/_npx alone and most are old enough to be missing the
+# pinned baseline -- resolving to one of those reports every scenario as unshippable, which is a
+# fact about the cache rather than about the repo.
+_bl_root = None
+_cli = shutil.which("cowork-harness")
+if _cli:
+    _real = os.path.realpath(_cli)                       # .../node_modules/cowork-harness/dist/cli.js
+    _up = os.path.dirname(_real)
+    for _ in range(4):
+        _cand = os.path.join(_up, "baselines")
+        if os.path.isdir(_cand):
+            _bl_root = _cand
+            break
+        _up = os.path.dirname(_up)
+if _bl_root is None:
+    for _cand in ["/opt/homebrew/lib/node_modules/cowork-harness/baselines",
+                  "/usr/local/lib/node_modules/cowork-harness/baselines"]:
+        if os.path.isdir(_cand):
+            _bl_root = _cand
+            break
+
+_scen = sorted(glob.glob(os.path.join(REPO, "tests", "scenarios", "*.yaml"))
+               + glob.glob(os.path.join(REPO, "evals", "scenarios", "*.yaml")))
+if _bl_root is None:
+    ok("skipped: no cowork-harness install found, so no baselines to resolve (expected in CI)")
+else:
+    _pruned, _absent = [], []
+    for _f in _scen:
+        _m = re.search(r"^baseline:\s*(\S+)", read_text(os.path.relpath(_f, REPO)), re.M)
+        if not _m or _m.group(1) == "latest":
+            continue
+        _bj = os.path.join(_bl_root, _m.group(1) + ".json")
+        if not os.path.exists(_bj):
+            _absent.append((os.path.basename(_f), _m.group(1)))
+            continue
+        _staged = json.load(open(_bj)).get("agentBinary", {}).get("stagedPath", "")
+        if _staged and not os.path.exists(os.path.expanduser(_staged)):
+            _pruned.append((os.path.basename(_f), _m.group(1)))
+    # WARN, NEVER FAIL. Which Desktop versions are staged is a property of the machine, not of the
+    # repo, so a contributor on a different one must not get a red build for it.
+    if _pruned:
+        warn("%d scenario(s) pin a baseline whose staged agent binary is gone -- a Desktop update "
+             "pruned it, and these runs die before the agent starts: %s"
+             % (len(_pruned), ", ".join("%s -> %s" % x for x in _pruned[:4])))
+    if _absent:
+        warn("%d scenario(s) pin a baseline the installed cowork-harness does not ship: %s. Either "
+             "the harness is older than the pin or the pin is wrong; both make the run unstartable."
+             % (len(_absent), ", ".join("%s -> %s" % x for x in _absent[:4])))
+    if not _pruned and not _absent:
+        ok("all %d pinned baseline(s) resolve to a staged binary" % len(_scen))
 
 print()
 if failures:

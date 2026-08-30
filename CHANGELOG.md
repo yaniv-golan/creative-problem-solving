@@ -8,6 +8,21 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`check-repo.py` reports a scenario whose pinned baseline has no staged agent binary.** A Desktop
+  update deletes the previous version's agent; a scenario still pinning that version dies in
+  `resolveAgentBinary` before the agent starts — seconds after `doctor` said ready, because doctor
+  validates its own current baseline rather than what each scenario pins. That cost a paid run to
+  learn. It currently reports 11 of the 12 scenario files.
+
+  Three properties worth stating, because each is a way to get this check wrong. It tests the
+  **binary** path with `exists`, not the directory: the pruned case leaves the version directory
+  behind and empty, so a directory test passes on exactly the case that fails. It **warns and never
+  fails** — which Desktop versions are staged is a property of the machine, not the repo. And it
+  **never fires in CI**, where there is no node and no harness, so it is a local pre-flight rather
+  than a gate; the check says so itself rather than implying coverage it does not have. Baselines
+  resolve from the `cowork-harness` on `PATH`, because this machine has 18 copies under `~/.npm/_npx`
+  and most are old enough to be missing the pin — resolving to one of those reports a fact about the
+  cache rather than about the repo.
 
 - **`bin/cps`, so the shell can find the plugin by name.** Claude Code puts a plugin's `bin/` on
   the Bash tool's `PATH`, built for that shell rather than inherited, so a bare `cps` resolves in
