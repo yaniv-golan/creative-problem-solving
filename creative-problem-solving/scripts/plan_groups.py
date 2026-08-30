@@ -229,6 +229,11 @@ def _propagate(dom, comp, adj, rel):
 def _search(dom, order, rel, budget):
     """Forward-checking DFS, smallest domain first. Returns (assignment | None, exhausted).
 
+    NO RECORDED RUN HAS REACHED THIS FUNCTION. Across the eight preserved datasets only one enters
+    the collision branch at all, and propagation settles it without searching -- so everything below
+    is covered by synthetic fixtures only, and a reader should not infer real-data coverage that does
+    not exist. Two of this series' blocking defects lived here.
+
     `exhausted` distinguishes a tree that was fully explored -- which proves infeasibility -- from
     one the budget cut off, which proves nothing. It is recorded when the cap is actually hit
     rather than inferred from what is left of the budget: a tree whose last node spends the last

@@ -2410,6 +2410,10 @@ def t_lead_search_scales_and_preserves():
     alone, _v, _p = pg.choose_leads(far, {frozenset(("x1", "y1")): "duplicate"})
     rel3 = dict(rel2); rel3[frozenset(("x1", "y1"))] = "duplicate"
     leads2, viol2, _ = pg.choose_leads(stall + far, rel3)
+    # NOTE: this one guards the complete search, which predates every fix in this series -- it
+    # passes against all three prior commits and would only fail if the search were removed. It is
+    # kept as a guard on that, not as a regression test for anything fixed here. The commit message
+    # that claimed every assertion in this function fails against the code it guards was too broad.
     check("solves a collision greedy cannot", not viol2, f"viol={viol2}")
     check("...without disturbing a component that had no collision in it",
           leads2[4:] == alone, f"{leads2[4:]} != {alone}")

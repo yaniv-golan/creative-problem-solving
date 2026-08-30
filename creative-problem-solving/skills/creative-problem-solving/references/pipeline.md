@@ -681,11 +681,15 @@ assumed: a negation round against that structure returned one search-verified op
    holding one grouping fixed and adding adjudications alone took it from zero such pairs to three.
    The *share* survives that growth where a count does not, because both of its terms grow together.
 
-   `plan_groups.py` satisfies both by construction. `merge_families.py` re-checks both against the
-   shards it is given — but it then repairs colliding leads by merging families, and merging is the
-   one operation that can raise a family's separated share. The share half is therefore measured
-   *before* the step that can break it, and a violation introduced by that repair reaches the last
-   gate rather than costing one re-dispatch. The lead half does survive the merges.
+   `plan_groups.py` satisfies both: the partition half by construction, and the share half because
+   its one merge — of a cluster pair whose every lead choice collides — is bounded by the rule and
+   refuses when no pair qualifies. It was not always: that merge was unbounded, and a fused cluster
+   would ship silently, because a grouper that splits it back along its seam yields two families
+   that both pass. `merge_families.py` re-checks both against the shards it is given — but it then
+   repairs colliding leads by merging families, and merging is the one operation that can raise a
+   family's separated share. The share half is therefore measured *before* the step that can break
+   it, and a violation introduced by that repair reaches the last gate rather than costing one
+   re-dispatch. The lead half does survive the merges.
 
    **Nothing is deleted at any point.** A wrong merge is unrecoverable — the reader never learns the
    option existed. A wrong grouping costs them a line of reading. The counts must match, and the

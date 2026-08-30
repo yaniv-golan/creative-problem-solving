@@ -186,6 +186,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **Two documents said `plan_groups.py` satisfied the share rule by construction.** It did not: its
+  pinch merge was unbounded until the change above. `references/pipeline.md` now says which half is
+  by construction and which is by the bound, and `verify_pipeline.py`'s widened-family message names
+  both scripts that can merge rather than only one — while still pointing at the likely source.
+
+- **Two annotations, because a reader should not infer coverage that does not exist.** `_search` has
+  never been reached by a recorded run — of eight preserved datasets one enters the collision branch
+  and propagation settles it without searching — so its docstring says the fixtures are synthetic.
+  And one assertion in `t_lead_search_scales_and_preserves` guards the complete search rather than
+  anything fixed in this series; it passes against all three prior commits, and now says so.
 - **The pinch merge is bounded by the separating-share rule.** Merging two clusters whose every lead
   choice collides was the one merge in the pipeline bounded by nothing — every other is bounded that
   way — and it wrote a cluster over the rule on 489 of 10,000 random instances, worst 60% against a
