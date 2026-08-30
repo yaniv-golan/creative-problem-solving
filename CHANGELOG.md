@@ -128,6 +128,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
   both said nine, and the checker computes it from the payload. Only the README was wrong.
 
 ### Fixed
+- **A pinch merge is named in the summary rather than counted silently.** Merging two clusters
+  whose every lead pair collides is the one irreversible thing `plan_groups.py` does — two
+  families the adjudicators kept apart become one, and no later stage can tell it happened.
+  The count existed and was never printed, so a run that fused families looked exactly like one
+  that did not, in the summary and in `clusters.json` alike. The regression test drives a real
+  end-to-end run, because the partition absorbs most pinches before the lead search sees them;
+  the input that survives agglomeration was found by fuzzing and is pinned.
 - **Lead assignment infers before it searches, and searches only what can collide.** A run on
   2026-08-30 could not prove a six-member cluster's pinch infeasible at 20,000,000 nodes — a
   thousandfold over the default — and finished only because it wrote its own solver. The instance

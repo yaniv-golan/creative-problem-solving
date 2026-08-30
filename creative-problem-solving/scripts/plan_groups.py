@@ -444,6 +444,15 @@ def main(wd, max_task, split_over):
           f"(largest {sizes[0]}, {singles} single-member, {100*singles/len(out):.0f}%); "
           f"{len(packed)} grouping task(s), largest {max(sum(len(x) for x in t) for t in packed)} options; "
           f"{len(big)} cluster(s) over {split_over} members to check for themes")
+    # SAY IT WHEN CLUSTERS WERE FUSED. A pinch merge is the one irreversible thing this script
+    # does -- two clusters the adjudicators kept apart become one family, and no later stage can
+    # tell that happened. It was counted and never reported, so a run that merged looked exactly
+    # like a run that did not, in the summary and in clusters.json alike. Naming the count is the
+    # difference between a reader who can ask why and one who never learns there was a question.
+    if merged_pinch:
+        print(f"  {merged_pinch} pinch merge(s): a cluster pair whose every lead choice collided, "
+              f"so no assignment could separate them and they are reported as one family. "
+              f"Proven impossible, not guessed -- see docs/INCIDENTS.md for what that means.")
     # Say where the bytes actually went, resolved. A caller cannot get this from a Write
     # result -- that echoes the path it was given -- and the shell's working directory is not
     # the file tools'. On a surface where those differ, a relative path in the summary names

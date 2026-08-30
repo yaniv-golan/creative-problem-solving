@@ -2426,6 +2426,47 @@ def t_lead_search_scales_and_preserves():
     check("a self-pair in relations does not raise", ok, detail)
 
 
+def t_pinch_merge_is_reported():
+    """A pinch merge is the one irreversible thing plan_groups does, and it was silent.
+
+    Two clusters whose every lead pair collides cannot be separated, so they are reported as one
+    family -- a fusion no later stage can detect and no reader was told about. `merged_pinch` was
+    counted and never printed, so a run that fused two families looked exactly like one that did
+    not, in the summary and in clusters.json alike.
+
+    The fixture is a real end-to-end run rather than a direct `choose_leads` call, because the
+    partition absorbs most pinches before the lead search ever sees them: a pinch has to survive
+    agglomeration, which needs the intransitivity the doctrine comment describes. This input was
+    found by fuzzing for exactly that and is pinned here so the path stays covered.
+    """
+    print("\na pinch merge is named in the summary rather than counted silently")
+    import random as _r, itertools as _it, subprocess as _sp, tempfile as _tf
+    rng = _r.Random(5)
+    n = rng.randint(8, 14)
+    ids = [f"p{1+i//5}-{i%5:03d}" for i in range(n)]
+    rel = []
+    for a, b in _it.combinations(ids, 2):
+        r = rng.random()
+        rel.append({"a": a, "b": b, "relation":
+                    "duplicate" if r < 0.18 else "implementation_variant" if r < 0.42
+                    else "shared_component" if r < 0.6 else "distinct"})
+    d = _tf.mkdtemp(); w = os.path.join(d, "_work"); os.makedirs(w)
+    pools = {}
+    for i in ids: pools.setdefault(i.split("-")[0], []).append({"id": i})
+    for k, (pk, items) in enumerate(sorted(pools.items()), 1):
+        json.dump({"items": items, "lens": pk, "pool": k},
+                  open(os.path.join(w, f"pool-{k}.json"), "w"))
+    json.dump({"relations": rel}, open(os.path.join(w, "relations.json"), "w"))
+    res = _sp.run([sys.executable, str(SCRIPTS / "plan_groups.py"), w],
+                  capture_output=True, text=True)
+    check("the fixture still reaches a pinch merge at all",
+          res.returncode == 0 and "pinch merge" in res.stdout,
+          f"rc={res.returncode} out={res.stdout[-200:]}")
+    check("...and the summary says clusters were fused, not just that clusters exist",
+          "pinch merge(s)" in res.stdout and "one family" in res.stdout,
+          res.stdout[-200:])
+
+
 def t_wp4_gates():
     """The gates WP4 added to verify_pipeline.py, tested from outside.
 
@@ -3715,7 +3756,7 @@ def main():
               t_verifier_note_reaches_the_reader,
               t_a_note_renders_whatever_the_verdict_says, t_progress_names_the_next_stage,
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
-              t_lead_search_scales_and_preserves,
+              t_lead_search_scales_and_preserves, t_pinch_merge_is_reported,
               t_superseded_verdicts_go_with_their_shards):
         t()
 
