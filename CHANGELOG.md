@@ -16,9 +16,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   anything here, and nothing said so.
 
   The summary line now names the exemption rather than leaving it invisible. The floor itself is
-  unchanged: removing it for merges was measured and turns 56% of completing runs into refusals,
-  which is removing the pinch-merge path rather than tightening it — a case to argue directly if
-  anyone wants to make it, not something to arrive at by moving a constant. Reporting it lets a few
+  unchanged: removing it for merges turns **every** pinch merge into a refusal — all 367 in 3,000
+  instances, since every one is below the floor — costing 14% of completing runs. That removes the
+  pinch-merge path rather than tightening it, and is a case to argue directly rather than arrive at
+  by moving a constant. (An earlier draft of this entry said 56%, which used the wrong denominator.) Reporting it lets a few
   real runs answer the question that fuzzing cannot.
 - **`check-repo.py` reports a scenario whose pinned baseline has no staged agent binary.** A Desktop
   update deletes the previous version's agent; a scenario still pinning that version dies in
@@ -213,6 +214,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **The baseline check no longer hands a contributor a traceback.** It argued at length that it must
+  warn rather than fail so nobody is blocked by their own machine's state, then raised on a
+  truncated baseline JSON and on `"agentBinary": null` — worse than the failure it refused to be.
+  It also missed a quoted `baseline: "desktop-x"` (reporting it as unshipped), and its green line
+  counted scenario *files* rather than pins, so scenarios with no pin at all were reported as
+  verified. All four found by review, all reproduced before fixing.
 - **`merge_families.py` no longer fuses two families the verdicts do not connect.**
   `worst_pinned_pair` skips any pair with no joining verdict and any pair that would breach the
   separating-share rule — then fell back to merging the two smallest families whose union passed the
@@ -221,15 +228,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
   picks, including families with no adjudicated cross pair between them; 0 after the change, with
   all 39,391 evidence-backed picks unaffected.
 
-  That merge could not do the job it was reached for. The caller merges to break a lead collision,
-  and fusing two families the verdicts do not connect need not touch the colliding pair — so the
-  collision survives and the fusion is permanent. It now returns no target and the caller stops with
-  a message naming both reasons a merge can be unavailable, rather than only the share rule.
+  **It often did break the collision, and that is not the point.** Driving the real merge loop over
+  38,000 pinched states, 53% of the no-evidence merges were load-bearing — the run completed only
+  because of them, and refusing costs those runs a hard stop. The argument is not that the merge
+  fails; it is that fusing two families the adjudicators called `distinct`, or never compared at
+  all, is a permanent answer to a question the evidence did not ask. A caller told why can
+  re-adjudicate; a reader handed a fused family never learns there was a question.
 
-  **It fired on a recorded run, not only in fuzzing.** On the preserved `dense-frozen` partition the
-  fallback picked families 17 and 18 — *"Batch first and second review into one scarce-review"* and
+  **A recorded partition produces the pick, though no recorded run reached it.** Called against the
+  preserved `dense-frozen` families, the fallback picks 17 and 18 — *"Batch first and second review into one scarce-review"* and
   *"Give second units same-day attention from the person"* — which have no adjudicated pair between
-  them at all. Two plainly different ideas, fused on no evidence. That pair is transcribed into the
+  them at all — two plainly different ideas, fused on no evidence. `solve_leads` settles that
+  instance without ever calling the fallback, so this is a probe against real labels rather than a
+  run that failed; the fuzz remains the evidence that it fires. The pair is transcribed into the
   regression test, since the dataset itself is gitignored.
 - **Two documents said `plan_groups.py` satisfied the share rule by construction.** It did not: its
   pinch merge was unbounded until the change above. `references/pipeline.md` now says which half is
@@ -243,9 +254,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   anything fixed in this series; it passes against all three prior commits, and now says so.
 - **The pinch merge is bounded by the separating-share rule.** Merging two clusters whose every lead
   choice collides was the one merge in the pipeline bounded by nothing — every other is bounded that
-  way — and it wrote a cluster over the rule on 489 of 10,000 random instances, worst 60% against a
-  15% limit. It now merges only a pair whose union stays inside the rule, in the same order as
-  before, and refuses with a diagnosis when no pair qualifies.
+  way — and it wrote a cluster over the rule on **1,184** of 10,000 random instances, worst 60%
+  against a 15% limit. It now refuses any pair the rule can prove breaches, in the same order as
+  before, and stops with a diagnosis when no pair survives.
+
+  **The bound is narrower than "merges only a pair inside the rule".** The rule does not apply below
+  ten adjudicated pairs in the union, and that exempts most of what this path merges, so a thin
+  merge is unevaluated rather than approved. The entry below on reporting the exemption is the other
+  half of this change and should be read with it.
 
   **Nothing downstream was catching it.** The obvious argument for merging anyway — a widened family
   dies at a later gate — is false: a grouper that splits the fused cluster back along its seam yields
@@ -256,8 +272,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   joining density picks a pair that does not resolve the collision, so the loop iterates again —
   2 merges where the plain order needs 1 — and it drove an instance whose every candidate was legal
   into a refusal. A pinch merge is irreversible, so more merges is a safety regression. Acceptance
-  test over 4,000 generated instances: never merges more than before, never refuses where the
-  previous behaviour finished legally, and all 8 preserved datasets byte-identical.
+  test over 4,000 generated instances at the repo generator's 8-14 options: never merges more than
+  before, never refuses where the previous behaviour finished legally, and every runnable preserved
+  dataset byte-identical. **That first property is size-dependent** — at 20-40 options one seed in
+  2,000 does merge more, so it holds for the tested regime rather than universally.
 
   The bound is vacuous below `SHARE_MIN_ADJUDICATED`, which is where the only preserved instance
   sits. Whether a floor written for reporting a breach should also gate a merge decision is left
@@ -265,7 +283,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - **`t_pinch_merge_is_reported` pinned a merge that broke the rule.** Its fixture fused a family at
   40% separating share — the repo's own demonstration of the feature demonstrated the defect. It is
-  kept as the refusal case, and a second fixture covers a merge that stays within the rule.
+  kept as the refusal case, and a second covers a merge the rule does not refuse. Not a *within-rule*
+  merge: no generated instance in 300 runs merges a union the rule can evaluate, so that branch has
+  no fixture and is not claimed to have one.
 - **A family label a grouper wrote could carry a newline all the way to the reader.** Nothing in
   `scripts/` scrubbed line breaks: `merge_families.py` took `.strip()`, which is leading and
   trailing only. `build_report.py` prints the label as `### {rank}. {label}`, so a label with a

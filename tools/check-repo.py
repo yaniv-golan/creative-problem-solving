@@ -1190,17 +1190,31 @@ _scen = sorted(glob.glob(os.path.join(REPO, "tests", "scenarios", "*.yaml"))
 if _bl_root is None:
     ok("skipped: no cowork-harness install found, so no baselines to resolve (expected in CI)")
 else:
-    _pruned, _absent = [], []
+    _pruned, _absent, _unreadable, _pins = [], [], [], 0
     for _f in _scen:
-        _m = re.search(r"^baseline:\s*(\S+)", read_text(os.path.relpath(_f, REPO)), re.M)
+        # Strip surrounding quotes: `baseline: "desktop-x"` is valid YAML, and a bare \S+ capture
+        # keeps the quotes, so the lookup misses and the scenario is reported as unshipped.
+        _m = re.search(r"^baseline:\s*[\"']?([^\"'\s]+)", read_text(os.path.relpath(_f, REPO)), re.M)
         if not _m or _m.group(1) == "latest":
-            continue
+            continue                    # `latest` resolves at run time; nothing to check here
+        _pins += 1
         _bj = os.path.join(_bl_root, _m.group(1) + ".json")
         if not os.path.exists(_bj):
             _absent.append((os.path.basename(_f), _m.group(1)))
             continue
-        _staged = json.load(open(_bj)).get("agentBinary", {}).get("stagedPath", "")
-        if _staged and not os.path.exists(os.path.expanduser(_staged)):
+        # A baseline file this repo does not own can be truncated, or carry a null agentBinary. This
+        # check exists to WARN so a contributor is never blocked by their own machine's state --
+        # handing them a traceback instead would be worse than the failure it refuses to be.
+        try:
+            with open(_bj) as _fh:
+                _ab = (json.load(_fh) or {}).get("agentBinary") or {}
+            _staged = _ab.get("stagedPath") or ""
+        except (ValueError, OSError) as _e:
+            _unreadable.append((os.path.basename(_f), "%s (%s)" % (_m.group(1), type(_e).__name__)))
+            continue
+        if not _staged:
+            _unreadable.append((os.path.basename(_f), "%s (no stagedPath)" % _m.group(1)))
+        elif not os.path.exists(os.path.expanduser(_staged)):
             _pruned.append((os.path.basename(_f), _m.group(1)))
     # WARN, NEVER FAIL. Which Desktop versions are staged is a property of the machine, not of the
     # repo, so a contributor on a different one must not get a red build for it.
@@ -1212,8 +1226,13 @@ else:
         warn("%d scenario(s) pin a baseline the installed cowork-harness does not ship: %s. Either "
              "the harness is older than the pin or the pin is wrong; both make the run unstartable."
              % (len(_absent), ", ".join("%s -> %s" % x for x in _absent[:4])))
-    if not _pruned and not _absent:
-        ok("all %d pinned baseline(s) resolve to a staged binary" % len(_scen))
+    if _unreadable:
+        warn("%d scenario(s) pin a baseline whose definition could not be read: %s"
+             % (len(_unreadable), ", ".join("%s -> %s" % x for x in _unreadable[:4])))
+    if not _pruned and not _absent and not _unreadable:
+        # Count PINS, not files: a scenario with no `baseline:` key, or one on `latest`, was never
+        # checked and must not be reported as verified.
+        ok("all %d pinned baseline(s) resolve to a staged binary" % _pins)
 
 print()
 if failures:

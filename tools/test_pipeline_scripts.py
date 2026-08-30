@@ -2472,8 +2472,12 @@ def t_pinch_merge_is_reported():
                       capture_output=True, text=True)
         return res.returncode, res.stdout + res.stderr
 
+    # NOT a within-rule merge -- seed 24's union carries three adjudicated pairs, so the rule is
+    # exempt rather than satisfied, and the script says so. No generated instance in 300 runs merges
+    # a union the rule can actually evaluate, so there is no fixture for that branch and this must
+    # not be labelled as one.
     rc, out = _run(24)
-    check("a within-rule pinch merge still completes the run",
+    check("a pinch merge the rule does not refuse still completes the run",
           rc == 0 and "pinch merge(s)" in out, f"rc={rc} {out[-160:]}")
     check("...and the summary says clusters were fused, not just that clusters exist",
           "one family" in out, out[-160:])

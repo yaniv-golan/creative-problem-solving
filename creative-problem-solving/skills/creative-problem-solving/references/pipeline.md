@@ -681,11 +681,13 @@ assumed: a negation round against that structure returned one search-verified op
    holding one grouping fixed and adding adjudications alone took it from zero such pairs to three.
    The *share* survives that growth where a count does not, because both of its terms grow together.
 
-   `plan_groups.py` satisfies both: the partition half by construction, and the share half because
-   its one merge — of a cluster pair whose every lead choice collides — is bounded by the rule and
-   refuses when no pair qualifies. It was not always: that merge was unbounded, and a fused cluster
-   would ship silently, because a grouper that splits it back along its seam yields two families
-   that both pass. `merge_families.py` re-checks both against the shards it is given — but it then
+   `plan_groups.py` satisfies the partition half by construction. The share half it satisfies only
+   as far as the rule can see: its one merge — of a cluster pair whose every lead choice collides —
+   now refuses any pair the rule can prove breaches, but the rule does not apply below ten
+   adjudicated pairs in the union, and in practice that exempts most of what it merges. So a thin
+   merge is unevaluated rather than approved, and the run says which ones those were. A fused
+   cluster is not caught later either: a grouper that splits it back along its seam yields two
+   families that both pass. `merge_families.py` re-checks both against the shards it is given — but it then
    repairs colliding leads by merging families, and merging is the one operation that can raise a
    family's separated share. The share half is therefore measured *before* the step that can break
    it, and a violation introduced by that repair reaches the last gate rather than costing one

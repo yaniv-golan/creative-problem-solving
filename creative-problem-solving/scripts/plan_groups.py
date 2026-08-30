@@ -462,6 +462,14 @@ def main(wd, max_task, split_over):
     # separating. Sharper still: across 300 end-to-end runs, EVERY pinch merge that happened was
     # below the floor -- so on this path the bound has not yet bound anything.
     #
+    # Read that carefully, because it makes the bound weaker than it sounds. `share_ok` is true both
+    # for a union inside 15% and for one too thin to judge, and the two are not distinguished here:
+    # a pair the rule PROVES breaches is refused, and among what is left the plain order picks --
+    # which on a thin field means the pick can carry a higher raw separating share than the pair
+    # just refused (measured: 160 of 10,000 instances). That is the floor's doing, not the order's,
+    # and preferring an evaluated pair over an exempt one would fix nothing: across 10,000 instances
+    # there was never a pinch where both kinds were available.
+    #
     # The floor is right for its original job, refusing to STOP a run on almost no evidence, and the
     # asymmetry runs the other way for a merge, which is unrecoverable. Removing it here was measured
     # and not taken: it turns 56% of completing runs into refusals, which is removing the pinch-merge
