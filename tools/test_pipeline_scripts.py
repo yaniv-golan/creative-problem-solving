@@ -3224,6 +3224,43 @@ def t_verifier_note_reaches_the_reader():
         shutil.rmtree(d, True)
 
 
+def t_a_note_renders_whatever_the_verdict_says():
+    """Every note the report CAN place renders, and the run stops claiming the rest do.
+
+    The guard listed verdicts, so a note on an `unclear` lead below rank 13 rendered nowhere --
+    `unclear` emits no verdict block, and rank > 13 fell outside the other arm. verify_pipeline
+    printed "each is rendered under its option in the report" over it. And a note on a NON-LEAD
+    member has nowhere to render at all: a note lives in a family's block, which only the lead gets.
+    """
+    print("\na note renders whatever the verdict says, and the unplaceable ones are named")
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 2, 20)
+        fams = [{"id": f"f{i+1:03d}", "label": f"Mechanism {i+1}", "members": [x], "pools": 1}
+                for i, x in enumerate(ids)]
+        json.dump({"families": fams}, open(os.path.join(d, "families.json"), "w"))
+        order = [f["id"] for f in fams]
+        json.dump({"ranked": order}, open(os.path.join(d, "ranked.json"), "w"))
+        by = {f["id"]: f for f in fams}
+        checked = [{"id": by[i]["members"][0], "query": "q", "verdict": "unclear"}
+                   for i in order[:13]]
+        # An unclear lead well below the fold, carrying a note. This is the dropped case.
+        low = by[order[19]]["members"][0]
+        checked.append({"id": low, "query": "q", "verdict": "unclear",
+                        "note": "NOTE-BELOW-THE-FOLD"})
+        json.dump({"checked": checked}, open(os.path.join(d, "verified-1.json"), "w"))
+        out_md = os.path.join(d, "report.md")
+        rc, out = run("build_report.py", d, "--out", out_md)
+        body = open(out_md).read() if os.path.exists(out_md) else ""
+        check("a note on an `unclear` lead below rank 13 reaches the report",
+              "NOTE-BELOW-THE-FOLD" in body, out.strip()[:140])
+        check("...and the band header counts it as checked",
+              "1 option below was checked too" in body or "option below was checked" in body,
+              [l for l in body.split("\n") if "checked too" in l][:1])
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t_superseded_shards_do_not_linger():
     """A re-sharding that produces FEWER shards must not leave the old ones matching cand-*.json.
 
@@ -3482,7 +3519,8 @@ def main():
               t_merged_labels_replace_concatenation, t_heading_follows_the_lead_across_a_merge,
               t_slots_fill_and_deletion,
               t_fill_refuses_an_empty_value_and_survives_a_retry,
-              t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage,
+              t_verifier_note_reaches_the_reader,
+              t_a_note_renders_whatever_the_verdict_says, t_progress_names_the_next_stage,
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
               t_superseded_verdicts_go_with_their_shards):
         t()

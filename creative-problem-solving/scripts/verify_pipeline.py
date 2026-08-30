@@ -544,10 +544,6 @@ def main(wd):
     # Counted and printed, because the reader is the only party who can weigh a qualification --
     # and because a field that is carried but never surfaces in the run's own output is how this
     # one went sixteen records unnoticed.
-    noted = sum(1 for e in ents if str(e.get("note") or e.get("caveat") or "").strip())
-    if noted:
-        print(f"{noted} of {len(ents)} checked option(s) carry a verifier note; each is rendered "
-              f"under its option in the report.")
 
     missing = [i for i in top13 if i not in by]
     if missing:
@@ -570,6 +566,25 @@ def main(wd):
     # is untouched, so a rejected option keeps its family membership and its text. What changes
     # is only where it appears in the answer: in the rejected band, with what refuted it.
     rejected = sorted(i for i, v in by.items() if v == "refuted")
+
+    # "Each is rendered" was a blanket claim over notes the report cannot place. A note renders in
+    # a family's own block, which only its LEAD gets -- so a note on a non-lead member has nowhere
+    # to go, and saying otherwise is the class of false self-report this file exists to catch.
+    # Name them instead. `effective_lead` is imported rather than reimplemented: two definitions of
+    # "the lead" is how they came apart last time.
+    _leads = {effective_lead(f.get("members") or [], set(rejected)) for f in fams}
+    _noted = [e for e in ents if str(e.get("note") or e.get("caveat") or "").strip()]
+    _placed = [e for e in _noted if e.get("id") in _leads]
+    _unplaced = [e for e in _noted if e.get("id") not in _leads]
+    if _noted:
+        print(f"{len(_placed)} of {len(ents)} checked option(s) carry a verifier note that is "
+              f"rendered under its option in the report.")
+    if _unplaced:
+        print(f"WARN: {len(_unplaced)} verifier note(s) are on options the report cannot place — "
+              f"a note renders in its family's block, which only the lead gets. These were "
+              f"written and will not reach the reader: "
+              + ", ".join(str(e.get("id")) for e in _unplaced[:5])
+              + (f", and {len(_unplaced) - 5} more" if len(_unplaced) > 5 else ""))
 
     # THE OPTION THE READER MEETS MUST BE THE OPTION THAT WAS CHECKED.
     #

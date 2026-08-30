@@ -197,7 +197,13 @@ def main(wd, out):
             b += ["", "*Proposal — nothing to verify*"]
         elif rank <= 13:
             b += ["", "*Not verified*"]
-        if note and (vd in ("confirmed", "refuted", "no_external_claim") or rank <= 13):
+        # UNCONDITIONAL. The guard used to list verdicts, which dropped exactly one lead case and
+        # left verify_pipeline claiming otherwise: an `unclear` verdict emits no verdict block, so
+        # a note on an `unclear` lead below rank 13 rendered nowhere while the run printed "each is
+        # rendered under its option in the report". "refuted" in that list was dead -- a refuted
+        # head is in `rejected` and effective_lead never returns it, and those options render in
+        # their own band below.
+        if note:
             b += ["", f"*Note — {one_line(note)}*"]
 
         if lead_prose:
@@ -266,10 +272,17 @@ def main(wd, out):
         # not need to. The re-merge case never reaches here: verify_pipeline.py runs first and
         # refuses a top-13 lead that was never checked. What is left is legitimate, so the honest
         # move is to count it rather than warn about it.
-        checked_below = sum(1 for fid in rest
-                            if (verdict.get(effective_lead(fams[fid]["members"], rejected), {})
-                                .get("verdict") or "").lower()
-                            in ("confirmed", "no_external_claim"))
+        # Counts a lead as checked when a verifier LOOKED, not only when it came back clean -- an
+        # `unclear` with a note is a check that ran and said something, and it now renders a marker
+        # below, so a narrower count would put the header's number under a different number of
+        # markers. verify_pipeline requires a real query on every verdict but no_external_claim,
+        # so "a verifier looked" is what a verdict record means.
+        def _checked(fid):
+            v = verdict.get(effective_lead(fams[fid]["members"], rejected), {})
+            vd_ = (v.get("verdict") or "").lower()
+            return (vd_ in ("confirmed", "no_external_claim")
+                    or bool((v.get("note") or v.get("caveat") or "").strip()))
+        checked_below = sum(1 for fid in rest if _checked(fid))
         scope = "the lead option of each of the top 13 families"
         if checked_below:
             n = checked_below
