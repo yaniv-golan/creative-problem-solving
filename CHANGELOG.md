@@ -128,6 +128,34 @@ project adheres to [Semantic Versioning](https://semver.org/).
   both said nine, and the checker computes it from the payload. Only the README was wrong.
 
 ### Fixed
+- **`merge_families.py` carried the same two lead-search defects `plan_groups.py` had, and they were
+  left standing when that side was fixed.** One budget shared across independent components, and
+  `proven` inferred from what was left of it. So the two solvers disagreed on the same instance:
+  the re-check reported UNKNOWN and stopped a run that the partitioner had already proved out, and
+  flipped to a proof when the families were numbered the other way round. It also returned on the
+  first failed component, so a search-hard one visited first hid a later component that was
+  infeasible in a handful of nodes. Its UNKNOWN message repeated the advice `plan_groups.py`
+  already records as inert — re-run with more shards, which sizes grouping tasks and cannot change
+  the partition this solver is given.
+
+- **The lead search no longer tie-breaks on the cluster index.** Indices are an artefact of
+  partition order, so tie-breaking on them let a permutation of one instance reshape the search tree
+  and flip `proven` where the tree straddled the budget — the same class as the shared-budget defect,
+  narrowed rather than closed. Measured over 600 instances at three budgets: 5/1/1 permutations
+  changed the answer before, 0/0/0 after.
+
+- **Total search work is bounded again.** Giving each component its own budget removed the only
+  ceiling on the sum — measured at 120x the nodes for the same answer on a pathological partition.
+  Every component is now propagated before any is searched, which costs no budget and settles the
+  realistic pinch, so no component's proof can be starved; the search that remains runs under a
+  global ceiling as well as a per-component one.
+
+- **A repeated option id is refused instead of being shipped in two clusters.** The partition check
+  compared sorted multisets, which catches loss and count drift but not distinctness, so a pool file
+  listing one id twice put that option in two clusters, two grouping dispatches and two families.
+  The only gate that caught it ran at the end of a forty-minute pipeline. Disjointness is also the
+  precondition the pinch-reporting argument rests on, so violating it was the one path that could
+  return a merge target from a component never proven infeasible — that branch now refuses.
 - **A pinch merge is named in the summary rather than counted silently.** Merging two clusters
   whose every lead pair collides is the one irreversible thing `plan_groups.py` does — two
   families the adjudicators kept apart become one, and no later stage can tell it happened.

@@ -2467,6 +2467,82 @@ def t_pinch_merge_is_reported():
           res.stdout[-200:])
 
 
+def t_lead_search_is_numbering_invariant():
+    """The same instance, clusters renumbered, must give the same answer — in both solvers.
+
+    `proven` licenses an irreversible merge. Two things made it turn on numbering: a budget shared
+    across independent components (a hard one starved a later one that was infeasible in a handful
+    of nodes), and an MRV tie-break on the cluster INDEX, which is an artefact of partition order and
+    reshaped the search tree under a permutation. Both are fixed here and in merge_families.py, whose
+    re-check was left carrying the identical pair after plan_groups.py was fixed — reachable exactly
+    when it is the weaker of the two solvers.
+    """
+    print("\nrenumbering the same instance does not change the answer")
+    import importlib.machinery as _m, itertools as _it, random as _r
+    pg = _m.SourceFileLoader("pg_inv", str(SCRIPTS / "plan_groups.py")).load_module()
+    mf = _m.SourceFileLoader("mf_inv", str(SCRIPTS / "merge_families.py")).load_module()
+
+    # Permuting the cluster list must not change the leads chosen or the verdict. Small budgets are
+    # where an order-sensitive search shows it: the tree straddles the cap, so one numbering
+    # exhausts (a proof) while another cuts off (unknown).
+    bad = 0
+    was = pg.LEAD_NODES
+    try:
+        for budget in (8, 20, 60):
+            pg.LEAD_NODES = budget
+            rng = _r.Random(9)
+            for _ in range(200):
+                k = rng.randint(4, 7)
+                cl = [[f"c{i}m{j}" for j in range(rng.randint(1, 4))] for i in range(k)]
+                allm = [x for c in cl for x in c]
+                rel = {frozenset((a, b)): "duplicate"
+                       for a, b in _it.combinations(allm, 2)
+                       if a[:2] != b[:2] and rng.random() < 0.55}
+                leads, _v, proven = pg.choose_leads(cl, rel)
+                base = (frozenset(leads), proven)
+                for _ in range(3):
+                    idx = list(range(k)); rng.shuffle(idx)
+                    l2, _v2, p2 = pg.choose_leads([cl[i] for i in idx], rel)
+                    if (frozenset(l2), p2) != base: bad += 1; break
+    finally:
+        pg.LEAD_NODES = was
+    check("plan_groups gives the same answer however the clusters are numbered",
+          bad == 0, f"{bad} permutation(s) changed the answer")
+
+    # A search-hard component numbered first must not starve a later one that is infeasible in a
+    # handful of nodes. merge_families returned on the FIRST failed component, so a cutoff there
+    # reported UNKNOWN and stopped the run; the same instance renumbered proved it.
+    hard = [{"members": [f"h{i}-{c}" for c in range(11)], "label": f"H{i}", "cid": f"h{i:03d}"}
+            for i in range(12)]
+    relm = {frozenset((f"h{i}-{c}", f"h{j}-{c}")): "duplicate"
+            for i, j in _it.combinations(range(12), 2) for c in range(11)}
+    easy = [{"members": [f"e{i}x", f"e{i}y"], "label": f"E{i}", "cid": f"e{i:03d}"} for i in range(3)]
+    relm.update({frozenset((a, b)): "duplicate" for i, j in _it.combinations(range(3), 2)
+                 for a in easy[i]["members"] for b in easy[j]["members"]})
+    _a1, p_hard = mf.solve_leads(hard + easy, relm)
+    _a2, p_easy = mf.solve_leads(easy + hard, relm)
+    check("merge_families proves it regardless of which family is numbered first",
+          p_hard and p_easy, f"hard-first={p_hard} easy-first={p_easy}")
+
+    # Inferring "the tree was exhausted" from leftover budget calls the last budgeted node a cutoff.
+    _a3, p2 = mf.solve_leads(easy, relm, budget=2)
+    check("merge_families: a tree exhausted on its last budgeted node is a proof",
+          p2, f"proven={p2}")
+
+    # A repeated option id put one option in two clusters, two grouping dispatches and two families.
+    # The partition check compared sorted multisets, which cannot see it.
+    import subprocess as _sp, tempfile as _tf
+    d = _tf.mkdtemp(); w = os.path.join(d, "_work"); os.makedirs(w)
+    json.dump({"items": [{"id": "p1-000"}, {"id": "p1-000"}, {"id": "p1-001"}], "lens": "a", "pool": 1},
+              open(os.path.join(w, "pool-1.json"), "w"))
+    json.dump({"relations": [{"a": "p1-000", "b": "p1-001", "relation": "distinct"}]},
+              open(os.path.join(w, "relations.json"), "w"))
+    res = _sp.run([sys.executable, str(SCRIPTS / "plan_groups.py"), w], capture_output=True, text=True)
+    check("a repeated option id is refused rather than shipped in two clusters",
+          res.returncode != 0 and "more than once" in (res.stdout + res.stderr),
+          f"rc={res.returncode} {(res.stdout + res.stderr)[:150]}")
+
+
 def t_wp4_gates():
     """The gates WP4 added to verify_pipeline.py, tested from outside.
 
@@ -3757,6 +3833,7 @@ def main():
               t_a_note_renders_whatever_the_verdict_says, t_progress_names_the_next_stage,
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
               t_lead_search_scales_and_preserves, t_pinch_merge_is_reported,
+              t_lead_search_is_numbering_invariant,
               t_superseded_verdicts_go_with_their_shards):
         t()
 

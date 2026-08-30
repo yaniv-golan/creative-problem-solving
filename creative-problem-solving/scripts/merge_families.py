@@ -92,14 +92,23 @@ def solve_leads(fams, rel, budget=None):
     """
     n = len(fams)
     if n == 0: return {}, True
-    budget = [LEAD_NODES if budget is None else budget]
+    cap = LEAD_NODES if budget is None else budget
 
-    assign = {}
+    assign, unknown = {}, False
     for comp in lead_components(fams, rel):
         if len(comp) == 1:                       # nothing constrains it
             assign[comp[0]] = fams[comp[0]]["members"][0]
             continue
         comp.sort(key=lambda i: fams[i]["members"][0])
+        # A BUDGET PER COMPONENT, and a cut flag rather than a leftover-budget guess. Components are
+        # independent subproblems: sharing one budget let a search-hard component starve a later one
+        # that was infeasible in a handful of nodes, so `proven` -- which licenses an irreversible
+        # merge -- turned on how the families happened to be numbered. And inferring "the tree was
+        # exhausted" from `budget > 0` calls the last budgeted node a cutoff. plan_groups.py carried
+        # both defects and they were fixed there; this is the same pair on the re-check side, which
+        # is reachable exactly when this solver is the weaker of the two.
+        budget = [cap]
+        cut = [False]
         chosen = {}
 
         def legal(i, m):
@@ -107,22 +116,29 @@ def solve_leads(fams, rel, budget=None):
 
         def place():
             if len(chosen) == len(comp): return True
-            if budget[0] <= 0: return False
             rest = [i for i in comp if i not in chosen]
             opts = {i: [m for m in sorted(fams[i]["members"]) if legal(i, m)] for i in rest}
             i = min(rest, key=lambda i: (len(opts[i]), fams[i]["members"][0]))
             if not opts[i]: return False          # this family is pinned: prune the whole subtree
             for m in opts[i]:
-                budget[0] -= 1
-                if budget[0] <= 0: return False
+                if budget[0] <= 0: cut[0] = True; return False
+                budget[0] -= 1                    # check THEN spend: the last unit buys a real node
                 chosen[i] = m
                 if place(): return True
                 del chosen[i]
             return False
         if not place():
-            return None, budget[0] > 0
+            # A COMPLETED SEARCH SETTLES THE WHOLE INSTANCE; A CUTOFF SETTLES NOTHING. Returning on
+            # the first failure made that turn on family numbering: a search-hard component visited
+            # first cut off and reported UNKNOWN, while the same instance renumbered reached a
+            # component that was infeasible in a handful of nodes and proved it. Carry on instead --
+            # one proven-infeasible component is a proof for the instance, whatever else was cut off.
+            if not cut[0]:
+                return None, True
+            unknown = True
+            continue
         assign.update(chosen)
-    return assign, True
+    return (None, False) if unknown else (assign, True)
 
 
 def share_ok(members, rel):
@@ -449,8 +465,10 @@ def main(wd, expect):
             die(f"the search for distinct family leads ran out of budget with {len(lv)} pair(s) "
                 f"still colliding, so whether an assignment exists is UNKNOWN, not impossible "
                 f"({ex}). Re-run merge_families.py with --lead-budget set higher than "
-                f"{LEAD_NODES}; if it still exhausts, the partition is too large to settle here "
-                f"and plan_groups.py should be re-run with more shards so each task is smaller.")
+                f"{LEAD_NODES}. The search prunes as it assigns, so a raised budget buys a deeper "
+                f"tree rather than a wider re-enumeration. This message used to also suggest "
+                f"re-running plan_groups.py with more shards: sharding sizes the grouping tasks and "
+                f"does not change the partition, so it cannot change the instance this solver sees.")
         pair = worst_pinned_pair(fams, rel)
         if pair is None:
             die(f"{len(fams)} families still collide on their leads, and every merge that would "

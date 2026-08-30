@@ -238,7 +238,11 @@ def _search(dom, order, rel, budget):
 
     def step(dom, remaining):
         if not remaining: return True
-        i = min(remaining, key=lambda k: (len(dom[k]), k))
+        # Tie-break on the smallest candidate id, NOT the cluster index: indices are an artefact of
+        # partition order, so tie-breaking on them let a permutation of the same instance reshape the
+        # search tree and flip `proven` where the tree straddled the budget. Ids are unique across
+        # clusters (they are disjoint), so this is a total order and it is numbering-invariant.
+        i = min(remaining, key=lambda k: (len(dom[k]), dom[k][0]))
         rest = [k for k in remaining if k != i]
         for m in dom[i]:
             if budget[0] <= 0: cut[0] = True; return False
@@ -311,20 +315,35 @@ def choose_leads(clusters, rel, rounds=12):
         touched = {i for pair in viol for i in pair}
         cutoff, pinched = False, None
 
+        # PROPAGATE EVERY COMPONENT BEFORE SEARCHING ANY. Propagation spends no budget and is what
+        # settles the realistic pinch, so doing it across all of them first means no component's
+        # proof can be starved by another component's search -- the property the per-component
+        # budget exists to protect, held without letting total search work scale with how many
+        # components there are.
+        pending = []
         for comp in comps:
             if not touched.intersection(comp):
                 continue          # nothing in it can collide, so its greedy leads stand
-            # A BUDGET PER COMPONENT, NOT ONE SHARED ACROSS THEM. Components are independent
-            # subproblems and `comps` runs in cluster-index order, so a shared budget let a hard
-            # component at low indices starve a later one that was infeasible in two nodes. That
-            # came back UNKNOWN and stopped the run -- and flipped to PROVEN when the same two
-            # components were numbered the other way round. `proven` licenses an irreversible
-            # merge; it must not turn on how the clusters happen to be numbered.
-            budget = [LEAD_NODES]
             dom = {i: sorted(clusters[i]) for i in comp}
             if not _propagate(dom, comp, adj, rel):
                 pinched = comp; break
+            pending.append((comp, dom))
+
+        # Each component gets its own budget, under a global ceiling. Per-component because a shared
+        # one let a search-hard component starve a later one that was infeasible in two nodes, so
+        # `proven` turned on how the clusters happened to be numbered. A ceiling because the fix
+        # alone made total work scale with component count -- measured at 120x the nodes for the same
+        # answer on a pathological partition. Recorded runs collide on 0-4 clusters, so the ceiling
+        # is far past anything observed; past it the answer is UNKNOWN and the operator raises
+        # --lead-budget deliberately.
+        spent, ceiling = 0, LEAD_NODES * 8
+        for comp, dom in (pending if pinched is None else []):
+            room = min(LEAD_NODES, ceiling - spent)
+            if room <= 0:
+                cutoff = True; continue
+            budget = [room]
             assign, exhausted = _search(dom, comp, rel, budget)
+            spent += room - budget[0]
             if assign is not None:
                 lead.update(assign)
             elif exhausted:
@@ -340,7 +359,17 @@ def choose_leads(clusters, rel, rounds=12):
             # lexicographically-least collision, which may sit in a component that solves fine.
             inside = set(pinched)
             here = [(i, j) for i, j in viol if i in inside and j in inside]
-            viol, proven = (here or viol), True
+            if not here:
+                # Unreachable while clusters are disjoint: a pinched component has no valid
+                # assignment, so its greedy leads collide inside it, and a joining lead pair implies
+                # an edge, so both endpoints sit in this component. Falling back to the full `viol`
+                # here would hand the caller a pair from a component that was never proven
+                # infeasible and license exactly the merge the doctrine forbids. Fail instead.
+                die("a component was proven to have no valid lead assignment, but none of its own "
+                    "clusters collide -- which cannot happen while clusters are disjoint. Refusing "
+                    "to report a merge target from elsewhere; re-run with the pools checked for a "
+                    "repeated option id.")
+            viol, proven = here, True
         else:
             proven = not cutoff
 
@@ -379,6 +408,12 @@ def main(wd, max_task, split_over):
     clusters = []
     for comp in positive_components(ids, rel):
         clusters += relocate(agglomerate(comp, rel), rel)
+    if len(set(ids)) != len(ids):
+        dupes = sorted({i for i in ids if ids.count(i) > 1})
+        die(f"the pools list {len(ids) - len(set(ids))} option id(s) more than once "
+            f"({', '.join(dupes[:5])}): every stage downstream assumes ids are unique, and a repeat "
+            f"puts one option in two clusters, two grouping dispatches and two families. Fix the "
+            f"pool file that repeats it.")
     placed = [m for c in clusters for m in c]
     if sorted(placed) != sorted(ids):
         die(f"partition lost or duplicated options: {len(placed)} placed against {len(ids)} generated")
