@@ -560,6 +560,31 @@ def main(wd, expect):
     # a place the reader may not be able to reach, and the run looks identical either way.
     print(f"  wrote to {os.path.abspath(wd)}")
 
+    # THE READER'S LINE FOR THIS BOUNDARY -- see the note at the same place in merge_relations.py.
+    #
+    # It has to be able to say families went DOWN. Grouping splits clusters that held more than
+    # one idea and merges families the verdicts say are one, and on real runs the merges dominate
+    # often enough to matter: 91 clusters -> 57 families on one preserved run, 106 -> 99 on
+    # another. A sentence that can only report splitting reads as an error on those runs, because
+    # the reader can see both numbers and only one of the two movements is named.
+    moves = []
+    if split:
+        moves.append(f"{split} cluster{'' if split == 1 else 's'} held more than one idea and "
+                     f"{'was' if split == 1 else 'were'} split apart")
+    if merged_back:
+        moves.append(f"{merged_back} famil{'y' if merged_back == 1 else 'ies'} the verdicts say "
+                     f"{'is' if merged_back == 1 else 'are'} one move {'was' if merged_back == 1 else 'were'} "
+                     f"merged back together")
+    nested = len(every) - len(out)
+    say = f"SAY: {len(clusters)} clusters became {len(out)} families"
+    say += (": " + ", and ".join(moves) + ".") if moves else ", with none split or merged."
+    if nested:
+        say += (f" {nested} option{'' if nested == 1 else 's'} "
+                f"{'sits nested as a variant' if nested == 1 else 'sit nested as variants'} "
+                f"of another.")
+    print(say + " Next a ranker orders the families by which would survive a skeptical room — "
+                "not by which is most unusual.")
+
 
 if __name__ == "__main__":
     a = sys.argv[1:]

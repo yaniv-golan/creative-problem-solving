@@ -301,8 +301,9 @@ def t_shard_candidates():
         run("shard_candidates.py", d, "--probe", 20)
         h2 = [open(f).read() for f in sorted(glob.glob(os.path.join(d, "cand-*.json")))]
         check("deterministic", h1 == h2, "same input produced different shards")
-        check("prints the generation heartbeat", "options so far" in out,
-              "heartbeat must ride on this call — a print-only command gets skipped")
+        check("prints the sharding boundary line, marked for the reader",
+              "SAY:" in out and "candidate pairs, split into" in out,
+              "this boundary must ride on this call — a print-only command gets skipped")
 
 def t_probe_spread():
     """Every adjudicator must be cross-checked by the probe, at any pool size.
@@ -498,13 +499,13 @@ def t_progress():
         shutil.rmtree(d, ignore_errors=True); os.makedirs(d, exist_ok=True)
         ids = make_pools(d)
         rc, out = run("progress.py", d)
-        check("counts every option", out.startswith("32 options so far"), out.strip()[:70])
+        check("counts every option", out.startswith("SAY: 32 options,"), out.strip()[:70])
         fams = make_families(d, ids)
         rc, out = run("progress.py", d)
         check("reports families once grouped", "grouped into 32 families" in out, out.strip()[:70])
         json.dump({"families": fams[:3]}, open(os.path.join(d, "families.json"), "w"))
         rc, out = run("progress.py", d)
-        check("half-written families falls back", "options so far" in out,
+        check("half-written families falls back", "grouped into" not in out,
               "claimed a family count while grouping was still in flight")
 
 def t_reproduced_bypasses():
@@ -3563,7 +3564,7 @@ def t_superseded_shards_do_not_linger():
               len(glob.glob(os.path.join(d, "superseded-cand-*.json"))) == first - 3,
               "outputs/ is delete-denied; the files must still exist")
         check("...and the heartbeat count matches the sharding it just did",
-              "in 3 parallel batches" in out, out.strip()[:150])
+              "split into 3 batches" in out, out.strip()[:150])
     finally:
         shutil.rmtree(d, True)
 
@@ -3683,10 +3684,11 @@ def t_progress_names_the_next_stage():
         check("sharding succeeds", rc == 0, out.strip()[:120])
         n = len(glob.glob(os.path.join(d, "cand-*.json")))
         check("...and wrote shards", n >= 1, f"{n}")
-        check("the heartbeat names adjudication as next", "Adjudicating" in out, out.strip()[:200])
+        check("the heartbeat names adjudication as next",
+              "adjudicators judge every one of them" in out, out.strip()[:200])
         check("...and does not claim grouping is next",
               "Grouping them into families is next" not in out, out.strip()[:200])
-        check("...and states the real shard count", f"in {n} parallel batches" in out,
+        check("...and states the real shard count", f"split into {n} batches" in out,
               out.strip()[:200])
         check("...and describes the long wait, not a couple of minutes",
               "couple of minutes" not in out, out.strip()[:200])
@@ -3696,7 +3698,7 @@ def t_progress_names_the_next_stage():
         fams = make_families(d, ids)
         rc, out = run("shard_candidates.py", d, "--probe", 12)
         check("a stale families.json does not turn the sharding line into a grouping line",
-              "grouped into" not in out and "Adjudicating" in out, out.strip()[:200])
+              "grouped into" not in out and "candidate pairs" in out, out.strip()[:200])
         # CONTROL: called standalone with grouping genuinely done, it still reports families.
         rc, out = run("progress.py", d)
         check("CONTROL: standalone after grouping still reports families", "grouped into" in out,
@@ -3876,6 +3878,157 @@ def t_label_is_one_line():
         shutil.rmtree(d, True)
 
 
+def t_every_phase_boundary_speaks():
+    """Each phase boundary says something to the reader, and a silent one leaves evidence.
+
+    The four progress points used to ride on calls the pipeline had to make anyway, so none of
+    them could be quietly dropped. Reporting at every phase boundary breaks that: three of the
+    four are now `progress.py <wd> <stage>` calls whose only job is to print, and a print-only
+    command is the first one skipped with nothing to notice. So each boundary that prints records
+    that it did, and step 9 names the ones that never happened.
+    """
+    print("\nevery phase boundary speaks, and a silent one is named at step 9")
+    from progress import announced
+
+    d = tempfile.mkdtemp()
+    try:
+        ids, fams = full_fixture(d, multi=True)
+
+        # 1. Each stage says something different, and every line is marked for the reader.
+        seen = {}
+        for st in ("generated", "sharded", "ranked", "verified"):
+            rc, out = run("progress.py", d, st)
+            check(f"{st}: prints a line marked for the reader",
+                  rc == 0 and out.startswith("SAY: "), repr(out[:90]))
+            seen[st] = out.strip()
+        check("the four boundaries say four different things",
+              len(set(seen.values())) == 4, repr(sorted(seen.values()))[:160])
+        check("generated counts the options", "32 options" in seen["generated"], seen["generated"][:90])
+        check("sharded counts pairs and batches",
+              "candidate pairs, split into" in seen["sharded"], seen["sharded"][:90])
+        check("ranked counts families", "families ranked" in seen["ranked"], seen["ranked"][:90])
+        check("verified tallies the verdicts", "checked:" in seen["verified"], seen["verified"][:90])
+
+        # 2. Every boundary names what happens next -- the half that makes a wait expected rather
+        #    than alarming, and the half a script may write because a sentence about what is about
+        #    to happen claims nothing about what already ran.
+        for st in ("generated", "sharded", "ranked", "verified"):
+            check(f"{st}: says what comes next", "Next" in seen[st] or "Next," in seen[st],
+                  seen[st][-80:])
+
+        # 3. A misspelled stage fails loudly. Silently printing the wrong boundary's line, or
+        #    nothing at all, is the failure this whole file exists to prevent.
+        rc, out = run("progress.py", d, "grouped")
+        check("an unknown stage FAILS rather than printing the wrong line",
+              rc != 0 and "unknown stage" in out, f"rc={rc} {out[:90]}")
+
+        # 4. Announcing is recorded, and step 9 names what never spoke.
+        check("all four are recorded as announced",
+              announced(d) == {"generated", "sharded", "ranked", "verified"}, str(announced(d)))
+        rc, out = run("verify_pipeline.py", d)
+        check("a fully-narrated run draws no boundary warning",
+              "never printed a line" not in out, out[:160])
+    finally:
+        shutil.rmtree(d, True)
+
+    d = tempfile.mkdtemp()
+    try:
+        full_fixture(d, multi=True)
+        rc, out = run("verify_pipeline.py", d)
+        check("a silent run is NAMED at step 9, not passed as fine",
+              "never printed a line" in out and "generated" in out, out[:200])
+        check("...and it is a WARN, not a gate — the answer is still correct",
+              rc == 0, f"rc={rc}: narration must not refuse a good run")
+
+        # A stage called before its files exist prints nothing AND is not recorded as having
+        # spoken. Recording it would report a line the reader never got.
+        e = tempfile.mkdtemp()
+        try:
+            rc, out = run("progress.py", e, "ranked")
+            check("a boundary called too early is silent", rc == 0 and out.strip() == "", repr(out[:60]))
+            check("...and is not recorded as announced", "ranked" not in announced(e), str(announced(e)))
+        finally:
+            shutil.rmtree(e, True)
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_the_failed_integrity_check_still_speaks():
+    """When step 9 refuses the run, the reader is told -- that is the worst moment to go quiet.
+
+    verify_pipeline.py is a gate, so a run it refuses exits before printing the counts that would
+    have been the last boundary's line. A reader who has been told what every earlier stage
+    produced then simply stops hearing anything, at exactly the point something went wrong. The
+    line is deliberately unspecific: which invariant tripped is for whoever is fixing it, and is
+    printed above for them.
+    """
+    print("\na refused run tells the reader it is being fixed")
+    d = tempfile.mkdtemp()
+    try:
+        ids, fams = full_fixture(d)
+        # Delete every shard: the run then never sharded, which is a gate this script already
+        # refuses. Any refusal exercises the path -- die() is the single exit.
+        for f in glob.glob(os.path.join(d, "cand-*.json")): os.remove(f)
+        rc, out = run("verify_pipeline.py", d)
+        check("the run is refused", rc != 0, f"rc={rc}")
+        check("...and the reader is told, in a line marked for them",
+              "SAY: The integrity check found something inconsistent" in out, out[:200])
+        check("...saying it is being fixed rather than which invariant tripped",
+              "fixing it" in out, out[:200])
+        check("...while the operator still gets the specific reason",
+              "FAIL:" in out and "never sharded" in out, out[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_grouping_line_reports_merges_not_only_splits():
+    """Families can end up FEWER than clusters, and the line has to be able to say so.
+
+    Grouping splits clusters holding more than one idea and merges families the verdicts say are
+    one move. On preserved runs the merges dominate often enough to matter -- 91 clusters became
+    57 families on one, 106 became 99 on another. A sentence that can only report splitting reads
+    as an error there: the reader can see both numbers and only one of the two movements is named.
+    """
+    print("\nthe grouping line names merging, not only splitting")
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 2, 6)
+        a, b, c = ids[0], ids[1], ids[2]
+        # Three mutual duplicates handed over as three separate families: no assignment of leads
+        # separates them, so the repair path must merge them back into one.
+        trio = {frozenset((a, b)), frozenset((a, c)), frozenset((b, c))}
+        rels = [{"a": x, "b": y, "relation": "duplicate"} for x, y in itertools.combinations((a, b, c), 2)]
+        rels += [{"a": x, "b": y, "relation": "distinct"}
+                 for x, y in itertools.combinations(ids, 2) if frozenset((x, y)) not in trio]
+        json.dump({"pairs": [{"a": r["a"], "b": r["b"]} for r in rels]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        json.dump({"relations": rels}, open(os.path.join(d, "relations.json"), "w"))
+        run("plan_groups.py", d)
+        clusters = json.load(open(os.path.join(d, "clusters.json")))["clusters"]
+        home = next(c2 for c2 in clusters if a in c2["members"])
+        fams = [{"cid": home["cid"], "label": f"mech-{m}", "lead": m, "members": [m]}
+                for m in (a, b, c) if m in home["members"]]
+        rest = [m for m in home["members"] if m not in (a, b, c)]
+        if rest:
+            fams.append({"cid": home["cid"], "label": "rest", "lead": rest[0], "members": rest})
+        for c2 in clusters:
+            if c2["cid"] == home["cid"]: continue
+            fams.append({"cid": c2["cid"], "label": f"m{c2['cid']}", "lead": c2["members"][0],
+                         "members": c2["members"]})
+        json.dump({"families": fams}, open(os.path.join(d, "group-result-1.json"), "w"))
+
+        rc, out = run("merge_families.py", d)
+        check("the forced merge completes", rc == 0, out.strip()[:140])
+        if rc != 0: return
+        say = next((l for l in out.splitlines() if l.startswith("SAY:")), "")
+        check("the boundary line exists", bool(say), out.strip()[:140])
+        check("...and names the merging that happened", "merged back together" in say, say[:200])
+        check("...and does not claim a split that did not happen",
+              "split apart" not in say, say[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+
 def main():
     for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
               t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
@@ -3900,7 +4053,9 @@ def main():
               t_lead_search_scales_and_preserves, t_pinch_merge_is_reported,
               t_lead_search_is_numbering_invariant,
               t_superseded_verdicts_go_with_their_shards,
-              t_label_is_one_line):
+              t_label_is_one_line, t_every_phase_boundary_speaks,
+              t_the_failed_integrity_check_still_speaks,
+              t_grouping_line_reports_merges_not_only_splits):
         t()
 
     print()

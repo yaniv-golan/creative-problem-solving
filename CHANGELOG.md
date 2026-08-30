@@ -127,6 +127,64 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **`README.md` said the skill is six files; it is nine.** `INSTALL.md` and `tools/check-repo.py`
   both said nine, and the checker computes it from the payload. Only the README was wrong.
 
+### Added
+
+- **The run says what each phase produced, in the one channel every reader can see.** Seven phase
+  boundaries now print a line beginning `SAY: ` — what the phase produced, and what happens next —
+  and the orchestrator repeats each verbatim. Three ride on scripts that already run
+  (`shard_candidates.py`, `merge_relations.py`, `merge_families.py`); three are `progress.py`
+  calls at boundaries where nothing else runs (`generated`, `ranked`, `verified`); the seventh is
+  `verify_pipeline.py`'s final counts.
+
+  The old design computed four of these correctly and printed them where a terminal renders a
+  command's output under the call that produced it. A client that collapses tool calls to a card
+  shows *"ran 4 commands"* and none of their output, so all four landed where nobody was looking —
+  while `references/pipeline.md` forbade relaying them on the grounds that the reader had already
+  seen them. Measured across this machine's transcripts, the pipeline spoke on 17.0% of its
+  main-thread turns under that client against 53.3% in a terminal, and a preserved 46-minute run
+  went 31 minutes 46 seconds between the Opening and its next word, across six phases.
+
+  **The anti-fabrication rule is not relaxed to do this.** It never said the model must be silent;
+  it said the model must not claim a stage ran, because a description of a skipped stage reads
+  exactly like a description of a real one. A `SAY:` line is repeated verbatim, so the model adds
+  no claim, and every count in it is read off a file at print time. The half that looks forward —
+  *"Next I group what they connected into families"* — is safe for a different reason: a sentence
+  about what is **about to** happen cannot be a false claim that something already happened.
+
+  Which lines get repeated is not a judgement the model makes. A marked line is repeated and an
+  unmarked one is not, because choosing which output is worth passing on is an editorial judgement
+  about what the run did — which is the thing the marker exists to keep away from it.
+
+- **A silent phase boundary is named at step 9.** Three of the boundaries are calls whose only job
+  is to print, and a command whose only job is to print is the first one dropped with nothing to
+  notice it went. Each boundary that prints now records that it did, and `verify_pipeline.py`
+  names any that never spoke. A WARN, not a gate: a run whose answer is right and whose narration
+  was skipped is still a right answer.
+
+- **A refused run tells the reader it is being fixed.** `verify_pipeline.py` is a gate, so a run it
+  stops exits before printing the counts that would have been the last boundary's line — meaning a
+  reader who had heard every earlier stage would stop hearing anything at the moment something
+  went wrong. It is deliberately unspecific: which invariant tripped is printed above it for
+  whoever is fixing it.
+
+### Changed
+
+- **The grouping line reports merging, not only splitting.** Grouping splits clusters holding more
+  than one idea and merges families the verdicts say are one move, and on preserved runs the
+  merges dominate often enough to matter — 91 clusters became 57 families on one, 106 became 99 on
+  another. A sentence that could only report splitting read as an error there, because the reader
+  can see both numbers and only one of the two movements was named.
+
+- **The progress lines lost their standing doctrine.** The step-4 line was 467 characters of which
+  369 were policy repeated identically on every run — nothing is dropped, grouping never deletes,
+  refutations are reported too. Skimmed as terminal output that is free; repeated as the
+  assistant's own message it is a wall of text at the moment the reader's attention is most worth
+  having. The policy belongs in the report.
+
+- **The Opening promises reporting rather than quiet**, and does not promise a number of updates:
+  a run that fails its integrity check takes a repair round and speaks a different number of
+  times, and a reader counting against a promise learns the wrong thing from that.
+
 ### Fixed
 - **A family label a grouper wrote could carry a newline all the way to the reader.** Nothing in
   `scripts/` scrubbed line breaks: `merge_families.py` took `.strip()`, which is leading and

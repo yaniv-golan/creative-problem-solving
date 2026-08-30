@@ -406,17 +406,26 @@ constraints, different words.
 
 ---
 
-## What you say between the Opening and the Closing: nothing
+## What you say between the Opening and the Closing: the `SAY:` lines, and nothing else
 
 This is Phase 4's rule and it is repeated here, before step 1, because it governs every step below
 and a run that reads the steps in order should meet it before it starts narrating them.
 
-From the Opening to the Closing your only outputs are tool calls. The progress points are
-printed **by the scripts**; let them stand. A plan line, an acknowledgement, a restatement of what
-a script just printed, or a count in your own words is process leakage — and a restated count is
-also how a wrong number reaches the reader, since the script had it right and the paraphrase is
-what the reader sees. The rationale is at the end of this file under **What you say while you
-work**.
+**Whenever a script prints a line beginning `SAY: `, repeat it as your own next message —
+verbatim, with the marker stripped, and nothing added before or after it.** That is your only
+output between the Opening and the Closing. A plan line, an acknowledgement, a summary of what a
+script printed, or a count in your own words is still process leakage — and a count in your own
+words is also how a wrong number reaches the reader, since the script had it right and the
+paraphrase is what the reader sees.
+
+Repeating is not narrating. The line was written by a script that counted the files, and copying
+it moves the words to where the reader is looking without putting a single claim of yours into
+them. **Which lines to repeat is not a judgement you make** — a marked line is repeated, an
+unmarked one is not. Deciding for yourself which output is worth passing on is an editorial
+judgement about what the run did, and that judgement is exactly what the marker exists to keep
+away from you.
+
+The rationale is at the end of this file under **What you say while you work**.
 
 ---
 
@@ -470,6 +479,14 @@ assumed: a negation round against that structure returned one search-verified op
    reader is judging the move, and a claim about the world behind the lead option of each of the
    top 13 families gets checked at step 8 whether or not the generator argued for it. Claims
    inside nested variants are not checked — see step 8.
+
+   Then say what the phase produced, with one Bash call, and repeat the `SAY:` line it prints:
+
+   `python3 "$CPS/scripts/progress.py" "$BASE/$RUN/_work" generated`
+
+   This is the reader's first word since the Opening, and the phase before it is the longest
+   uninterrupted one in the run. It prints nothing if no pool landed, which is itself the
+   signal that generation failed rather than finished.
 
 4. **One `pair-proposer` proposes candidate relationships.** *Tell it what its output feeds: a
    script shards these pairs and an adjudicator judges every one, so a pair it never proposes is
@@ -698,6 +715,14 @@ assumed: a negation round against that structure returned one search-verified op
    Being already familiar to the reader is NOT a mark against a family. A well-known mechanism
    that is right for this problem beats a novel one that is wrong for it.
 
+   Then say what the phase produced, with one Bash call, and repeat the `SAY:` line it prints:
+
+   `python3 "$CPS/scripts/progress.py" "$BASE/$RUN/_work" ranked`
+
+   Say it before dispatching the verifiers, not after: the line names how many families were
+   ranked and that the top 13 are about to be checked, which is what makes the next few
+   minutes legible.
+
 8. **Dispatch `verifier` sub-agents for the top 13 families.** *Tell each one what its verdict
    feeds: it is printed under the option in the report, and a refuted lead promotes the family's
    next surviving member rather than removing the family.* Take the first 13 family ids in
@@ -777,6 +802,13 @@ assumed: a negation round against that structure returned one search-verified op
    search happened when none did is the one thing this file cannot detect from the outside.
    `verify_pipeline.py` refuses both shapes: `unclear` with an empty query, and
    `no_external_claim` carrying one.
+
+   Then say what the phase produced, with one Bash call, and repeat the `SAY:` line it prints:
+
+   `python3 "$CPS/scripts/progress.py" "$BASE/$RUN/_work" verified`
+
+   The tally includes the refutations. A run that reports what held up and not what did not has
+   told the reader it went better than it did.
 
 9. **Verify integrity before writing a word of the answer.** Run:
    `python3 "$CPS/scripts/verify_pipeline.py" "$BASE/$RUN/_work"`
@@ -959,28 +991,56 @@ is the deliverable and the script builds it.
 
 ## Progress
 
-This run takes about forty minutes. Four times in it, something true and worth knowing becomes
-available, and a reader watching should get it rather than sit in silence:
+This run takes about forty minutes across roughly eighteen dispatches, and the reader sees none of
+them: a client that renders tool calls as collapsed cards shows *"ran 4 commands"* where the
+terminal shows four lines of output. So at every phase boundary a script prints one `SAY:` line
+saying what the phase produced and what happens next, and you repeat it. Seven boundaries:
 
-- what generation produced — `shard_candidates.py` prints it at step 4
-- the adjudicator agreement figure — `merge_relations.py`, step 5
-- what the options grouped into — `plan_groups.py` and `merge_families.py`, step 6
-- the final counts — `verify_pipeline.py`, step 9
+| after | printed by | the run has just |
+|---|---|---|
+| generation | `progress.py <wd> generated` | run every generator |
+| pair proposal | `shard_candidates.py`, step 4 | sharded the proposed pairs |
+| adjudication | `merge_relations.py`, step 5 | merged every verdict |
+| grouping | `merge_families.py`, step 6 | built the families |
+| ranking | `progress.py <wd> ranked` | ordered them |
+| verification | `progress.py <wd> verified` | checked the top families' claims |
+| the integrity check | `verify_pipeline.py`, step 9 | proved the run adds up |
 
-Three of the four ride on calls the pipeline already has to make, which is deliberate: a command
-whose only job is to print is the first one dropped when nothing downstream depends on it, and
-nothing notices it is missing.
+Each says what the phase produced **and what is about to happen**, including how long a wait to
+expect. The forward half matters as much as the counts: silence that was predicted is a different
+experience from silence that was not, and the longest stretch in the run — adjudication — is
+announced by the line before it rather than explained by one after.
 
-**All four are printed by a script, and none of them are written by you.** That is the whole
-design and it is not a stylistic preference. A model that skipped a stage describes having run
-it exactly as convincingly as one that ran it, and a reader has no way to tell the two apart —
+`verify_pipeline.py` also prints a `SAY:` line when it **refuses** the run. That is the boundary
+most easily lost: it is a gate, so a run it stops exits before printing counts, and a reader who
+has heard every earlier stage would simply stop hearing anything at the moment something went
+wrong.
+
+Three of these ride on calls the pipeline has to make anyway. The other three — `generated`,
+`ranked` and `verified` — are `progress.py` calls whose only job is to print, and a command whose
+only job is to print is the first one dropped when nothing downstream depends on it. So each
+boundary that prints records that it did, and **step 9 names any that never spoke**. That WARN is
+not a gate: a run whose answer is right and whose narration was skipped is still a right answer,
+and refusing it would be refusing good work over its commentary.
+
+**Every one of them is printed by a script, and none of them are written by you.** That is the
+whole design and it is not a stylistic preference. A model that skipped a stage describes having
+run it exactly as convincingly as one that ran it, and a reader has no way to tell the two apart —
 which is the one failure this pipeline cannot survive. A script counting files cannot make that
 claim, because a stage that did not run leaves nothing to count. `progress.py` also opens the
 pools so that you do not have to; what reaches your context is one sentence.
 
-So: run them where the steps say, and let their output stand. **Do not restate, summarise,
-interpret or preface what a script printed** — the reader has already seen it, and a summary of
-it is the narration this design exists to avoid.
+So: run them where the steps say, and **repeat each `SAY:` line verbatim, with the marker
+stripped and nothing added**. Do not summarise, interpret or preface it, and never put a count in
+your own words — the script had the number right, and a paraphrase is what the reader would get
+instead.
+
+This used to say to let the output stand, on the grounds that the reader had already seen it.
+That was true in a terminal, where a command's output renders under the call that produced it,
+and false everywhere else: a client that collapses tool calls to a card shows *"ran 4 commands"*
+and none of their output. The lines were computed correctly, printed correctly, and delivered
+where nobody was looking — while the one channel the reader does read was forbidden to carry
+them. Repeating the line verbatim is what fixes that, and it adds no claim of yours to it.
 
 ## What you say while you work
 
@@ -993,14 +1053,28 @@ roughly eighteen dispatches, and the temptation is to fill that silence with a c
 "I'll dispatch the generators", "all the pools are in, now the grouping pass". Those tell the
 reader nothing they want and are the process leakage Phase 4 bans.
 
-The rule is not "say nothing." It is **say two things, at two named moments, and nothing in
+The rule is not "say nothing", and it is not "say what you are doing". It is **say the Opening,
+repeat every `SAY:` line a script prints, say the Closing, and write nothing of your own in
 between**.
+
+The difference that makes those safe is the tense. A `SAY:` line reports what has already
+happened and was counted off disk by a script, so no claim in it is yours. The half of it that
+looks forward — *"Next I group what they connected into families"* — is safe for a different
+reason: a sentence about what is **about to** happen cannot be a false claim that a stage ran.
+What you must never author is the past tense. "All the pools are in", "the grouping pass is
+done", "that produced about two hundred options" — each is a claim about completed work that
+reads identically whether the work happened or not, and that is the one failure this pipeline
+cannot survive.
 
 ### Opening — after Phase 0, before the first dispatch
 
 > Reading this as <the reading you picked, in a clause>. If that is not the question, say so now.
-> Otherwise this takes about forty minutes; I will be quiet until it is done, apart from a
-> couple of progress lines.
+> Otherwise this takes about forty minutes, and I will tell you what each stage produced as it
+> finishes.
+
+Do not promise a number of updates. A run that fails its integrity check takes a repair round and
+speaks a different number of times, and a reader counting against a promise learns the wrong
+thing from that.
 
 This is the one output that can save the reader the whole run. You have just chosen a reading of
 an ambiguous brief, and every one of the next forty minutes is spent on that choice — nine

@@ -69,6 +69,7 @@ judgement prose around them.
 request. Checking a hundred-plus options is not affordable; naming which ones were checked is.
 
 Say roughly how long you will take, then go. Don't ask permission twice.
+**Repeat every `SAY:` line a script prints, verbatim; say nothing else.**
 
 ---
 

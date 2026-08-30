@@ -22,6 +22,7 @@ from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, load_obj
 from build_report import effective_lead
+from progress import announced, BOUNDARIES
 # One definition of the share rule; merge_families.py bounds its merges by the same import.
 from verdicts import JOINING, SEPARATING, SHARE_MAX as SEP_SHARE_MAX, share_breach  # noqa: F401
 from verdicts import relation_of
@@ -33,7 +34,16 @@ PROBE_FLOOR = 40
 
 
 def die(msg):
-    print(f"FAIL: {msg}"); sys.exit(1)
+    print(f"FAIL: {msg}")
+    # The reader's line for a FAILED integrity check. Without it the worst runs go quiet at the
+    # worst moment: this script is a gate, so when it fires it exits before printing the counts
+    # that would otherwise have been this boundary's line -- and a reader who has been told what
+    # every earlier stage produced simply stops hearing anything. Deliberately unspecific. What
+    # went wrong is named above for whoever is fixing it, and the reader needs to know that it is
+    # being fixed rather than which invariant tripped.
+    print("SAY: The integrity check found something inconsistent, so I am fixing it and running "
+          "the check again before building the document.")
+    sys.exit(1)
 
 # Warnings are printed where they are found and repeated at the end, so a long run's output cannot
 # bury one. They never change the exit code: a warning is for a property this script can detect but
@@ -653,6 +663,36 @@ def main(wd):
           + (f" -> present these as unverified: {unclear}" if unclear else "")
           + (f" -> these rest on no outside-world claim: {no_claim}" if no_claim else ""))
     print(f"report_top={min(3,n)} report_next={max(0,min(10,n-3))} report_rest={max(0,n-13)}")
+
+    # Which phase boundaries never told the reader anything. Three of the four are print-only
+    # calls with nothing downstream depending on them, so a run can complete perfectly while
+    # having been silent -- and silence is indistinguishable from a stage having nothing to say.
+    # A WARN and not a gate: the run is correct, the reader was merely left in the dark, and a
+    # failure here would refuse a good answer over its narration.
+    _missed = [b for b in BOUNDARIES if b not in announced(wd)]
+    if _missed:
+        warn(f"{len(_missed)} phase boundar(ies) never printed a line for the reader: "
+             f"{', '.join(_missed)}. The run is fine; the reader was told less than the steps "
+             f"say to tell them. Each is one `progress.py <work-dir> <stage>` call at the end of "
+             f"that phase.")
+
+    # THE READER'S LINE FOR THE LAST BOUNDARY, and the only in-channel check on every line before
+    # it. These counts are recomputed here from the files at the end of the run, so a mid-run
+    # figure that drifted -- or was never printed by a stage that did not run -- contradicts this
+    # one in the same conversation, where the reader can see both without opening anything.
+    #
+    # It must NOT assert that the numbers match: this script cannot see what progress.py printed,
+    # so a sentence claiming agreement would be a detector narrating its own success. It states
+    # its numbers and invites the comparison instead.
+    _nested = len(placed) - n
+    say = f"SAY: {len(ids)} options generated, grouped into {n} famil{'y' if n == 1 else 'ies'}"
+    say += f"; {_nested} sit nested as variants." if _nested > 0 else ", none of them nested."
+    if rejected:
+        say += (f" {len(rejected)} {'was' if len(rejected) == 1 else 'were'} refuted by search and "
+                f"{'is' if len(rejected) == 1 else 'are'} reported with the source that refuted "
+                f"{'it' if len(rejected) == 1 else 'them'}.")
+    print(say + " These are counted from the files at the end of the run — if they differ from "
+                "the numbers you saw earlier, something went wrong and it is worth saying so.")
     if WARNINGS:
         print(f"warnings={len(WARNINGS)} (repeated so a long run cannot bury them):")
         for w in WARNINGS:

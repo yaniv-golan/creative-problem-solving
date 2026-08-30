@@ -171,6 +171,31 @@ def main(wd):
     # Say where the bytes actually went, resolved -- see the note in shard_candidates.py.
     print(f"  wrote to {os.path.abspath(wd)}")
 
+    # THE READER'S LINE FOR THIS BOUNDARY. Marked `SAY:` and written as a sentence rather than as
+    # telemetry, because the orchestrator repeats marked lines verbatim to a reader who never sees
+    # the operator output above -- in a client that renders tool calls as collapsed cards, this is
+    # the only thing about adjudication that reaches them. Every figure is the same one the lines
+    # above printed; nothing here is recomputed, so the two cannot disagree.
+    if probe:
+        _p = "pair" if len(probe) == 1 else "pairs"
+        say = (f"SAY: The adjudicators agreed on {agreed} of the {len(probe)} {_p} that two of "
+               f"them both judged" + (f" — {rate:.0%}." if rate is not None else "."))
+        if conflicts:
+            _d = "disagreement was" if len(conflicts) == 1 else "disagreements were"
+            say += (f" The {len(conflicts)} {_d} each resolved toward keeping the options "
+                    f"separate.")
+        if self_judged:
+            _s = "pair was" if self_judged == 1 else "pairs were"
+            say += (f" A further {self_judged} {_s} judged twice by the same adjudicator and left "
+                    f"out of that figure — one reader agreeing with itself measures nothing.")
+    else:
+        # The run that measured nothing is the one a reader most needs told, so this branch says
+        # so plainly rather than being softened into something reassuring.
+        say = ("SAY: No pair was judged by two adjudicators, so this run has no cross-check on "
+               "their verdicts at all.")
+    print(say + " Next I group what they connected into families, each named for the one "
+                "mechanism behind it.")
+
     # WHAT THE AGREEMENT PROBE CANNOT SEE.
     #
     # The probe asks whether two adjudicators judged the same pair the same way. It says nothing

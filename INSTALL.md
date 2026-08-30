@@ -149,9 +149,10 @@ sub-agent definitions in `agents/` (one per pipeline role, each carrying only th
 needs), nine stdlib-only Python scripts in `scripts/`, and one bash launcher, `bin/cps`, which
 finds those scripts for the shell and runs one. Claude Code puts a plugin's `bin/` on the Bash
 tool's `PATH`, so it is reachable as a bare `cps` where that holds; nothing depends on it, and the
-pipeline falls back to locating the scripts itself where it does not. The pipeline runs six of them through
+pipeline falls back to locating the scripts itself where it does not. The pipeline runs seven of them through
 your host's Bash tool to shard the candidate pairs, merge the adjudicators' verdicts, partition
-the options into clusters, reassemble those into families, build the report, and check the
+the options into clusters, reassemble those into families, say at each phase boundary what that
+phase produced, build the report, and check the
 finished run's integrity before a word of the answer is written — the other three are a shared JSON
 loader, a progress-line builder and the shared verdict vocabulary the six import. They
 read and write JSON under one directory — except the report builder, which writes the report in

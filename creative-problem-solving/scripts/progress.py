@@ -6,87 +6,174 @@ unkind, but the obvious fix -- have the model narrate -- is the one thing this p
 audit. A model that skipped a stage narrates having done it exactly as fluently as one that did
 it, and a reader watching has no way to tell. That failure has happened here before.
 
-So the progress line is produced by this script instead. Every number below is counted from a
+So the progress lines are produced by this script instead. Every number below is counted from a
 file on disk at the moment of printing, and the one piece of prose -- the family label -- is
 quoted from what the grouper wrote, with its whitespace collapsed so that one label cannot
 become two lines of output. Nothing here can claim a stage ran that did not
 run, because a stage that did not run leaves no file to count.
 
+Each line also says what happens NEXT, and that half is safe for the same reason the counts are:
+a sentence about what is about to happen claims nothing about what has already run, so it cannot
+be the fabrication the design guards against. A model that announces a stage and then skips it
+leaves the next boundary line missing and fails step 9.
+
 It also keeps the reading cheap: this script opens the pools, so the orchestrator does not have
 to. What reaches the orchestrator's context is one sentence.
 
-  progress.py <work-dir>
+  progress.py <work-dir> [stage]
 
-Prints one line for the furthest stage it finds evidence of. Silent, exit 0, when the work dir
-exists but has no pools yet. Fails loudly if the path is wrong, because a heartbeat that stays
-quiet about its own misconfiguration never fires and nobody notices.
+Stages are the phase boundaries a reader hears about: `generated`, `sharded`, `ranked`,
+`verified`. With no stage it prints the furthest thing it finds evidence of, which is the
+form a person debugging a work directory wants.
+
+EVERY LINE IS PREFIXED `SAY: `. That prefix is the whole contract with the orchestrator: it
+marks a line as written for the reader rather than for whoever is watching stdout, and the
+instructions say to repeat marked lines verbatim and nothing else. In the terminal a script's
+output renders under the call that produced it, so this changes nothing; in a client that
+collapses tool calls to a card, the marked line is the only way anything reaches the reader.
+
+Which is also why the prefix goes on the line rather than the model choosing what to quote:
+choosing which output is worth repeating is an editorial judgement about what the run did,
+and that judgement is the thing this file exists to keep away from the model.
+
+Silent, exit 0, when the work dir exists but the stage has left no files yet. Fails loudly if
+the path is wrong, because a heartbeat that stays quiet about its own misconfiguration never
+fires and nobody notices.
 """
 import sys, glob, os
+from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, load_obj, one_line
 
-def line(wd, stage=None):
-    # Silence is a legitimate answer here -- called before the first pool lands, there is
-    # genuinely nothing to say. A path that does not exist is NOT that: it is a caller bug, and
-    # staying quiet about it means the heartbeat never fires and nobody finds out. Exactly the
-    # silent no-op this pipeline refuses everywhere else.
-    if not os.path.isdir(wd):
-        sys.exit(f"FAIL: {wd} is not a directory — progress.py was given the wrong path. "
-                 f"It wants the _work directory, the same one verify_pipeline.py takes.")
+SAY = "SAY: "
 
-    pools = sorted(glob.glob(os.path.join(wd, "pool-*.json")))
-    if not pools: return None
+# The boundaries a reader hears about, in run order. Named rather than inferred: presence of a
+# file cannot say which stage is CURRENT -- a work dir holding families.json is a run that has
+# grouped, or a re-run that is still sharding beside last time's output. The caller knows; the
+# files do not.
+BOUNDARIES = ("generated", "sharded", "ranked", "verified")
 
-    # How many adjudicators are about to run, counted from the files that will carry them. The
-    # caller writes those files BEFORE calling this, which it did not always do: the heartbeat
-    # used to be the third statement in shard_candidates.main() and the shards are written near
-    # the end of it, so counting them here returned zero on every first run and the previous
-    # run's count on a re-run. A wrong number that looks counted is worse than no number, and
-    # this script's whole claim is that every figure in it was read off a file.
-    shards = len(glob.glob(os.path.join(wd, "cand-*.json")))
+# Three of the four boundaries have no script that must run there anyway -- `generated`, `ranked`
+# and `verified` are calls whose only job is to print, and a command whose only job is to print is
+# the first one dropped when nothing downstream depends on it, with nothing to notice it went. The
+# earlier design avoided that by riding every progress point on a call the pipeline had to make;
+# reporting at every phase boundary makes that impossible, so the risk is answered instead of
+# avoided: each boundary that prints records that it did, and verify_pipeline.py says at step 9
+# which ones never happened. Detection, not prevention -- but a dropped line now leaves evidence
+# rather than looking exactly like a run that had nothing to say.
+ANNOUNCED = "progress-announced.txt"
 
+
+def _record(wd, stage):
+    with open(os.path.join(wd, ANNOUNCED), "a", encoding="utf-8") as fh:
+        fh.write(stage + "\n")
+
+
+def announced(wd):
+    """The boundaries that printed, for verify_pipeline.py. Empty when none did."""
+    path = os.path.join(wd, ANNOUNCED)
+    if not os.path.exists(path): return set()
+    return {ln.strip() for ln in open(path, encoding="utf-8") if ln.strip()}
+
+
+def _plural(n, one, many=None):
+    """`1 family` / `9 families`. The irregular plural is passed in rather than guessed."""
+    return f"{n} {one}" if n == 1 else f"{n} {many or one + 's'}"
+
+
+def _pools(wd):
+    """Every lens that wrote a pool, and the total options across them."""
     lenses, n = [], 0
-    for p in pools:
-        d = load_obj(p)
+    for path in sorted(glob.glob(os.path.join(wd, "pool-*.json"))):
+        d = load_obj(path)
         lenses.append(d.get("lens") or "?")
         n += len(d.get("items") or [])
+    return lenses, n
 
+
+def _generated(wd):
+    lenses, n = _pools(wd)
+    if not lenses: return None
     L = len(lenses)
-    angle = "angle" if L == 1 else "angles"
+    return (f"{SAY}{n} options, from {_plural(L, 'separate angle')} run in isolation from one "
+            f"another. Nothing is dropped for being similar to another. Next I look for pairs "
+            f"that might be the same idea, so they can be grouped rather than deleted — a couple "
+            f"of minutes.")
+
+
+def _sharded(wd):
+    # Counted from the shard files themselves, which the caller writes BEFORE calling this. It
+    # did not always: the heartbeat used to be the third statement in shard_candidates.main()
+    # while the shards are written near the end of it, so this returned zero on every first run
+    # and the previous run's count on a re-run. A wrong number that looks counted is worse than
+    # no number, and this script's whole claim is that every figure in it was read off a file.
+    shards = sorted(glob.glob(os.path.join(wd, "cand-*.json")))
+    if not shards: return None
+    pairs = sum(len(load(f, "pairs")) for f in shards)
+    # Nothing here reads families.json, which is what makes a stale one from an earlier run
+    # unable to turn the sharding line into a grouping line. That used to need a guard; now the
+    # stage simply does not look at the file it would have misread.
+    return (f"{SAY}{pairs:,} candidate pairs, split into "
+            f"{_plural(len(shards), 'batch', 'batches')}. Next, adjudicators judge every one of "
+            f"them. This is the longest wait in the run — several minutes, with nothing printed "
+            f"until every batch is back.")
+
+
+def _ranked(wd):
+    path = os.path.join(wd, "ranked.json")
+    if not os.path.exists(path): return None
+    n = len(load(path, "ranked"))
+    if not n: return None
+    return (f"{SAY}{_plural(n, 'family', 'families')} ranked. Next I check the "
+            f"outside-world claims behind the lead option of the top {min(13, n)} by web search. "
+            f"Anything that does not hold up is cut, and reported with the source that refuted it "
+            f"rather than quietly dropped.")
+
+
+def _verified(wd):
+    files = sorted(glob.glob(os.path.join(wd, "verified-*.json")))
+    if not files: return None
+    tally = Counter()
+    for f in files:
+        for e in load(f, "checked"):
+            tally[(e.get("verdict") or "?")] += 1
+    n = sum(tally.values())
+    if not n: return None
+    # Every verdict the verifiers can return gets said. Reporting only the confirmations would
+    # be the report this pipeline refuses everywhere else -- a reader who is told what held up
+    # and not what did not has been told the run went better than it did.
+    named = [(tally["confirmed"], "confirmed against a source"),
+             (tally["refuted"], "refuted"),
+             (tally["unclear"], "unclear"),
+             (tally["no_external_claim"], "resting on no outside-world claim")]
+    parts = [f"{c} {label}" for c, label in named if c]
+    out = f"{SAY}{_plural(n, 'claim')} checked: " + ", ".join(parts) + "."
+    if tally["refuted"]:
+        out += (" The refuted ones are reported with their sources rather than quietly dropped.")
+    return out + " Next I check the run's integrity and build the document."
+
+
+def _furthest(wd):
+    """No stage named: report the furthest thing there is evidence of.
+
+    This is the form a person debugging a work directory wants, and it is the only branch that
+    may read families.json to decide what stage it is looking at, because a bare call is not
+    claiming to be at any particular boundary.
+    """
+    lenses, n = _pools(wd)
+    if not lenses: return None
+    L = len(lenses)
 
     fpath = os.path.join(wd, "families.json")
     fams = load(fpath, "families") if os.path.exists(fpath) else []
     placed = sum(len(f.get("members") or []) for f in fams)
 
-    # The caller says which stage it is calling from, because presence of a file cannot say it.
-    # Re-run sharding in a work dir that already holds a complete families.json and the
-    # post-grouping branch below fires -- announcing a family count while the run is sharding.
-    # The file is real and the count is right; it just describes a previous run.
-    if stage == "sharded": fams, placed = [], -1
-
     # Mid-flight, half-written state is normal here -- this runs while the pipeline is still
-    # going. A progress line is cosmetic, so it degrades to the earlier, simpler line rather
-    # than asserting something false about a file that is not finished yet.
-    # placed == n is the invariant verify_pipeline enforces at the end. Until it holds, the
+    # going. placed == n is the invariant verify_pipeline enforces at the end; until it holds the
     # grouping is still in flight and any family count would understate what was generated.
-    # Before grouping this is also the only warning the reader gets about the wait, and nothing can
-    # print from inside a dispatch, so the alternative to saying it here is silence that is
-    # indistinguishable from a hung run. The figure has to be honest about what it measures:
-    # the grouper dispatches themselves were 74 s on the run this was recalibrated against
-    # (six of them, 38.7-73.6 s each), and about two minutes on the run after. What used to make
-    # this step long was repair -- the same run spent seven rounds on it -- and that is what the
-    # 0.2.0 rebuild removed. Quoting the old "twenty to thirty minutes" told the reader to expect
-    # a wait the pipeline no longer has, which reads as a hang when it does not happen.
     if not fams or placed != n:
-        return (f"{n} options so far, from {L} separate {angle} "
-                f"({', '.join(lenses[:4])}{'…' if L > 4 else ''}). "
-                f"Nothing is dropped for being similar to another — grouping never deletes. "
-                f"The only way out is a search that refutes one, and those are reported too. "
-                + (f"Adjudicating them in {shards} parallel batches is next"
-                   if shards else "Adjudicating the proposed pairs is next")
-                + f", and that is the long quiet stretch — several minutes, with nothing printed "
-                  f"until every batch is back. Grouping follows it and is quick by comparison.")
+        return _generated(wd)
 
     def spread(f): return len({m.split("-")[0] for m in (f.get("members") or [])})
     top = max(fams, key=spread)
@@ -96,18 +183,39 @@ def line(wd, stage=None):
     # options, because that number is not measurable and asserting it would be false precision.
     # A family count is just how many groups the grouper made, which is a fact.
     nested = placed - len(fams)
-    line = f"{placed} options from {L} {angle}, grouped into {len(fams)} families"
-    line += f"; {nested} sit nested as variants." if nested > 0 else ", none of them nested."
+    out = (f"{SAY}{placed} options from {_plural(L, 'angle')}, grouped into "
+           f"{len(fams)} families")
+    out += f"; {nested} sit nested as variants." if nested > 0 else ", none of them nested."
     label = one_line(top.get("label") or "").rstrip(".")
     if conv > 1 and label:
         # A count, not an independence claim. Passes are isolated, but they are handed the
         # same sharpened brief -- only the lens differs -- so agreeing on a mechanism is weaker
         # evidence than it looks, and how much weaker depends on how differently the briefs were
         # phrased. The number is observable; what it licenses is not.
-        line += (f" Proposed by {conv} of the {L} passes: “{label}.”")
-    return line
+        out += f" Proposed by {conv} of the {L} passes: “{label}.”"
+    return out
+
+
+def line(wd, stage=None):
+    # Silence is a legitimate answer here -- called before the stage's files land, there is
+    # genuinely nothing to say. A path that does not exist is NOT that: it is a caller bug, and
+    # staying quiet about it means the heartbeat never fires and nobody finds out. Exactly the
+    # silent no-op this pipeline refuses everywhere else.
+    if not os.path.isdir(wd):
+        sys.exit(f"FAIL: {wd} is not a directory — progress.py was given the wrong path. "
+                 f"It wants the _work directory, the same one verify_pipeline.py takes.")
+    if stage is not None and stage not in BOUNDARIES:
+        sys.exit(f"FAIL: unknown stage {stage!r} — progress.py knows {', '.join(BOUNDARIES)}. "
+                 f"A misspelled stage would otherwise print the wrong boundary's line, or none.")
+    out = {"generated": _generated, "sharded": _sharded,
+           "ranked": _ranked, "verified": _verified}.get(stage, _furthest)(wd)
+    # Only a boundary that actually printed is recorded. A stage called too early returns None,
+    # and recording that would report a line the reader never got.
+    if out and stage: _record(wd, stage)
+    return out
+
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2: sys.exit(__doc__)
-    out = line(sys.argv[1])
+    if len(sys.argv) not in (2, 3): sys.exit(__doc__)
+    out = line(sys.argv[1], sys.argv[2] if len(sys.argv) == 3 else None)
     if out: print(out)
