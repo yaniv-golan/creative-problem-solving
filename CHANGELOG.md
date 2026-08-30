@@ -103,6 +103,49 @@ project adheres to [Semantic Versioning](https://semver.org/).
   even when a prompt says the obvious answers are spent. Corrected to the single claim, with the
   measurement kept at its real scope.
 
+- **`--fill` no longer deletes a slot when handed an empty value.** `{"{{CLOSING …}}": ""}` printed
+  `filled 1 slot(s)`, exited 0, and replaced the closing judgement with nothing — the failure
+  `--fill` exists to prevent. `--check` then passes: its `{{` scan finds no token and the missing
+  words are far under the floor, and the note beneath `--check` says plainly that a deleted slot is
+  not recoverable from the artifact. Non-string values are refused rather than coerced, the same
+  rule `verify_pipeline.py` applies to verdict fields — `str(v)` puts a literal `None` or `[]` into
+  the report under a heading the reader trusts.
+
+- **And no longer refuses a plain retry with the wrong diagnosis.** Once a fill succeeds its keys
+  are gone from the body, so re-running the same command hit the never-a-slot refusal — *"a key
+  that matches nothing is silently skipped by a replace loop"* — which is a different failure and
+  misleading to read while debugging. It is reachable on any retry and on the multi-pass fill step
+  10 endorses. The manifest carries the skeleton the report was built from, so an already-filled
+  key is told apart from a typo; with no manifest it falls back and says so, rather than inventing
+  a refusal at step 10 of a forty-minute run. The summary line counts what was actually replaced.
+  **What this does not catch, since the WARN is the only signal:** a shifted mapping, where every
+  key is one slot out of step — each slot fills, no token remains, and `--check` goes green on
+  wrong content.
+
+- **A superseded shard's verdicts are superseded with it.** `relations-<k>.json` is written against
+  `cand-<k>.json`, so when a re-shard renames that shard aside its verdicts are stale by
+  construction — but `merge_relations.py` globs `relations-*.json` without knowing which sharding
+  produced them. Left behind, the stale file padded the union the coverage check compares against
+  and a **current** shard that came back short merged green: measured at four shards re-sharded to
+  three, exit 0 with the orphan present and exit 1 without it. The existing sweep now covers both
+  prefixes on the same index test, which leaves the documented repair path untouched.
+
+- **A verifier note renders whatever the verdict says.** The guard listed verdicts, so a note on an
+  `unclear` lead below rank 13 rendered nowhere while `verify_pipeline` printed *"each is rendered
+  under its option in the report"* over it. The guard is unconditional now, the band header's
+  count widens with it so the number matches the markers beneath it, and notes the report genuinely
+  cannot place — a note belongs to a family's block, which only the lead gets — are named in their
+  own WARN instead of absorbed by a claim that they rendered.
+
+- **The transcript-marker check no longer fails open.** It validated only the last scenario file's
+  first marker, ignored single-quoted ones, and emitted neither pass nor failure when it found none
+  — so deleting the assertion removed the check silently. It now accumulates across every file,
+  accepts both quote styles, and refuses when there are none, naming what is lost: that assertion
+  is the live lane's only check on the **sent** message.
+
+- **`--check`'s usage line no longer claims it detects a deleted slot.** Four hundred lines below,
+  the same file explains at length that a deleted slot is not reliably detectable from the artifact.
+
 - **The wholly-missing-shard message now actually fires.** The branch added for an adjudicator
   that returned nothing keyed on the gap being the whole shard, which the agreement probe makes
   impossible: `shard_candidates.py` deals some of shard *k*'s pairs to a second shard as well, so
