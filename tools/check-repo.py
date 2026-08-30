@@ -1194,7 +1194,12 @@ else:
     for _f in _scen:
         # Strip surrounding quotes: `baseline: "desktop-x"` is valid YAML, and a bare \S+ capture
         # keeps the quotes, so the lookup misses and the scenario is reported as unshipped.
-        _m = re.search(r"^baseline:\s*[\"']?([^\"'\s]+)", read_text(os.path.relpath(_f, REPO)), re.M)
+        try:
+            _txt = read_text(os.path.relpath(_f, REPO))
+        except OSError:
+            _unreadable.append((os.path.basename(_f), "scenario file unreadable"))
+            continue
+        _m = re.search(r"^baseline:\s*[\"']?([^\"'\s]+)", _txt, re.M)
         if not _m or _m.group(1) == "latest":
             continue                    # `latest` resolves at run time; nothing to check here
         _pins += 1
@@ -1205,11 +1210,19 @@ else:
         # A baseline file this repo does not own can be truncated, or carry a null agentBinary. This
         # check exists to WARN so a contributor is never blocked by their own machine's state --
         # handing them a traceback instead would be worse than the failure it refuses to be.
+        # A baseline file this repo does not own can be truncated, a list, a bare string, or carry an
+        # agentBinary of any shape at all -- schema drift in someone else's release is exactly the
+        # case this cannot assume away. Type-check rather than duck-type: an AttributeError here is
+        # not caught by the warn path below, and because this is the LAST check in the file, an
+        # uncaught raise pre-empts the failure summary and discards every genuine finding above it.
         try:
             with open(_bj) as _fh:
-                _ab = (json.load(_fh) or {}).get("agentBinary") or {}
-            _staged = _ab.get("stagedPath") or ""
-        except (ValueError, OSError) as _e:
+                _doc = json.load(_fh)
+            _ab = _doc.get("agentBinary") if isinstance(_doc, dict) else None
+            _staged = _ab.get("stagedPath") if isinstance(_ab, dict) else None
+            if not isinstance(_staged, str):
+                _staged = ""
+        except (ValueError, OSError, AttributeError, TypeError) as _e:
             _unreadable.append((os.path.basename(_f), "%s (%s)" % (_m.group(1), type(_e).__name__)))
             continue
         if not _staged:

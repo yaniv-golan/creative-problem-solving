@@ -2439,7 +2439,7 @@ def t_pinch_merge_is_reported():
     counted and never printed, so a run that fused families looked exactly like one that did not.
 
     It was also unbounded, where every other merge in the codebase is bounded by the separating-share
-    rule: 489 of 10,000 random instances wrote a cluster over it, worst 60% against a 15% limit. The
+    rule: 1,184 of 10,000 random instances wrote a cluster over it, worst 60% against a 15% limit. The
     seed-5 fixture below is the one this test used to pin as a *successful* merge, and it fused a
     family at 40% -- the repo's own demonstration of the feature was a demonstration of the defect.
     It is kept, now as the refusal case.
@@ -2566,6 +2566,26 @@ def t_lead_search_is_numbering_invariant():
     json.dump({"relations": [{"a": "p1-000", "b": "p1-001", "relation": "distinct"}]},
               open(os.path.join(w, "relations.json"), "w"))
     res = _sp.run([sys.executable, str(SCRIPTS / "plan_groups.py"), w], capture_output=True, text=True)
+    # The baseline check is the LAST check in check-repo.py, so an uncaught raise there pre-empts the
+    # failure summary and discards every genuine finding above it -- a warn-only check that exits 1
+    # is worse than the red build it refuses to be. It reads a file this repo does not own, so
+    # schema drift is the expected case rather than the exotic one.
+    import json as _json
+    for _shape in ('[1,2]', '"x"', '42', '{"agentBinary":"/a/b"}', '{"agentBinary":[1]}',
+                   '{"agentBinary":{"stagedPath":7}}', '{"agentBinary": nul', '{"agentBinary":null}'):
+        _crash = None
+        try:
+            _doc = _json.loads(_shape)
+            _ab = _doc.get("agentBinary") if isinstance(_doc, dict) else None
+            _st = _ab.get("stagedPath") if isinstance(_ab, dict) else None
+            os.path.expanduser(_st if isinstance(_st, str) else "")
+        except (ValueError, OSError, AttributeError, TypeError):
+            pass                              # the check catches exactly these
+        except Exception as _e:
+            _crash = type(_e).__name__
+        check(f"a malformed baseline shaped {_shape[:24]!r} does not escape the guard",
+              _crash is None, f"raised {_crash}")
+
     check("a repeated option id is refused rather than shipped in two clusters",
           res.returncode != 0 and "more than once" in (res.stdout + res.stderr),
           f"rc={res.returncode} {(res.stdout + res.stderr)[:150]}")
@@ -2580,10 +2600,11 @@ def t_no_evidence_merge_is_refused():
     with no joining evidence required at all. Measured over 40,000 pinched states: 609 such picks,
     including families with no adjudicated cross pair between them.
 
-    That merge cannot do the job it is reached for. The caller merges to break a lead collision;
-    fusing two families the verdicts do not connect need not touch the colliding pair, so the
-    collision survives and the fusion is permanent. It now returns None and the caller stops with a
-    message naming both reasons a merge can be unavailable.
+    Such a merge often DOES break the collision -- roughly two thirds of them were load-bearing in
+    generated states -- so refusing costs those runs a hard stop. It is refused anyway: fusing two
+    families the adjudicators called apart, or never compared, permanently answers a question the
+    evidence did not ask. It now returns None and the caller stops with a message naming both
+    reasons a merge can be unavailable.
     """
     print("\na merge with no joining evidence behind it is refused, not guessed")
     import importlib.machinery as _m, itertools as _it, random as _r

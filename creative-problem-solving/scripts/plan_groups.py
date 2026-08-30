@@ -444,7 +444,7 @@ def main(wd, max_task, split_over):
     # there is no price -- which is why the share rule now bounds it and the summary names it.
     #
     # BOUNDED BY THE SHARE RULE, AND BY NOTHING ELSE. Every other merge in this codebase is bounded
-    # that way; this one was not, and wrote a cluster over the rule on 489 of 10,000 random
+    # that way; this one was not, and wrote a cluster over the rule on 1,184 of 10,000 random
     # instances, worst 60% against a 15% limit. Ranking the candidates by anything cleverer was
     # measured and rejected: ordering by joining density picks a pair that does not resolve the
     # collision, so the loop iterates again -- 2 merges where the plain order needs 1 (seed 702) --
@@ -467,21 +467,33 @@ def main(wd, max_task, split_over):
     # a pair the rule PROVES breaches is refused, and among what is left the plain order picks --
     # which on a thin field means the pick can carry a higher raw separating share than the pair
     # just refused (measured: 160 of 10,000 instances). That is the floor's doing, not the order's,
-    # and preferring an evaluated pair over an exempt one would fix nothing: across 10,000 instances
-    # there was never a pinch where both kinds were available.
+    # so the pick below prefers a candidate the rule could actually evaluate over one merely exempt
+    # from it. At the repo generator's 8-14 options that preference never fires -- an evaluated-passing
+    # candidate and an exempt one were never available at the same pinch across 10,000 instances --
+    # and an earlier version of this comment stated that as though it settled the question. It does
+    # not: at 20-40 options both kinds do appear, so the preference is a real choice on instances
+    # nearer production scale, and on the one irreversible act in this script the cheap guard is
+    # worth having whether or not the tested regime exercises it.
     #
     # The floor is right for its original job, refusing to STOP a run on almost no evidence, and the
     # asymmetry runs the other way for a merge, which is unrecoverable. Removing it here was measured
-    # and not taken: it turns 56% of completing runs into refusals, which is removing the pinch-merge
-    # path rather than tightening it, and that deserves to be argued for directly rather than arrived
-    # at by moving a constant. So: report the exemption, change nothing, and let real runs say
-    # whether it needs a rule.
+    # and not taken: EVERY pinch merge is below the floor, so removing it turns every one of them
+    # into a refusal -- 367 of 367 across 3,000 instances, costing 14% of completing runs. The
+    # argument is that this removes the pinch-merge path rather than tightening it, and that deserves
+    # to be argued for directly rather than arrived at by moving a constant. It does NOT rest on the
+    # size of the loss. So: report the exemption, change nothing here, and let real runs say whether
+    # it needs a rule.
     merged_pinch = 0
     below_floor = 0
     while viol and proven:
         # Same order as before among the pairs that pass, so the choice is unchanged wherever the
         # least pair was already within the rule.
         legal = [(a, b) for a, b in viol if share_ok(sorted(clusters[a] + clusters[b]), rel)]
+
+        def _unevaluated(p):
+            """0 if the rule could judge this union and passed it, 1 if it was merely too thin."""
+            _s, _j = share_counts(sorted(clusters[p[0]] + clusters[p[1]]), rel)
+            return 0 if _s + _j >= SHARE_MIN_ADJUDICATED else 1
         if not legal:
             s_, j_, sh_ = share_breach(sorted(clusters[viol[0][0]] + clusters[viol[0][1]]), rel)
             die(f"{len(viol)} cluster pair(s) collide on every lead choice, and merging any of them "
@@ -492,7 +504,7 @@ def main(wd, max_task, split_over):
                 f"fused cluster back along its seam yields two families that both pass, so this "
                 f"would ship silently rather than fail later. Re-adjudicate the pairs inside these "
                 f"clusters, or re-run with a larger candidate set so the partition has more to go on.")
-        i, j = min(legal, key=lambda p: (clusters[p[0]][0], clusters[p[1]][0]))
+        i, j = min(legal, key=lambda p: (_unevaluated(p), clusters[p[0]][0], clusters[p[1]][0]))
         _s, _j = share_counts(sorted(clusters[i] + clusters[j]), rel)
         if _s + _j < SHARE_MIN_ADJUDICATED:
             below_floor += 1

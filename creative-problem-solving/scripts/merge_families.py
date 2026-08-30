@@ -211,10 +211,13 @@ def worst_pinned_pair(fams, rel):
         # and the fallback merged one anyway. Measured over 40,000 pinched states: 609 picks with no
         # joining evidence at all, including families with no adjudicated cross pair between them.
         #
-        # Such a merge cannot do the job it was reached for. The caller merges to break a lead
-        # collision; fusing two families the verdicts do not connect need not touch the colliding
-        # pair, so the collision survives and the fusion is permanent. A diagnosis the caller can act
-        # on beats an irreversible guess, which is the same doctrine every other merge here follows.
+        # Such a merge OFTEN DOES break the collision -- measured over generated pinched states,
+        # roughly two thirds of these were load-bearing, and refusing costs those runs a hard stop.
+        # That is the cost, and it is worth paying: fusing two families the adjudicators called
+        # `distinct`, or never compared at all, permanently answers a question the evidence did not
+        # ask. A caller told why can re-adjudicate; a reader handed a fused family never learns there
+        # was a question. An earlier version of this comment said the merge could not work, which was
+        # a stronger and false claim.
         return None
     return best[1], best[2]
 
@@ -484,13 +487,15 @@ def main(wd, expect):
                 f"does not change the partition, so it cannot change the instance this solver sees.")
         pair = worst_pinned_pair(fams, rel)
         if pair is None:
-            die(f"{len(fams)} families still collide on their leads, and no merge available here "
-                f"can fix it: every candidate pair either has no joining verdict to justify fusing "
-                f"it, or would push a family past the {SHARE_MAX:.0%} separating share. Merging one "
-                f"anyway would be permanent and need not even touch the colliding pair, so there is "
-                f"no repair at this stage. The shards were cut in a way the adjudicated verdicts do "
-                f"not support: re-run plan_groups.py with more shards so each task is smaller, then "
-                f"re-run this script. Do not hand-edit families.json.")
+            die(f"{len(fams)} families still collide on their leads, and no merge here is one the "
+                f"verdicts support: every candidate pair either has no joining verdict to justify "
+                f"fusing it, or would push a family past the {SHARE_MAX:.0%} separating share. A "
+                f"merge might well clear the collision -- that is not the difficulty. Fusing two "
+                f"families the adjudicators called apart, or never compared, is permanent and "
+                f"answers a question the evidence did not ask, so this stops instead. The shards "
+                f"were cut in a way the verdicts do not support: re-run plan_groups.py with more "
+                f"shards so each task is smaller, then re-run this script. Do not hand-edit "
+                f"families.json.")
         i, j = pair
         fams[i]["members"] = fams[i]["members"] + fams[j]["members"]
         fams[i]["origin"].update(fams[j]["origin"])

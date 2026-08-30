@@ -214,6 +214,26 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **The previous commit corrected seven claims and applied four of them only to the changelog.** The
+  refuted numbers stayed in `plan_groups.py`'s doctrine comment and in a test docstring — including
+  the 56% figure that commit itself called "the whole argument for leaving the floor alone", left
+  standing in the file a maintainer reads before touching the code. The retracted justification for
+  refusing a no-evidence family merge stayed in two comments and, worse, in the `die()` an operator
+  reads: it told them no merge "can fix it" when by that commit's own measurement one usually can.
+  All corrected at the source this time.
+
+- **The pinch merge now prefers a candidate the share rule could evaluate over one merely exempt.**
+  The previous commit declined this on the grounds that both kinds were never available at the same
+  pinch — true across 10,000 instances at the repo generator's 8-14 options, and false at 20-40,
+  where they do co-occur. A universal claim from one generator, used to justify not guarding the one
+  irreversible act in the script. The guard is a strict no-op on outcomes in 5,500 instances across
+  both sizes, which is the point: it costs nothing and removes the case.
+
+- **The baseline check still crashed on five shapes of malformed input.** The earlier hardening
+  guarded `null` and truncation and duck-typed the rest, so a baseline JSON that is a list, or an
+  `agentBinary` that is a string, raised `AttributeError` — outside the `except`. It is the last
+  check in the file, so an uncaught raise pre-empts the failure summary and discards every genuine
+  finding above it. Now type-checked, with a test over eight malformed shapes.
 - **The baseline check no longer hands a contributor a traceback.** It argued at length that it must
   warn rather than fail so nobody is blocked by their own machine's state, then raised on a
   truncated baseline JSON and on `"agentBinary": null` — worse than the failure it refused to be.
@@ -273,8 +293,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   2 merges where the plain order needs 1 — and it drove an instance whose every candidate was legal
   into a refusal. A pinch merge is irreversible, so more merges is a safety regression. Acceptance
   test over 4,000 generated instances at the repo generator's 8-14 options: never merges more than
-  before, never refuses where the previous behaviour finished legally, and every runnable preserved
-  dataset byte-identical. **That first property is size-dependent** — at 20-40 options one seed in
+  before, never refuses where the previous behaviour finished legally, and every preserved dataset
+  that stores a partition (7 of 8) byte-identical. **That last is weaker than it sounds**: the seven
+  comparable datasets are exactly the seven that never reach the pinch branch, so their identity is
+  guaranteed by construction. `critique-repro`, the only one that exercises this path, stores no
+  partition to compare against — the change is unverified on recorded data. **That first property is size-dependent** — at 20-40 options one seed in
   2,000 does merge more, so it holds for the tested regime rather than universally.
 
   The bound is vacuous below `SHARE_MIN_ADJUDICATED`, which is where the only preserved instance
