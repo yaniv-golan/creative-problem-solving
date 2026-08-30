@@ -2477,6 +2477,12 @@ def t_pinch_merge_is_reported():
           rc == 0 and "pinch merge(s)" in out, f"rc={rc} {out[-160:]}")
     check("...and the summary says clusters were fused, not just that clusters exist",
           "one family" in out, out[-160:])
+    # The share bound exempts any union with fewer than SHARE_MIN_ADJUDICATED judged pairs, and on
+    # this path that is not an edge case: across 300 end-to-end runs every pinch merge that happened
+    # was below the floor. An exemption nobody can see is one nobody can act on, so the summary says
+    # when the rule did not apply to the merge it just made.
+    check("...and it says when the share rule did not apply to the merge",
+          "fewer than 10 adjudicated pairs" in out, out[-260:])
 
     rc2, out2 = _run(5)
     check("a pinch merge that would breach the separating-share rule is refused",

@@ -27,7 +27,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load
 # The share rule and the verdict vocabulary, defined once in verdicts.py. This file used to
 # carry its own copy of both plus its own share_ok, mirroring verify_pipeline.py by hand.
-from verdicts import JOINING, SEPARATING, SHARE_MAX, share_ok, share_breach  # noqa: F401
+from verdicts import JOINING, SEPARATING, SHARE_MAX, SHARE_MIN_ADJUDICATED  # noqa: F401
+from verdicts import share_ok, share_breach, share_counts
 from verdicts import relation_of
 
 # Disagreement weights. `duplicate` is the strongest evidence of sameness and `distinct` the
@@ -453,7 +454,22 @@ def main(wd, max_task, split_over):
     # The bound is vacuous below verdicts.SHARE_MIN_ADJUDICATED, which is where the only preserved
     # instance sits (3 adjudicated pairs in the union). Whether that floor -- written for REPORTING a
     # breach -- should also gate a merge DECISION is a live question, and not one this bound settles.
+    #
+    # COUNT THE ONES THE FLOOR EXEMPTED. `share_ok` returns True for any union with fewer than
+    # SHARE_MIN_ADJUDICATED judged pairs, so on a thin candidate the bound above is not a bound at
+    # all -- and thin is the common case: across 3,000 generated instances 460 of 880 candidate
+    # unions sat below the floor, median 3 judged pairs, and every one of them was over 15%
+    # separating. Sharper still: across 300 end-to-end runs, EVERY pinch merge that happened was
+    # below the floor -- so on this path the bound has not yet bound anything.
+    #
+    # The floor is right for its original job, refusing to STOP a run on almost no evidence, and the
+    # asymmetry runs the other way for a merge, which is unrecoverable. Removing it here was measured
+    # and not taken: it turns 56% of completing runs into refusals, which is removing the pinch-merge
+    # path rather than tightening it, and that deserves to be argued for directly rather than arrived
+    # at by moving a constant. So: report the exemption, change nothing, and let real runs say
+    # whether it needs a rule.
     merged_pinch = 0
+    below_floor = 0
     while viol and proven:
         # Same order as before among the pairs that pass, so the choice is unchanged wherever the
         # least pair was already within the rule.
@@ -469,6 +485,9 @@ def main(wd, max_task, split_over):
                 f"would ship silently rather than fail later. Re-adjudicate the pairs inside these "
                 f"clusters, or re-run with a larger candidate set so the partition has more to go on.")
         i, j = min(legal, key=lambda p: (clusters[p[0]][0], clusters[p[1]][0]))
+        _s, _j = share_counts(sorted(clusters[i] + clusters[j]), rel)
+        if _s + _j < SHARE_MIN_ADJUDICATED:
+            below_floor += 1
         clusters[i] = sorted(clusters[i] + clusters[j])
         clusters.pop(j)
         merged_pinch += 1
@@ -520,9 +539,13 @@ def main(wd, max_task, split_over):
     # like a run that did not, in the summary and in clusters.json alike. Naming the count is the
     # difference between a reader who can ask why and one who never learns there was a question.
     if merged_pinch:
+        _exempt = (f" {below_floor} of them had fewer than {SHARE_MIN_ADJUDICATED} adjudicated pairs "
+                   f"in the union, so the {SHARE_MAX:.0%} separating-share rule did not apply to that "
+                   f"merge -- it is bounded by evidence there was too little of to judge."
+                   if below_floor else "")
         print(f"  {merged_pinch} pinch merge(s): a cluster pair whose every lead choice collided, "
               f"so no assignment could separate them and they are reported as one family. "
-              f"Proven impossible, not guessed -- see docs/INCIDENTS.md for what that means.")
+              f"Proven impossible, not guessed -- see docs/INCIDENTS.md for what that means.{_exempt}")
     # Say where the bytes actually went, resolved. A caller cannot get this from a Write
     # result -- that echoes the path it was given -- and the shell's working directory is not
     # the file tools'. On a surface where those differ, a relative path in the summary names

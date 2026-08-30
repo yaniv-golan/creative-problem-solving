@@ -8,6 +8,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **A pinch merge says when the share rule did not apply to it.** The bound added above exempts any
+  union with fewer than ten adjudicated internal pairs — the floor exists so a run is never stopped
+  on almost no evidence, which is right for reporting a breach. On this path it is not an edge case:
+  across 300 end-to-end runs **every pinch merge that happened was below the floor**, median three
+  judged pairs, and all of them were over the 15% separating share. So the bound has not yet bound
+  anything here, and nothing said so.
+
+  The summary line now names the exemption rather than leaving it invisible. The floor itself is
+  unchanged: removing it for merges was measured and turns 56% of completing runs into refusals,
+  which is removing the pinch-merge path rather than tightening it — a case to argue directly if
+  anyone wants to make it, not something to arrive at by moving a constant. Reporting it lets a few
+  real runs answer the question that fuzzing cannot.
 - **`check-repo.py` reports a scenario whose pinned baseline has no staged agent binary.** A Desktop
   update deletes the previous version's agent; a scenario still pinning that version dies in
   `resolveAgentBinary` before the agent starts — seconds after `doctor` said ready, because doctor
