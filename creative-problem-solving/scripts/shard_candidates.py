@@ -238,10 +238,15 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
     # and merge_relations.py globs relations-*.json without knowing which sharding produced them.
     # Left behind, a stale file pads the union the coverage check compares against, and a CURRENT
     # shard that came back short merges green: measured at 4 shards re-sharded to 3, the merge
-    # exited 0 on a missing pair that a merge without the stale file refused. Keying on the index
-    # is what makes this safe -- a repair writes relations-<next-free-index>.json, whose index is
-    # above the shard count only when it is genuinely orphaned, and the documented remedy is
-    # unaffected because it runs after this sweep, not before it.
+    # exited 0 on a missing pair that a merge without the stale file refused.
+    #
+    # WHAT THIS ALSO SWEEPS, stated because the obvious justification is wrong. A repair writes
+    # relations-<next-free-index>.json, and that index is ALWAYS above the shard count -- so a
+    # re-shard after a repair renames the repair file too. The guarantee is not "the index tells
+    # them apart"; it is that a re-shard invalidates a repair as thoroughly as it invalidates a
+    # shard, since both were adjudicated against a partition that no longer exists. It fails safe
+    # either way: the next merge refuses loudly for the pairs that are now unjudged, rather than
+    # merging a stale verdict in silence.
     #
     # Renamed, not deleted: nothing under outputs/ is removed (step 0b, and the harness enforces
     # it), and the new name is deliberately not `cand-*` or `relations-*` so the globs stop
@@ -251,15 +256,23 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
         for old in sorted(glob.glob(os.path.join(wd, f"{prefix}*.json"))):
             n = os.path.basename(old)[len(prefix):-len(".json")]
             if n.isdigit() and int(n) > len(shards):
-                os.rename(old, os.path.join(wd, f"superseded-{os.path.basename(old)}"))
+                # Never over an existing one: os.rename clobbers, which would delete a file
+                # under outputs/ and contradict the rule two lines above. Reachable by
+                # re-sharding down, up, then down again.
+                _base = f"superseded-{os.path.basename(old)}"
+                _dest, _n = os.path.join(wd, _base), 1
+                while os.path.exists(_dest):
+                    _dest = os.path.join(wd, f"superseded-{_n}-{os.path.basename(old)}"); _n += 1
+                os.rename(old, _dest)
                 superseded.append(os.path.basename(old))
     if superseded:
         _sh = sum(1 for f in superseded if f.startswith("cand-"))
         _rel = len(superseded) - _sh
-        _what = f"{_sh} shard file(s)" + (f" and {_rel} verdict file(s)" if _rel else "")
-        print(f"WARN: {_what} from an earlier sharding of this run directory were superseded by "
-              f"this one and renamed out of the way. Dispatch one adjudicator per cand-*.json as "
-              f"step 5 says; the renamed files are kept but no longer match either glob.")
+        _parts = ([f"{_sh} shard file(s)"] if _sh else []) + ([f"{_rel} verdict file(s)"] if _rel else [])
+        print(f"WARN: {' and '.join(_parts)} adjudicated against an earlier partition of this run "
+              f"directory were superseded by this one and renamed out of the way — they are kept, "
+              f"and no longer match either glob. Dispatch one adjudicator per cand-*.json as step "
+              f"5 says; anything those files had judged is unjudged again.")
 
     # The generation heartbeat rides on this call rather than on a separate one. A progress
     # command that exists only to print is the first thing skipped when nothing depends on it,

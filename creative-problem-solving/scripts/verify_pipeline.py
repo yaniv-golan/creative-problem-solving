@@ -572,7 +572,14 @@ def main(wd):
     # to go, and saying otherwise is the class of false self-report this file exists to catch.
     # Name them instead. `effective_lead` is imported rather than reimplemented: two definitions of
     # "the lead" is how they came apart last time.
-    _leads = {effective_lead(f.get("members") or [], set(rejected)) for f in fams}
+    # LEADS **AND REFUTED OPTIONS**. A note renders in a family's block, which only the lead gets --
+    # and also in the rejected band, where build_report puts a refuted option's note deliberately
+    # ("which part did not hold" is the whole value of that band). effective_lead never returns a
+    # refuted id, so counting leads alone put every refuted note in the unplaceable list and told
+    # the reader it would not reach them, while the report rendered it. That is the same false
+    # self-report this block was written to remove, one band over.
+    _leads = ({effective_lead(f.get("members") or [], set(rejected)) for f in fams}
+              | set(rejected))
     _noted = [e for e in ents if str(e.get("note") or e.get("caveat") or "").strip()]
     _placed = [e for e in _noted if e.get("id") in _leads]
     _unplaced = [e for e in _noted if e.get("id") not in _leads]

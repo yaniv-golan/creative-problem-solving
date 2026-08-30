@@ -827,7 +827,8 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
 
     It refuses a key that was never a placeholder in this report, and prints what is still
     outstanding. A key you already filled on an earlier pass is not that — it is reported and
-    skipped, so re-running the same fill is safe. **It also refuses an empty value**: filling a
+    skipped, so re-running the same fill is safe wherever the report's `.manifest.json` sits beside
+    it, which is everywhere the build step wrote it. **It also refuses an empty value**: filling a
     slot with nothing deletes it, `--check` then passes because no token is left, and the
     judgement that belonged there is gone with no way to see it from the report. Every slot is
     required content; if you have nothing for one, that is a finding about the run. A

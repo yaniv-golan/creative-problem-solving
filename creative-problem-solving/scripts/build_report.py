@@ -273,9 +273,11 @@ def main(wd, out):
         # refuses a top-13 lead that was never checked. What is left is legitimate, so the honest
         # move is to count it rather than warn about it.
         # Counts a lead as checked when a verifier LOOKED, not only when it came back clean -- an
-        # `unclear` with a note is a check that ran and said something, and it now renders a marker
-        # below, so a narrower count would put the header's number under a different number of
-        # markers. verify_pipeline requires a real query on every verdict but no_external_claim,
+        # `unclear` with a note is a check that ran and said something, and it renders a marker
+        # below, so a narrower count would put the header's number under fewer markers than it
+        # names. Not an exact identity: a `confirmed` with no source_url is counted here and emits
+        # no marker below rank 13. verify_pipeline refuses that record before a report is built,
+        # so it does not occur in a real run -- but this counts checks, not markers. verify_pipeline requires a real query on every verdict but no_external_claim,
         # so "a verifier looked" is what a verdict record means.
         def _checked(fid):
             v = verdict.get(effective_lead(fams[fid]["members"], rejected), {})
@@ -561,8 +563,15 @@ def fill(path, slots_path):
     was_slot, why = set(), "no manifest beside the report, so a filled key cannot be told from a typo"
     try:
         _man = json.load(open(path + ".manifest.json", encoding="utf-8"))
-        was_slot = set(SLOT_RE.findall("\n".join(_man.get("skeleton") or [])))
-        why = ""
+        _sk = _man.get("skeleton")
+        # Only when the skeleton is actually there and usable. A manifest written before that key
+        # existed loads fine and yields nothing, and clearing `why` on that path refused a
+        # legitimate retry with no explanation at all.
+        if isinstance(_sk, list) and _sk:
+            was_slot = set(SLOT_RE.findall("\n".join(str(x) for x in _sk)))
+            why = ""
+        else:
+            why = "the manifest beside the report carries no skeleton, so a filled key cannot be told from a typo"
     except Exception:
         pass
 
@@ -591,7 +600,10 @@ def fill(path, slots_path):
                  f"      Filling a slot with nothing DELETES it: the token disappears, --check "
                  f"passes because no token remains, and the judgement that belonged there is gone "
                  f"with no way to notice from the report. Every slot is required content -- if you "
-                 f"have nothing to say in one, that is a finding about the run, not a value.")
+                 f"have nothing to say in one, that is a finding about the run, not a value.\n"
+                 f"      This checks only that a value is non-empty text. A one-character value "
+                 f"passes, and a value containing another token's literal text has that token "
+                 f"substituted in turn -- neither is worth a gate, and both are worth knowing.")
 
     # Counted from `present`, the token set read BEFORE any substitution. Counting inside the loop
     # would over-report if a value happened to contain another token's literal text, and counting

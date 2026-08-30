@@ -1,6 +1,7 @@
 """Make `pytest tools/` run the suites instead of reporting green on nothing.
 
-The three suites here are SCRIPTS -- they run their checks at import time and `sys.exit(1)` at the
+The suites here are SCRIPTS -- check-repo.py runs its checks at import time, the other
+three are guarded so an import is inert, and all four `sys.exit(1)` at the
 end if anything failed. CI invokes them correctly (`python3 tools/test_pipeline_scripts.py`), but
 their filenames match pytest's default discovery pattern while containing no `test_` functions, so
 `pytest tools/` collected zero tests and exited 0. Anyone reaching for pytest got a green having

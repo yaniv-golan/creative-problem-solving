@@ -3281,8 +3281,37 @@ def t_a_note_renders_whatever_the_verdict_says():
             check("a note on a non-lead member is named as unplaceable",
                   "cannot place" in out and follower in out, out.strip()[:200])
             check("...and is NOT counted among the notes said to render",
-                  "1 of" in out or "0 of" in out,
+                  "0 of" in out,
                   [l for l in out.split("\n") if "rendered under its option" in l][:1])
+    finally:
+        shutil.rmtree(d, True)
+
+    # A REFUTED option's note DOES render -- build_report puts it in the rejected band on purpose,
+    # because "which part did not hold" is the whole value of that band. effective_lead never
+    # returns a refuted id, so counting leads alone put every refuted note in the unplaceable list
+    # and told the reader it would not reach them, while the report rendered it. Same false
+    # self-report the split was written to remove, one band over.
+    d = tempfile.mkdtemp()
+    try:
+        ids, fams = full_fixture(d, multi=True)
+        lead = fams[0]["members"][0]
+        vf = os.path.join(d, "verified-1.json")
+        v = json.load(open(vf))
+        for e in v["checked"]:
+            if e["id"] == lead:
+                e.update(verdict="refuted", source_url="https://example.org/x",
+                         quote="a sentence", note="REFUTED-NOTE-MARKER")
+        json.dump(v, open(vf, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        rp = os.path.join(d, "r.md")
+        run("build_report.py", d, "--out", rp)
+        body = open(rp).read() if os.path.exists(rp) else ""
+        check("a refuted option's note reaches the report",
+              "REFUTED-NOTE-MARKER" in body, "the rejected band renders it")
+        check("...so it is NOT called unplaceable",
+              "cannot place" not in out, out.strip()[:200])
+        check("...and IS counted among the notes said to render",
+              "1 of" in out, [l for l in out.split("\n") if "rendered under its option" in l][:1])
     finally:
         shutil.rmtree(d, True)
 
@@ -3349,6 +3378,8 @@ def t_superseded_verdicts_go_with_their_shards():
             json.dump({"relations": [dict(p, relation="distinct")
                                      for p in json.load(open(c))["pairs"]]},
                       open(os.path.join(d, f"relations-{k}.json"), "w"))
+        old_four = [tuple(sorted((p["a"], p["b"])))
+                    for p in json.load(open(os.path.join(d, "cand-4.json")))["pairs"]]
         rc, out = run("shard_candidates.py", d, "--shards", 3, "--probe", 8)
         check("re-sharding renames the orphaned verdict file too",
               os.path.exists(os.path.join(d, "superseded-relations-4.json")), out.strip()[:140])
@@ -3366,9 +3397,15 @@ def t_superseded_verdicts_go_with_their_shards():
                for c in sorted(glob.glob(os.path.join(d, "cand-*.json")))}
         elsewhere = {p for k, ps in cur.items() if k != "2" for p in ps}
         solo = [p for p in cur["2"] if p not in elsewhere]
-        check("the fixture has a non-probe pair to withhold", bool(solo),
-              "every pair in shard 2 is probe-planted; widen the fixture")
-        drop = solo[0]
+        # AND it must be a pair the STALE file could have masked -- one that was in old shard 4.
+        # Any other solo pair reds with or without the sweep fix, because nothing was covering it:
+        # the first version of this took solo[0] and passed with the fix reverted, which left the
+        # headline behaviour of that commit untested. Measured here: 6 solo pairs, 1 from shard 4.
+        maskable = [p for p in solo if p in set(old_four)]
+        check("the fixture has a pair the stale verdicts could have masked", bool(maskable),
+              f"{len(solo)} solo pair(s), none from the superseded shard — the next check is vacuous")
+        if not maskable: return
+        drop = maskable[0]
         for k, ps in cur.items():
             keep = [p for p in ps if not (k == "2" and p == drop)]
             json.dump({"relations": [{"a": a, "b": b, "relation": "distinct"} for a, b in keep]},
@@ -3387,8 +3424,9 @@ def t_superseded_verdicts_go_with_their_shards():
         rc, out = run("merge_relations.py", d)
         check("...and the remedy it names clears it", rc == 0, out.strip()[:160])
 
-        # AND THE PROBE IS UNTOUCHED. The stale file used to pad the union; the point of renaming
-        # it is that an intact run counts exactly what the sharder planted, no more.
+        # AND THE PROBE IS NOT PADDED. `baseline` is read from the merge just above, not from the
+        # sharder -- so this asserts the count returns to where it was once the extra file goes,
+        # which is the property the rename protects.
         planted = json.load(open(os.path.join(d, "agreement.json")))["probe_pairs"]
         for k, ps in cur.items():
             json.dump({"relations": [{"a": a, "b": b, "relation": "distinct"} for a, b in ps]},
@@ -3405,7 +3443,7 @@ def t_superseded_verdicts_go_with_their_shards():
         intact = json.load(open(os.path.join(d, "agreement.json")))["probe_pairs"]
         check("a duplicate verdict file DOES move the probe count", _moved != planted,
               f"planted={planted} with-duplicate={_moved} — if equal, the check below is vacuous")
-        check("an intact run's probe count is what the sharder planted, not what stale files add",
+        check("the probe count returns to its pre-repair value once the extra file is gone",
               rc == 0 and intact == planted, f"planted={planted} intact={intact} {out.strip()[:110]}")
     finally:
         shutil.rmtree(d, True)

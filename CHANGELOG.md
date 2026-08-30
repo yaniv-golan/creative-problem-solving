@@ -128,7 +128,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   produced them. Left behind, the stale file padded the union the coverage check compares against
   and a **current** shard that came back short merged green: measured at four shards re-sharded to
   three, exit 0 with the orphan present and exit 1 without it. The existing sweep now covers both
-  prefixes on the same index test, which leaves the documented repair path untouched.
+  prefixes on the same index test. A repair file written after a re-shard is swept by the next one
+  — its index is always above the shard count — and that is correct rather than incidental: a
+  re-shard invalidates a repair as thoroughly as it invalidates a shard, since both were judged
+  against a partition that no longer exists. It fails loudly either way.
 
 - **A verifier note renders whatever the verdict says.** The guard listed verdicts, so a note on an
   `unclear` lead below rank 13 rendered nowhere while `verify_pipeline` printed *"each is rendered

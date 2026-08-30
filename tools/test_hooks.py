@@ -82,9 +82,24 @@ def t_transcript_markers():
     check("a marker in a NON-LAST file survives", [l for l, _ in many] == ["early", "late"],
           "the old reader overwrote it with the last file's")
     check("no marker anywhere returns empty, so the caller can refuse", tm([("a.yaml", "prompt: hi")]) == [])
-    check("...and the shipped check does refuse on empty",
-          "no scenario asserts `transcript_contains` any more" in _text,
-          "without a fail branch, deleting the assertion removes the check silently")
+    # Behavioural, not a grep: run check-repo.py against a tree whose scenarios carry no marker
+    # and require it to FAIL. Grepping for the message would still pass if fail() became print().
+    import subprocess, tempfile, glob as _g
+    _repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _scen = os.path.join(_repo, "tests", "scenarios")
+    _saved = {f: open(f, encoding="utf-8").read() for f in _g.glob(os.path.join(_scen, "*.yaml"))}
+    try:
+        for f, body in _saved.items():
+            open(f, "w", encoding="utf-8").write(
+                _re.sub(r"""^.*transcript_contains:.*$""", "", body, flags=_re.M))
+        r = subprocess.run([sys.executable, os.path.join(_repo, "tools", "check-repo.py")],
+                           capture_output=True, text=True, cwd=_repo)
+        check("with every marker removed, check-repo.py FAILS rather than going quiet",
+              r.returncode != 0 and "no scenario asserts" in (r.stdout + r.stderr),
+              (r.stdout + r.stderr)[-200:])
+    finally:
+        for f, body in _saved.items():
+            open(f, "w", encoding="utf-8").write(body)
 
 
 def main():
