@@ -165,6 +165,98 @@ def relocate(clusters, rel, rounds=8):
     return [sorted(c) for c in clusters if c]
 
 
+def _conflict_graph(clusters, rel):
+    """Adjacency over CLUSTER indices: an edge means some member of one joins a member of the other.
+
+    Only clusters joined by such an edge can constrain each other's lead, so the assignment splits
+    into independent components. The shipped search branched over all of them at once, which is why
+    a pinch six clusters wide cost the Cartesian product of every unrelated cluster's domain.
+    """
+    owner = {m: i for i, c in enumerate(clusters) for m in c}
+    adj = {i: set() for i in range(len(clusters))}
+    for pair, verdict in rel.items():
+        if verdict not in JOINING: continue
+        a, b = sorted(pair)
+        ia, ib = owner.get(a), owner.get(b)
+        if ia is None or ib is None or ia == ib: continue
+        adj[ia].add(ib); adj[ib].add(ia)
+    seen, comps = set(), []
+    for i in range(len(clusters)):        # index order in, sorted neighbours within: deterministic out
+        if i in seen: continue
+        stack, comp = [i], []
+        seen.add(i)
+        while stack:
+            k = stack.pop(); comp.append(k)
+            for nb in sorted(adj[k]):
+                if nb not in seen: seen.add(nb); stack.append(nb)
+        comps.append(sorted(comp))
+    return comps, adj
+
+
+def _joins(rel, a, b):
+    return rel.get(frozenset((a, b))) in JOINING
+
+
+def _propagate(dom, comp, adj, rel):
+    """Assign every forced lead and delete what it rules out, to fixpoint.
+
+    A cluster whose domain holds one candidate has no choice, so every neighbour loses the
+    candidates that join it -- which can force another cluster, so this cascades. An emptied domain
+    is a PROOF that no assignment exists, reached without searching. That is the case the budget
+    could never settle: a six-member cluster blocked by singletons is infeasible by inference in
+    one pass and by enumeration not at all.
+
+    Returns False on a wipeout. Mutates `dom`.
+    """
+    queue = [i for i in comp if len(dom[i]) == 1]
+    done = set()
+    while queue:
+        i = queue.pop(0)
+        if i in done: continue
+        done.add(i)
+        if not dom[i]: return False
+        x = dom[i][0]
+        for j in sorted(adj[i]):
+            if j == i or j not in dom: continue
+            keep = [y for y in dom[j] if not _joins(rel, y, x)]
+            if len(keep) != len(dom[j]):
+                dom[j] = keep
+                if not keep: return False
+                if len(keep) == 1 and j not in done: queue.append(j)
+    return True
+
+
+def _search(dom, order, rel, budget):
+    """Forward-checking DFS, smallest domain first. Returns (assignment | None, exhausted).
+
+    `exhausted` distinguishes a tree that was fully explored -- which proves infeasibility -- from
+    one the budget cut off, which proves nothing. Reported explicitly rather than inferred from
+    what is left of the budget, because the two coincide on the last node.
+    """
+    sol = {}
+
+    def step(dom, remaining):
+        if not remaining: return True
+        i = min(remaining, key=lambda k: (len(dom[k]), k))
+        rest = [k for k in remaining if k != i]
+        for m in dom[i]:
+            if budget[0] <= 0: return False
+            budget[0] -= 1
+            nd, dead = dict(dom), False
+            for j in rest:
+                keep = [y for y in nd[j] if not _joins(rel, y, m)]
+                if not keep: dead = True; break
+                nd[j] = keep
+            if dead: continue
+            sol[i] = m
+            if step(nd, rest): return True
+            del sol[i]
+        return False
+
+    ok = step(dom, list(order))
+    return (dict(sol) if ok else None), budget[0] > 0
+
+
 def choose_leads(clusters, rel, rounds=12):
     """Pick each cluster's lead so that no two leads were adjudicated as the same intervention.
 
@@ -203,36 +295,41 @@ def choose_leads(clusters, rel, rounds=12):
     # budget the greedy answer stands and step 9 reports the collision rather than the run hanging.
     proven = True
     if viol:
-        NODES = LEAD_NODES
-        cand = {i: sorted(clusters[i]) for i in range(len(clusters))}
-        order2 = sorted(range(len(clusters)), key=lambda i: (len(cand[i]), clusters[i][0]))
-        budget = [NODES]
-        sol = {}
+        # Re-solve only the components that actually contain a collision, and inside each of them
+        # propagate before searching. The distinction the caller depends on is unchanged: a
+        # completed search or a propagation wipeout PROVES no assignment exists and licenses a
+        # merge; a budget cutoff proves nothing and licenses only asking for more budget. Merging
+        # on "unknown" fuses clusters a longer search would have kept apart.
+        comps, adj = _conflict_graph(clusters, rel)
+        touched = {i for pair in viol for i in pair}
+        budget = [LEAD_NODES]
+        cutoff, pinched = False, None
 
-        def place(k):
-            if budget[0] <= 0: return False
-            if k == len(order2): return True
-            i = order2[k]
-            for m in cand[i]:
-                budget[0] -= 1
-                if budget[0] <= 0: return False
-                if any(rel.get(frozenset((m, sol[j]))) in JOINING for j in sol): continue
-                sol[i] = m
-                if place(k + 1): return True
-                del sol[i]
-            return False
+        for comp in comps:
+            if not touched.intersection(comp):
+                continue          # nothing in it can collide, so its greedy leads stand
+            dom = {i: sorted(clusters[i]) for i in comp}
+            if not _propagate(dom, comp, adj, rel):
+                pinched = comp; break
+            assign, exhausted = _search(dom, comp, rel, budget)
+            if assign is not None:
+                lead.update(assign)
+            elif exhausted:
+                pinched = comp; break
+            else:
+                cutoff = True
 
-        if place(0):
-            lead = dict(sol)
-            viol = [(i, j) for i, j in itertools.combinations(range(len(clusters)), 2)
-                    if rel.get(frozenset((lead[i], lead[j]))) in JOINING]
+        viol = [(i, j) for i, j in itertools.combinations(range(len(clusters)), 2)
+                if rel.get(frozenset((lead[i], lead[j]))) in JOINING]
+        if pinched is not None:
+            # One infeasible component settles the whole instance, even if another was cut off.
+            # Reporting only its pairs points the caller's merge at the pinch rather than at the
+            # lexicographically-least collision, which may sit in a component that solves fine.
+            inside = set(pinched)
+            here = [(i, j) for i, j in viol if i in inside and j in inside]
+            viol, proven = (here or viol), True
         else:
-            # Budget left means the tree was exhausted: no assignment EXISTS. Budget gone means
-            # the search was cut off and the answer is UNKNOWN. The caller must not treat these
-            # alike -- one licenses merging clusters, the other licenses only asking for more
-            # budget, and merging on "unknown" fuses clusters a longer search would have kept
-            # apart.
-            proven = budget[0] > 0
+            proven = not cutoff
 
     return [lead[i] for i in range(len(clusters))], viol, proven
 
@@ -296,9 +393,11 @@ def main(wd, max_task, split_over):
     if viol:
         die(f"the search for distinct cluster leads ran out of budget with {len(viol)} pair(s) "
             f"still colliding, so whether an assignment exists is UNKNOWN rather than impossible. "
-            f"Re-run plan_groups.py with --lead-budget above {LEAD_NODES}. If it still exhausts, the "
-            f"joinable graph is denser than this stage can settle: re-run with --max-task smaller "
-            f"so the clusters it must separate are smaller.")
+            f"Re-run plan_groups.py with --lead-budget above {LEAD_NODES}. The search prunes as it "
+            f"assigns, so a raised budget buys a deeper tree rather than a wider re-enumeration of "
+            f"the same one. This message used to also suggest a smaller --max-task: that flag only "
+            f"sizes the grouping tasks packed AFTER this stage and cannot affect the search, and a "
+            f"run followed the advice and spent a re-run learning so.")
 
     order = sorted(range(len(clusters)), key=lambda i: (-len(clusters[i]), clusters[i][0]))
     out = [{"cid": f"c{n+1:03d}", "members": clusters[i], "lead": leads[i],

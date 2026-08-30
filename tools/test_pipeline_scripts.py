@@ -2328,6 +2328,56 @@ def t_lead_assignment_complete():
           el < 5 and bool(viol), f"{el:.1f}s, {len(viol)} collision(s)")
 
 
+def t_lead_search_scales_and_preserves():
+    """The 2026-08-30 incident: a pinch that is provable by inference but not by brute force.
+
+    A six-member cluster is blocked on every candidate by a singleton, so the instance is
+    genuinely infeasible -- and a singleton's lead is forced, which makes the wipeout provable
+    with no search at all. The shipped search did not know that. It ordered singletons first,
+    bystanders next and the pinched cluster last, so on failure it re-enumerated the Cartesian
+    product of every bystander domain. Measured on the real run: 20,000,000 nodes returned
+    UNKNOWN, both documented remedies were inert, and the run wrote its own solver to finish.
+
+    The bystanders are the whole point of the fixture. Drop them and the naive search proves it
+    instantly; the blowup is their product, not the pinch.
+    """
+    print("\nlead assignment proves a pinch by inference, not by exhausting a product")
+    import importlib.machinery as _m, time as _t
+    pg = _m.SourceFileLoader("pg_scale", str(SCRIPTS / "plan_groups.py")).load_module()
+
+    pinched = [f"p1-{i:03d}" for i in range(6)]
+    blockers = [[f"p2-{i:03d}"] for i in range(6)]
+    rel = {frozenset((pinched[i], blockers[i][0])): "duplicate" for i in range(6)}
+    bystanders = [[f"p3-{i:03d}a", f"p3-{i:03d}b", f"p3-{i:03d}c"] for i in range(60)]
+    clusters = [pinched] + blockers + bystanders
+
+    t0 = _t.time(); leads, viol, proven = pg.choose_leads(clusters, rel); el = _t.time() - t0
+    check("proves the pinch impossible rather than reporting UNKNOWN",
+          bool(viol) and proven, f"viol={len(viol)} proven={proven} in {el:.2f}s")
+    check("...and does it in under a second, with 60 bystander clusters present",
+          el < 1.0, f"{el:.2f}s")
+
+    # The docstring promises the search overrides only where the gate would fail. The shipped
+    # success path replaced EVERY lead with the DFS's canonical choice, silently reassigning
+    # which option fronts each family in a report the reader sees.
+    # Greedy stalls here and the complete search takes over, which is the only path that reassigns
+    # leads. The x/y pair is a SEPARATE component -- nothing in it joins anything in the stall --
+    # so whatever it settles on alone it must still settle on when the stall is present. The
+    # shipped code replaced every lead with the DFS's canonical choice, so an unrelated pinch
+    # elsewhere in the run silently changed which option fronted these families.
+    stall = [["c0m0", "c0m1"], ["c1m0", "c1m1"], ["c2m0", "c2m1"], ["c3m0", "c3m1"]]
+    rel2 = {frozenset(p): "duplicate" for p in
+            (("c0m0", "c1m1"), ("c0m0", "c3m1"), ("c0m1", "c1m0"), ("c1m0", "c2m0"),
+             ("c1m0", "c3m0"), ("c1m1", "c3m0"), ("c2m0", "c3m0"))}
+    far = [["x1", "x2"], ["y1", "y2"]]
+    alone, _v, _p = pg.choose_leads(far, {frozenset(("x1", "y1")): "duplicate"})
+    rel3 = dict(rel2); rel3[frozenset(("x1", "y1"))] = "duplicate"
+    leads2, viol2, _ = pg.choose_leads(stall + far, rel3)
+    check("solves a collision greedy cannot", not viol2, f"viol={viol2}")
+    check("...without disturbing a component that had no collision in it",
+          leads2[4:] == alone, f"{leads2[4:]} != {alone}")
+
+
 def t_wp4_gates():
     """The gates WP4 added to verify_pipeline.py, tested from outside.
 
@@ -3617,6 +3667,7 @@ def main():
               t_verifier_note_reaches_the_reader,
               t_a_note_renders_whatever_the_verdict_says, t_progress_names_the_next_stage,
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
+              t_lead_search_scales_and_preserves,
               t_superseded_verdicts_go_with_their_shards):
         t()
 

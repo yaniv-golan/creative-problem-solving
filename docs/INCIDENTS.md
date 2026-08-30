@@ -15,8 +15,9 @@ ran them.
 
 ## Lead assignment could not be proven infeasible, and the run wrote its own solver
 
-**Rule:** none yet. This is an open defect in `scripts/plan_groups.py`, recorded before there is a
-rule to point at.
+**Rule:** `plan_groups.py` `choose_leads` — decompose into conflict components, propagate forced
+leads to fixpoint, and only then search, with forward checking. Fixed after this run; the narrative
+is kept because the shape of the failure is the argument for each of those three.
 
 Run 2026-08-30, the retention capture. `plan_groups.py` assigns each cluster a lead that does not
 collide with any other cluster's lead, by backtracking under a node budget. Its doctrine is right:
@@ -33,6 +34,18 @@ It then wrote `plan_groups_fc.py`: a driver that imports `plan_groups`, replaces
 with a forward-checking search that prunes domains as it assigns, and calls the original `main()`.
 Same objective, same tie-breaks, same outputs. Forward checking proved infeasibility quickly, and
 the stage completed.
+
+**Fixed 2026-08-30.** `choose_leads` now splits the instance into connected components of the
+cluster-conflict graph and re-solves only components that hold a collision; inside each it assigns
+forced leads and deletes what they rule out, to fixpoint, before any branching; and the search that
+remains prunes future domains as it assigns. The incident instance is now proven infeasible in 6 ms
+against 20,000,000 nodes and UNKNOWN. Each of the four missing techniques would have collapsed it
+on its own, which is why the shipped code having none of them is the finding rather than any one of
+them being absent.
+
+The exhaustion message also advised re-running with a smaller `--max-task`. That flag sizes the
+grouping tasks packed *after* this stage and cannot affect the lead search at all; the run followed
+the advice and spent a re-run learning so. The message now says what a raised budget actually buys.
 
 **Three things follow.**
 

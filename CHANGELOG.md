@@ -128,6 +128,35 @@ project adheres to [Semantic Versioning](https://semver.org/).
   both said nine, and the checker computes it from the payload. Only the README was wrong.
 
 ### Fixed
+- **Lead assignment infers before it searches, and searches only what can collide.** A run on
+  2026-08-30 could not prove a six-member cluster's pinch infeasible at 20,000,000 nodes — a
+  thousandfold over the default — and finished only because it wrote its own solver. The instance
+  was provable with no search at all: every blocker was a singleton, a singleton's lead is forced,
+  and propagating those forced leads empties the pinched cluster's candidates in one pass.
+
+  `choose_leads` now decomposes the instance into connected components of the cluster-conflict
+  graph and re-solves only components holding a collision, propagates forced leads to fixpoint
+  inside each, and prunes future domains as it assigns. The incident instance is proven in 6 ms.
+  Each of those three would have collapsed it alone; the shipped search did no inference anywhere,
+  so on failure it re-enumerated the product of every unrelated cluster's domain.
+
+  **The PROVEN/UNKNOWN distinction is unchanged and now decided in three places** rather than
+  inferred from what is left of the budget: a propagation wipeout and an exhausted tree both prove
+  infeasibility, a cutoff proves nothing. One infeasible component settles the instance even if
+  another was cut off, which the previous all-or-nothing search could never conclude, and the
+  reported collisions are now the pinched component's rather than the lexicographically least —
+  so the caller merges at the pinch instead of at an unrelated pair.
+
+- **A component with no collision keeps its leads.** `choose_leads` documents that it overrides
+  only where the gate would fail, 0-4 clusters on recorded runs. On success it replaced every
+  lead with the complete search's canonical choice, so an unrelated pinch elsewhere in a run
+  silently changed which option fronted a family the reader sees. Component-scoped solving ends
+  it; the regression test builds two independent components and asserts the untouched one settles
+  the same way alone and together.
+
+- **The budget-exhaustion message no longer names a flag that cannot help.** It advised re-running
+  with a smaller `--max-task`; that flag sizes the grouping tasks packed after this stage and
+  cannot affect the lead search. The 2026-08-30 run followed the advice and spent a re-run on it.
 - **`INSTALL.md` said the skill both does and does not offer itself, in one sentence.** The
   opening read "the skill does offer itself when you ask for options on an open-ended problem"
   and then, after an aside, "the skill does not self-select on naturally-phrased questions (0 of
