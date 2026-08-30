@@ -2586,6 +2586,19 @@ def t_no_evidence_merge_is_refused():
     check("no adjudicated cross pair anywhere means no merge target",
           mf.worst_pinned_pair(fams, {}) is None, f"{mf.worst_pinned_pair(fams, {})}")
 
+    # REAL INSTANCE, in docs/internal/frozen-datasets/dense-frozen (gitignored, so this fixture is
+    # transcribed): families 17 and 18 -- "Batch first and second review into one scarce-review"
+    # and "Give second units same-day attention from the person" -- are single-option families with
+    # NO adjudicated pair between them at all, and the fallback picked exactly that pair. Two
+    # plainly different ideas, fused permanently on no evidence. The fuzz found the shape; this is
+    # the recorded run that shows it firing on real verdicts rather than generated ones.
+    real = [{"members": ["p1-002"], "label": "Batch first and second review into one scarce-review",
+             "cid": "c018", "origin": set()},
+            {"members": ["p1-007"], "label": "Give second units same-day attention from the person",
+             "cid": "c019", "origin": set()}]
+    check("the recorded no-evidence pair from dense-frozen is refused",
+          mf.worst_pinned_pair(real, {}) is None, f"{mf.worst_pinned_pair(real, {})}")
+
     # And the evidence-backed pick still works, so this is a narrowing rather than a deletion.
     rel = {frozenset(("a1", "b1")): "duplicate", frozenset(("a2", "b1")): "duplicate"}
     got = mf.worst_pinned_pair(fams, rel)

@@ -213,6 +213,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
   and fusing two families the verdicts do not connect need not touch the colliding pair — so the
   collision survives and the fusion is permanent. It now returns no target and the caller stops with
   a message naming both reasons a merge can be unavailable, rather than only the share rule.
+
+  **It fired on a recorded run, not only in fuzzing.** On the preserved `dense-frozen` partition the
+  fallback picked families 17 and 18 — *"Batch first and second review into one scarce-review"* and
+  *"Give second units same-day attention from the person"* — which have no adjudicated pair between
+  them at all. Two plainly different ideas, fused on no evidence. That pair is transcribed into the
+  regression test, since the dataset itself is gitignored.
 - **Two documents said `plan_groups.py` satisfied the share rule by construction.** It did not: its
   pinch merge was unbounded until the change above. `references/pipeline.md` now says which half is
   by construction and which is by the bound, and `verify_pipeline.py`'s widened-family message names
