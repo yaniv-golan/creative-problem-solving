@@ -225,21 +225,41 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
     # A re-run that produces FEWER shards leaves the extra files from the previous sharding on
     # disk, and step 5 dispatches "one adjudicator per cand-*.json" -- so the run would judge
     # superseded shards and the heartbeat would announce a count the summary line below
-    # contradicts three lines later. Step 4 now tells the model to re-run with --probe raised
-    # when the budget is exceeded, which makes this the expected path rather than an exotic one.
+    # contradicts three lines later.
+    #
+    # HOW A RE-RUN GETS HERE, since the note that used to sit here was wrong. It said raising
+    # --probe made this "the expected path": it cannot. `plan_shards` is max(3, min(want, cap))
+    # with cap = max(3, nprobe // 4), and both terms are non-decreasing in --probe, so raising it
+    # never REDUCES the shard count and never supersedes anything. This branch needs an explicit
+    # --shards below the current count, or a smaller re-proposed candidates.json.
+    #
+    # THE VERDICT FILES GO WITH THEM. relations-<k>.json is written by an adjudicator against
+    # cand-<k>.json, so when that shard is superseded its verdicts are stale by construction --
+    # and merge_relations.py globs relations-*.json without knowing which sharding produced them.
+    # Left behind, a stale file pads the union the coverage check compares against, and a CURRENT
+    # shard that came back short merges green: measured at 4 shards re-sharded to 3, the merge
+    # exited 0 on a missing pair that a merge without the stale file refused. Keying on the index
+    # is what makes this safe -- a repair writes relations-<next-free-index>.json, whose index is
+    # above the shard count only when it is genuinely orphaned, and the documented remedy is
+    # unaffected because it runs after this sweep, not before it.
     #
     # Renamed, not deleted: nothing under outputs/ is removed (step 0b, and the harness enforces
-    # it), and the new name is deliberately not `cand-*` so the glob stops seeing it.
-    superseded = 0
-    for old in sorted(glob.glob(os.path.join(wd, "cand-*.json"))):
-        n = os.path.basename(old)[len("cand-"):-len(".json")]
-        if n.isdigit() and int(n) > len(shards):
-            os.rename(old, os.path.join(wd, f"superseded-{os.path.basename(old)}"))
-            superseded += 1
+    # it), and the new name is deliberately not `cand-*` or `relations-*` so the globs stop
+    # seeing it.
+    superseded = []
+    for prefix in ("cand-", "relations-"):
+        for old in sorted(glob.glob(os.path.join(wd, f"{prefix}*.json"))):
+            n = os.path.basename(old)[len(prefix):-len(".json")]
+            if n.isdigit() and int(n) > len(shards):
+                os.rename(old, os.path.join(wd, f"superseded-{os.path.basename(old)}"))
+                superseded.append(os.path.basename(old))
     if superseded:
-        print(f"WARN: {superseded} shard file(s) from an earlier sharding of this run directory "
-              f"were superseded by this one and renamed out of the way. Dispatch one adjudicator "
-              f"per cand-*.json as step 5 says; the renamed files are kept but no longer match.")
+        _sh = sum(1 for f in superseded if f.startswith("cand-"))
+        _rel = len(superseded) - _sh
+        _what = f"{_sh} shard file(s)" + (f" and {_rel} verdict file(s)" if _rel else "")
+        print(f"WARN: {_what} from an earlier sharding of this run directory were superseded by "
+              f"this one and renamed out of the way. Dispatch one adjudicator per cand-*.json as "
+              f"step 5 says; the renamed files are kept but no longer match either glob.")
 
     # The generation heartbeat rides on this call rather than on a separate one. A progress
     # command that exists only to print is the first thing skipped when nothing depends on it,

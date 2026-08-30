@@ -17,7 +17,7 @@ that it would otherwise copy out by hand.
   build_report.py <work-dir> [--out outputs/report.md]
   build_report.py --slots <report.md>      # list the {{...}} tokens still to fill
   build_report.py --fill <report.md> --slots-json <slots.json>   # fill them, refusing unknown keys
-  build_report.py --check <report.md>      # every {{...}} filled in, and none deleted
+  build_report.py --check <report.md>      # every {{...}} filled in, and the options intact
   build_report.py --check-reply <reply.md> --against <report.md>   # the reply carries the report
 """
 import json, os, sys, glob

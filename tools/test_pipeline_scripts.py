@@ -3173,8 +3173,10 @@ def t_superseded_shards_do_not_linger():
     Step 5 dispatches one adjudicator per `cand-*.json`, so a stale file from a superseded
     sharding sends a sub-agent to judge pairs this run did not plan — and the heartbeat, which
     counts the same glob, announces a number the summary line contradicts three lines later.
-    Step 4 now tells the model to re-run with `--probe` raised when the shard budget is exceeded,
-    which makes this the expected path rather than an exotic one.
+    Step 4 tells the model to re-run with `--probe` raised when the shard budget is exceeded, which
+    does NOT reach this branch — `plan_shards` is non-decreasing in `--probe`, so raising it never
+    lowers the shard count. An explicit `--shards` is what gets here, which is why this fixture
+    passes one.
     """
     print("\nsuperseded shard files stop matching the glob")
     d = tempfile.mkdtemp()
@@ -3198,6 +3200,62 @@ def t_superseded_shards_do_not_linger():
               "outputs/ is delete-denied; the files must still exist")
         check("...and the heartbeat count matches the sharding it just did",
               "in 3 parallel batches" in out, out.strip()[:150])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_superseded_verdicts_go_with_their_shards():
+    """A superseded shard's verdicts must stop matching the glob too, or a live gap merges green.
+
+    relations-<k>.json is written against cand-<k>.json, so when that shard is superseded its
+    verdicts are stale by construction -- but merge_relations.py globs relations-*.json without
+    knowing which sharding produced them. Left behind, the stale file pads the union the coverage
+    check compares against, and a CURRENT shard that came back short passes.
+
+    Reproduced before the fix: 4 shards, adjudicated, re-sharded to 3, one pair of cand-2 withheld
+    -> merge exits 0. Remove the orphaned relations-4.json by hand and the same state exits 1.
+    """
+    print("\na superseded shard's verdicts are superseded with it")
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 3, 10)
+        make_candidates(d, ids)
+        # A small probe on purpose: with every pair planted twice there is no pair whose absence
+        # the coverage check can see, and the last assertion below has nothing to test.
+        rc, _ = run("shard_candidates.py", d, "--shards", 4, "--probe", 8)
+        assert rc == 0, "fixture: shard_candidates failed"
+        for c in sorted(glob.glob(os.path.join(d, "cand-*.json"))):
+            k = os.path.basename(c)[5:-5]
+            json.dump({"relations": [dict(p, relation="distinct")
+                                     for p in json.load(open(c))["pairs"]]},
+                      open(os.path.join(d, f"relations-{k}.json"), "w"))
+        rc, out = run("shard_candidates.py", d, "--shards", 3, "--probe", 8)
+        check("re-sharding renames the orphaned verdict file too",
+              os.path.exists(os.path.join(d, "superseded-relations-4.json")), out.strip()[:140])
+        check("...and says so, counting shard and verdict files separately",
+              "verdict file(s)" in out, out.strip()[:200])
+        check("...and nothing was deleted",
+              os.path.exists(os.path.join(d, "superseded-cand-4.json")), sorted(os.listdir(d))[:6])
+
+        # The gap the stale file used to hide. Withhold a pair that is NOT probe-planted: the
+        # probe deals copies to a neighbouring shard, so a duplicated pair comes back anyway and
+        # the coverage check is right not to flag it -- the same overlap that made an earlier
+        # len(gap) == n test unreachable.
+        cur = {os.path.basename(c)[5:-5]: [tuple(sorted((p["a"], p["b"])))
+                                           for p in json.load(open(c))["pairs"]]
+               for c in sorted(glob.glob(os.path.join(d, "cand-*.json")))}
+        elsewhere = {p for k, ps in cur.items() if k != "2" for p in ps}
+        solo = [p for p in cur["2"] if p not in elsewhere]
+        check("the fixture has a non-probe pair to withhold", bool(solo),
+              "every pair in shard 2 is probe-planted; widen the fixture")
+        drop = solo[0]
+        for k, ps in cur.items():
+            keep = [p for p in ps if not (k == "2" and p == drop)]
+            json.dump({"relations": [{"a": a, "b": b, "relation": "distinct"} for a, b in keep]},
+                      open(os.path.join(d, f"relations-{k}.json"), "w"))
+        rc, out = run("merge_relations.py", d)
+        check("a live shard that came back short is no longer masked by stale verdicts",
+              rc != 0 and "shard 2" in out, out.strip()[:160])
     finally:
         shutil.rmtree(d, True)
 
@@ -3367,7 +3425,8 @@ def main():
               t_merged_labels_replace_concatenation, t_heading_follows_the_lead_across_a_merge,
               t_slots_fill_and_deletion,
               t_verifier_note_reaches_the_reader, t_progress_names_the_next_stage,
-              t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger):
+              t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
+              t_superseded_verdicts_go_with_their_shards):
         t()
 
     print()
