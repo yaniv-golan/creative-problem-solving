@@ -284,6 +284,37 @@ Python 3.8 floor is gone with it. Keep it stdlib-only by convention; `numpy` is 
 accelerator that swaps an approximation for an exact Vendi score, and if you touch that path,
 test both with and without it installed. CI does.
 
+## A pinned baseline goes stale, and the suite stops before it starts
+
+Every scenario pins a platform baseline — `baseline: desktop-<version>` — and that baseline names a
+staged Claude Desktop agent binary the harness bind-mounts. **A Desktop update deletes the previous
+version's binary.** A scenario still pinning it then dies in `resolveAgentBinary` before the agent
+starts, seconds after `cowork-harness doctor` reported ready — doctor validates the agent for its
+own current baseline, not for what each scenario pins.
+
+As of 2026-08-30, 11 of the 12 scenario files pin `desktop-1.37937.1`, whose binary is gone on a
+machine that has updated past it. `python3 tools/check-repo.py` warns when this is true of your
+machine; it never fails, because which versions are staged is a property of the machine rather than
+of the repo, and it never fires in CI, where there is no harness to resolve baselines against.
+
+**They are deliberately left pinned.** The eval scenarios are comparability artifacts: their results
+are graded against archived runs, and repinning would make every future comparison cross-platform
+against those. Upstream guidance agrees for reproducibility-bound suites — prefer a pin you move
+deliberately over `latest`, which never rots but silently drifts, so two runs weeks apart are not
+comparable. The pin and `latest` have opposite failure modes; this repo accepts the rot.
+
+**If you need to run them, repinning is a coupled change, not a YAML edit:**
+
+- `evals/scenarios/*.yaml` are **generated**. The baseline is a literal in
+  `tools/build-eval-scenarios.py`, and CI runs `build-eval-scenarios.py --check` — hand-editing the
+  five eval scenarios reds the build. Edit the generator.
+- CI installs `cowork-harness@2.5.0` (`.github/workflows/ci.yml`), which ships baseline definitions
+  up to `desktop-1.37937.1` and **not** `desktop-1.40609.0`. Repinning to a newer baseline requires
+  bumping that install in the same change.
+- `COWORK_HARNESS_ALLOW_AGENT_FALLBACK=1` runs the newest sibling binary instead of the pinned one
+  and downgrades the sha check to advisory. It is the substitution the hard failure exists to
+  prevent: use it to unblock a single local run, never in CI, and never to record a cassette.
+
 ## Commits and pull requests
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
