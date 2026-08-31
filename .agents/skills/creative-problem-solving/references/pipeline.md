@@ -40,6 +40,28 @@ correctness. **Say in one line which of these you lost.** A run that quietly dro
 describes itself in the same words as a checked run is the failure this whole pipeline exists to
 prevent.
 
+## When a script refuses: retry once, correcting it, then stop
+
+Every check below names the stage that wrote the file it refused, and several say to re-dispatch
+only that stage. Two rules bound that.
+
+**Carry the correction into the retry.** A bare re-run with the prompt that produced the file is
+the least likely thing to work: these files are refused for what was asked for, not for luck. Add
+the one line the failure names — for a refused pool, *"write only the JSON value, with no prose and
+no code fence"*; for a shard that claimed an option from a cluster it did not own, the cluster it
+owns.
+
+**A second identical failure ends it.** Do not dispatch a third time. Say which stage refused,
+repeat the failure line verbatim, and give the reader what the run has while naming what is missing
+from it. On a recorded run a structural gate failed and then failed again byte-for-byte identically,
+seconds apart; the same failure twice is a fact about the prompt, and a third attempt spends minutes
+to learn it again.
+
+Two costs are worth knowing before spending a retry. A refused pool is caught at step 4, by
+`shard_candidates.py`, before any later stage exists — so re-dispatching one generator there is
+cheap and loses nothing. Re-running `merge_families.py` after ranking is not: it invalidates steps 7
+and 8, which must both be re-run, in that order.
+
 ## Step 0 — resolve `$CPS` before any other step
 
 Every script below is called as `python3 "$CPS/scripts/<name>.py"`. Resolve `CPS` once, first,

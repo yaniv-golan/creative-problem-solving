@@ -7,6 +7,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **A stop condition for retrying a refused stage.** Several checks say to re-dispatch only the
+  stage they name; none said when to give up, and a recorded run has a structural gate failing and
+  then failing again byte-for-byte identically, seconds apart. `references/pipeline.md` now says to
+  carry the failure's own correction into the retry — a bare re-run with the prompt that produced
+  the file is the least likely thing to work — and to stop after a second identical failure, handing
+  the reader what the run has and naming what is missing. It also states the two costs that decide
+  whether a retry is cheap: a refused pool is caught at step 4 before any later stage exists, while
+  re-running `merge_families.py` after ranking invalidates steps 7 and 8.
+
 ### Fixed
 - **Naming four elements as hiding places refused every report that mentions one.** The pattern was
   `<tag[^>]*>.*` with `re.S`, which does not match a tag — it matches the rest of the document, so
