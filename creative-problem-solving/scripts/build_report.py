@@ -508,7 +508,22 @@ def _visible_twin(doc, line, spans):
     return False
 
 
-_COMMENT = re.compile(r"<!--.*?-->", re.S)
+# AN UNCLOSED COMMENT HIDES TO END OF DOCUMENT, exactly as an unclosed <details> does, and
+# `<!--.*?-->` matches nothing at all when there is no close tag -- so the one-character edit that
+# defeats this gate is deleting a `-->`. The second alternative is that case; the first is tried
+# at each position, so a well-formed comment still ends at its own close.
+_COMMENT = re.compile(r"<!--.*?-->|<!--.*", re.S)
+
+
+def _hidden_spans(doc):
+    """Every span of `doc` a reader does not see: collapsed <details> content, and comments.
+
+    ONE FUNCTION BECAUSE THE GATE AND ITS PREDICATE DISAGREED. `_buried` learned that a comment
+    is a hidden region; `check` still decided WHETHER TO LOOK by asking `_collapsed_spans`. A
+    report that hid its whole answer in comments and carried no <details> tag at all was never
+    handed to the predicate that would have refused it.
+    """
+    return _collapsed_spans(doc) + [(m.start(), m.end()) for m in _COMMENT.finditer(doc)]
 
 
 def _buried(doc, options):
@@ -524,7 +539,7 @@ def _buried(doc, options):
     So a hidden region is a collapsed <details> span OR a comment, and an option is buried when it
     occurs nowhere else. Shapes: tools/corpus_burial.py.
     """
-    spans = _collapsed_spans(doc) + [(m.start(), m.end()) for m in _COMMENT.finditer(doc)]
+    spans = _hidden_spans(doc)
     if not spans:
         return []
     out = []
@@ -576,7 +591,7 @@ def check_reply(reply_path, report_path):
     if gone_r:
         sys.exit(
             f"FAIL: {len(gone_r)} of {len(opts_r)} options are only reachable inside a collapsed "
-            f"<details> block in {os.path.basename(reply_path)}. The reader is shown a summary and "
+            f"<details> block or an HTML comment in {os.path.basename(reply_path)}. The reader is shown a summary and "
             f"told the answer is machine output they can skip. Every gate before this one counted "
             f"the options and found them present -- presence was never the property worth having.\n"
             f"      A covering line above the content is fine. Folding the content away is not.")
@@ -758,7 +773,7 @@ def check(path, skeleton_words=None):
     # line under its family and matching no heading pattern, so most of the answer could be hidden
     # while this reported nothing.
     # The manifest is the list of what has to be readable, so ask it rather than the markup.
-    spans = _collapsed_spans(body)
+    spans = _hidden_spans(body)
     if spans:
         man_path = path + ".manifest.json"
         opts = []
@@ -771,9 +786,9 @@ def check(path, skeleton_words=None):
             gone = _buried(body, opts)
             if gone:
                 sys.exit(f"FAIL: {len(gone)} of {len(opts)} options are only reachable inside a "
-                         f"collapsed <details> block. Every one is still in the file and none of "
-                         f"them is readable; present the list rather than hiding it behind a "
-                         f"summary.")
+                         f"collapsed <details> block or an HTML comment. Every one is still in "
+                         f"the file and none of them is readable; present the list rather than "
+                         f"hiding it behind a summary.")
         # THE HEADING FALLBACK ONLY RUNS WITHOUT A MANIFEST, and asks the same question the option
         # check does: is this heading readable ANYWHERE. Counting headings inside a collapsed span
         # regardless refused a correct report that repeats itself in an appendix -- the options
@@ -785,8 +800,8 @@ def check(path, skeleton_words=None):
             and not _visible_twin(body, m.group(0), spans))
         if buried:
             sys.exit(f"FAIL: {buried} of {len(heads)} families sit inside a collapsed <details> "
-                     f"block. Every option is still in the file and none of them is readable; "
-                     f"present the list rather than hiding it behind a summary.")
+                     f"block or an HTML comment. Every option is still in the file and none of "
+                     f"them is readable; present the list rather than hiding it behind a summary.")
 
     words = len(body.split())
     man_path = path + ".manifest.json"

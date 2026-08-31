@@ -326,7 +326,7 @@ presents as a skill defect.
 > The run also carried three signals worth more than its cost: a shard budget exceeded by 9% whose
 > named remedy the pipeline never told the model to apply (now fixed); a verdict mix of **1.9%
 > duplicate / 34.6% joinable**, both below the bands as they then stood — the bands have since been
-> widened, because they were drawn around one early run and fired on six of the eight on record,
+> widened, because they were drawn around one early run and fired on five of the eight on record,
 > this one included — and kept here because a passing run discards its own WARN lines; and **26 pairs sitting inside families after
 > being adjudicated apart**, up from 18 on the run before it, still unaddressed. Only the share
 > gate and adjudication coverage move that last number, so it is a property of the grouping and

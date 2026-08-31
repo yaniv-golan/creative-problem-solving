@@ -294,16 +294,16 @@ def main(wd):
     # WHAT THE AGREEMENT PROBE CANNOT SEE.
     #
     # The probe asks whether two adjudicators judged the same pair the same way. It says nothing
-    # about where the panel's verdicts sit as a whole, and those are different failures. Across
-    # three recorded runs the `duplicate` share was 18.5%, 19.5% and 0.7% -- a 25x spread that
-    # decides the entire partition, since 0.7% leaves almost nothing to group -- while the
+    # about where the panel's verdicts sit as a whole, and those are different failures. Across the
+    # eight recorded runs the `duplicate` share ran from 0.6% to 19.5% -- a 32-fold spread that
+    # decides the entire partition, since 0.6% leaves almost nothing to group -- while the
     # agreement rates stayed in a narrow band throughout. A run can be
     # perfectly self-consistent and still be calibrated somewhere the others are not.
     #
-    # Warn-only, and the band is drawn from three runs: it reports "this run does not look like
-    # the ones we have seen", which is the strongest honest claim at this sample size. A hard gate fitted to
-    # three points would refuse legitimate runs, and a refused legitimate run is how a check gets
-    # switched off.
+    # Warn-only, and the band is drawn from those eight runs, which is the whole preserved record
+    # and still a small sample: it reports "this run does not look like the ones we have seen",
+    # which is the strongest honest claim at this size. A hard gate fitted to eight points would
+    # refuse legitimate runs, and a refused legitimate run is how a check gets switched off.
     if out:
         share = Counter(e.get("relation") for e in out)
         dup = share["duplicate"] / len(out)

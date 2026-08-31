@@ -41,12 +41,35 @@ CORPUS = [
     # A bracket in the preamble must not cut the scan at the wrong place.
     ("prose with a bracket",        f'Here are the options [all of them]:\n{REAL}',  "PARSE"),
     ("markdown link then object",   f'See [the brief](x.md):\n{REAL}',              "PARSE"),
+
+    # A BRACKET IN THE PROSE BESIDE A FENCE IS NOT A SECOND PAYLOAD. The ambiguity guard scans from
+    # every brace, so any bracket-shaped aside an English sentence contains -- a list of numbers, a
+    # ranking -- parsed as a JSON array and hard-failed a stage whose file was never ambiguous. The
+    # guard exists to catch a second POOL, so only payload-shaped values count: an object, or an
+    # array holding one. These are the noisy members of the PARSE family, absent when the guard
+    # was written, which is why it shipped refusing them.
+    ("number list in prose, fence", f'I weighed options [1, 2, 3] first:\n```json\n{REAL}\n```', "PARSE"),
+    ("fence then a ranking aside",  f'```json\n{REAL}\n```\nI ranked [4, 7] highest.',           "PARSE"),
+    ("markdown link beside fence",  f'See [the brief](x.md):\n```json\n{REAL}\n```',             "PARSE"),
+    ("brace inside a string value",
+     'Note:\n{"items":[{"id":"p1-001","text":"use the {placeholder} form"}]}',                    "PARSE"),
+    ("nested object in the pool",
+     'Here:\n{"items":[{"id":"p1-001","text":"x","meta":{"lens":"a"}}]}',                         "PARSE"),
     ("two fences, both parse",      f'```json\n{STUB}\n```\n```json\n{REAL}\n```',   "REFUSE"),
     ("fence fails, later parses",   f'```json\nnot json\n```\n{REAL}',               "REFUSE"),
     ("real, fence fails",           f'{REAL}\n```json\nnot json\n```',               "REFUSE"),
 
     # --- corrupt: must keep failing loudly ------------------------------------------------------
     ("truncated",                   '{"a":1',                                        "REFUSE"),
+    # TRUNCATION AFTER PROSE. A cut-off file whose LAST complete inner object happens to end at the
+    # cut parses on its own, so a scan that accepts the first brace that parses hands back one
+    # option and calls it the pool -- silent partial loss, where the whole-file parse had named the
+    # truncation. The bare `{"a":1` above never exercised this: it starts with a brace, so the scan
+    # never runs. The prose is what turns a loud failure into a quiet wrong answer.
+    ("prose then truncated pool",
+     'Here are the options:\n{"items": [{"id": "a", "text": "first option"}',       "REFUSE"),
+    ("prose then truncated, comma",
+     'Options below.\n{"items": [{"id":"a"},',                                      "REFUSE"),
     ("empty file",                  '',                                              "REFUSE"),
     ("prose only",                  'I could not do it.',                            "REFUSE"),
     ("NaN",                         '{"a":NaN}',                                     "REFUSE"),
@@ -145,7 +168,7 @@ if __name__ == "__main__":
             d = tempfile.mkdtemp(); p = os.path.join(d, "x.json")
             open(p, "w").write(text)
             return json.dumps(rj.load_obj(p))     # raises SystemExit on refusal; re-parsed by _strict
-        run(shipped, "SHIPPED robust_json")
+        sys.exit(1 if run(shipped, "SHIPPED robust_json") else 0)
     else:
         bad = run(unwrap_proposed, "PROPOSED rule")
         sys.exit(1 if bad else 0)

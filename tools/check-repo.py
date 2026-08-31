@@ -290,6 +290,32 @@ if os.path.isdir(agents_dir):
         fail("%s/agents/ exists but contains no .md agent definitions" % plugin_name)
     else:
         ok("%s/agents/: %s" % (plugin_name, ", ".join(sorted(defs))))
+    # AND AN EXPLICIT LIST MUST NAME ALL OF THEM. The shape check above accepts any array of .md
+    # paths without ever comparing it to the directory. `.claude-plugin/marketplace.json` relies on
+    # auto-discovery, so a seventh agent added there just works; `.cursor-plugin/plugin.json`
+    # carries the list by hand, so the same agent is silently never offered under Cursor -- the
+    # identical "manifest looks valid, nothing is offered" failure the note above exists to catch,
+    # in the direction it does not look.
+    for rel in ["%s/.claude-plugin/plugin.json" % plugin_name,
+                "%s/.codex-plugin/plugin.json" % plugin_name,
+                ".cursor-plugin/plugin.json"]:
+        if not os.path.isfile(os.path.join(REPO, rel)):
+            continue
+        listed = load_json(rel).get("agents")
+        if not isinstance(listed, list):
+            continue
+        named = {os.path.basename(x) for x in listed}
+        missing = sorted(set(defs) - named)
+        if missing:
+            fail("%s lists %d agents by hand but %s/agents/ holds %d; %s would never be offered "
+                 "to a user of that host. Add them to the array, or drop the key and let the "
+                 "agents be auto-discovered."
+                 % (rel, len(named), plugin_name, len(defs), ", ".join(missing)))
+        elif sorted(named - set(defs)):
+            fail("%s lists agent file(s) that do not exist: %s"
+                 % (rel, ", ".join(sorted(named - set(defs)))))
+        else:
+            ok("%s: agents array names all %d definitions" % (rel, len(defs)))
 
 
 # --------------------------------------------------------------------------

@@ -7,6 +7,48 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Two guards were tightened in the accept direction and one in the refuse direction, and each
+  overshot.** The JSON ambiguity guard now scans from every brace, so every bracket an English
+  sentence contains gets parsed too: `I weighed options [1, 2, 3] first` beside a fenced payload is
+  a valid JSON array, and the stage hard-failed on a file that was never ambiguous. Only
+  payload-shaped values count now — an object, or an array holding one — which is what every stage
+  writes and what the shape that motivated the guard was.
+
+  The same every-brace scan, on the unfenced path, turned a loud failure into a quiet one. A file
+  cut off after a complete inner object parses from that object alone, so prose plus a truncated
+  pool loaded as **one option** and the run continued: the whole-file parse had named the
+  truncation, and the scan looked past it. A parse that consumed everything and still wanted more
+  is truncation, not prose, and is now handed to the strict parse that says where the file stops.
+
+- **The burial gate could not see either of the two ways to hide a page without a `<details>` tag.**
+  Comments became a hidden region for the predicate, but `check` still decided *whether to look* by
+  asking `_collapsed_spans` — so a report with its whole answer inside one comment and no `<details>`
+  anywhere was never handed to the predicate that would have refused it. And `<!--.*?-->` matches
+  nothing when there is no close tag, so deleting one `-->` hides the rest of the rendered page and
+  the gate saw a fully visible document. Hidden regions are now one function, used by both, and an
+  unclosed comment runs to end of document exactly as an unclosed `<details>` does.
+
+- **The corpus was aimed one layer below the gate.** Every burial shape was measured against
+  `_buried`, a predicate its caller reaches only after deciding there is something to look at, so
+  a hole in that decision was invisible to a corpus reporting the predicate green. `corpus_burial.py`
+  now runs `check` itself alongside the predicate. Two further corpus defects came out with it:
+  `corpus_json.py --shipped` always exited 0, so the mode that records the pre-change baseline could
+  not fail; and a new shape that inlined its own option text would have been refused by the
+  missing-options gate before the burial gate was reached — the wanted verdict for the wrong reason.
+
+- **Four figures that named the wrong sample.** `merge_relations.py` described its warn bands as
+  drawn from three runs with a 25x duplicate-share spread, in a file whose `RECORDED_DUP` holds
+  eight values spanning 0.6% to 19.5% — a 32-fold spread. `tests/README.md` still said the old
+  floors fired on six of eight runs where the same claim, corrected, reads five in
+  `merge_relations.py` itself.
+
+- **`check-repo.py` checked the shape of a hand-written `agents` array and never its contents.**
+  `marketplace.json` auto-discovers agents; `.cursor-plugin/plugin.json` lists them by hand, so a
+  seventh agent would pass every check and silently never be offered under Cursor — the same
+  "manifest is valid, nothing is offered" failure the neighbouring check exists to catch, in the
+  direction it did not look.
+
 ### Added
 - **A pinch merge says when the share rule did not apply to it.** The bound added above exempts any
   union with fewer than ten adjudicated internal pairs — the floor exists so a run is never stopped

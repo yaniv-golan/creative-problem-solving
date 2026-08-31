@@ -57,12 +57,19 @@ _FENCE = re.compile(r"```[a-zA-Z]*[ \t]*\r?\n(.*?)\r?\n[ \t]*```", re.S)
 
 
 def _any_payload(text):
-    """True when `text` contains a parseable JSON object or array anywhere in it.
+    """True when `text` holds a second thing shaped like a stage payload.
 
     Scanning from EVERY brace, not just the first. The rule tested only the whole string and its
     suffix from the first `{`, so a payload with any prose beside it -- a sign-off after it, a
     sentence before it -- was invisible to the guard and the fenced stub won silently. Both
     motivating directions of the round-10 defect stayed broken for exactly that reason.
+
+    PAYLOAD-SHAPED, NOT MERELY PARSEABLE, and that is the correction to the correction. Scanning
+    from every brace means every bracket an English sentence contains gets parsed too: "I weighed
+    options [1, 2, 3] first" holds a valid JSON array, so an ordinary sentence beside a fence was
+    read as a second payload and hard-failed a stage whose file was never ambiguous. Every stage
+    here writes an object, or an array of objects; a list of bare numbers is prose. The shape that
+    motivated the guard -- a real pool beside a fenced stub -- is an object, so it is still caught.
     """
     dec = json.JSONDecoder()
     for i, ch in enumerate(text):
@@ -72,7 +79,8 @@ def _any_payload(text):
             val, _ = dec.raw_decode(text[i:])
         except ValueError:
             continue
-        if isinstance(val, (dict, list)):
+        if isinstance(val, dict) or (isinstance(val, list)
+                                     and any(isinstance(x, dict) for x in val)):
             return True
     return False
 
@@ -110,13 +118,21 @@ def _unwrap(text):
     # SCAN FROM EVERY BRACE, not from the first. `min(find("{"), find("["))` cuts at a bracket in
     # the prose -- "Here are the options [all of them]:" cut at the `[` and refused a file whose
     # payload was two lines down. The wrapper noise this module exists to absorb includes brackets.
+    #
+    # AND STOP AT A TRUNCATED ONE. A cut-off file whose last complete inner object happens to end
+    # at the cut parses on its own, so "first brace that parses" handed back ONE OPTION and called
+    # it the pool -- silent partial loss, on the shape the whole-file parse used to name. A parse
+    # that consumed everything and still wanted more is truncation, not prose: hand that brace to
+    # the caller's strict parse, which says where the file stops.
     if text[:1] not in ("{", "["):
         dec = json.JSONDecoder()
         for i, ch in enumerate(text):
             if ch in "{[":
                 try:
                     val, _ = dec.raw_decode(text[i:])
-                except ValueError:
+                except ValueError as e:
+                    if getattr(e, "pos", -1) >= len(text) - i:
+                        return text[i:]
                     continue
                 if isinstance(val, (dict, list)):
                     return text[i:]
