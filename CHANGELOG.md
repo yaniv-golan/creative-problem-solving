@@ -214,6 +214,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **`ruff` was red at HEAD, and CI has never run on any of it.** Three `F401`/`F841` errors against
+  the pinned `ruff==0.15.0` the workflow installs, one of them added by the previous commit's own
+  test. The branch is far enough ahead of `origin/main` that the lint gate had not been exercised
+  since before this series began; it would have failed on first push. All three fixed.
+
+- **The tiering guard's "inert below 50 options" was sampling luck, not a threshold.** It changes
+  the pick about once in a thousand pinch decisions — 3 of 2,674 at 20-40 options and 1 of 1,096 at
+  50. The earlier claim of "never at 8-40" came from 1,226 draws, where seeing none has probability
+  around a quarter. The guard is rare and size-independent, which is the reason to keep it; the
+  regime boundary was read into a small sample.
 - **The 609 no-evidence merges were never reachable, so neither argument about them held.**
   `merge_families.main` asks for a merge target only when `solve_leads` finds no assignment and
   proved none exists. In all 609 states behind that figure, `solve_leads` found one — the fallback
@@ -222,12 +232,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   basis it always had: fusing families the adjudicators called apart permanently answers a question
   the evidence did not ask. The count no longer pretends to measure how often that happens.
 
-- **A refusal named `--shards`, which `plan_groups.py` does not accept.** Its flags are `--max-task`,
-  `--split-over` and `--lead-budget`; the knob for task size is a *smaller* `--max-task`. Three
-  messages in `merge_families.py` disagreed about this — one saying re-sharding cannot help, two
-  saying it changes the families — and the test guarding actionability matched a phrase naming no
-  flag at all. All three now name `--max-task` and agree on what it does, and the test checks the
-  named flag against that script's argv parsing rather than a substring.
+- **Three refusals told the caller to re-shard, which cannot change what they are about.** They
+  said "re-run `plan_groups.py` with more shards" — prose naming no flag, since `--shards` belongs
+  to a different stage. A first attempt replaced it with `--max-task`, a real flag, which is worse:
+  `pack()` is first-fit over *whole clusters*, so `clusters.json` is byte-identical from
+  `--max-task 45` down to `1` and only the task-file batching changes. `docs/INCIDENTS.md` already
+  records a run that followed that advice and spent a re-run learning it. All three now name what
+  can actually change the input — re-adjudicating the pairs, or a fresh grouping dispatch — and say
+  `--max-task` will not help. The test asserts an action is named and that `--max-task` is not
+  offered as the remedy, rather than matching a flag token.
 
 - **The test added for the malformed-baseline fix could not fail.** Its own `except` clause swallowed
   exactly the exceptions the bug raised, so it was green before the fix, after it, and would be

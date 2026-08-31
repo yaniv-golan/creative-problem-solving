@@ -10,6 +10,7 @@ instead of quietly producing a shorter list nobody notices.
 Fixtures are synthetic and deliberately so. Real run data belongs to whoever ran it.
 """
 import glob
+import re
 import importlib.machinery
 import itertools, json, os, random, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
@@ -1540,17 +1541,20 @@ def t_forced_merge_is_bounded_too():
     check("it refuses rather than writing a family that breaks the rule",
           rc != 0 and not os.path.exists(f"{wd}/families.json"),
           f"rc={rc}, families.json written={os.path.exists(f'{wd}/families.json')}")
-    # ASSERT THE FLAG EXISTS, not just that a sentence is present. This assertion used to match
-    # "plan_groups.py with more shards" -- a phrase naming no flag that script accepts, so it
-    # certified actionability by matching text that had none. plan_groups.py's own doctrine says an
-    # error naming a flag the script does not accept is the unactionable kind that gets worked
-    # around instead of obeyed; this now checks the named flag against that script's argv parsing.
-    import re as _re
-    _flags = set(_re.findall(r'"(--[a-z-]+)"',
-                            Path(SCRIPTS / "plan_groups.py").read_text(encoding="utf-8")))
-    _named = set(_re.findall(r"(--[a-z-]+)", out))
-    check("the refusal names a flag plan_groups.py actually accepts",
-          _named and _named <= _flags, f"message names {sorted(_named)}, script accepts {sorted(_flags)}")
+    # ASSERT AN ACTION THAT WORKS, which is narrower than "names a flag". Three earlier versions of
+    # this message failed in three different ways: one named `more shards` (prose, no flag at all),
+    # one named `--max-task` as the remedy (a real flag that is provably inert here -- pack() is
+    # first-fit over whole clusters, so clusters.json is byte-identical from --max-task 45 down to
+    # 1, and a run already spent a re-run learning that), and a token-presence assertion passed both
+    # the second and a message naming --max-task only to warn against it. What the caller can
+    # actually change is the input: the adjudicated verdicts, or a fresh grouping dispatch.
+    _actions = ("re-adjudicate", "grouping dispatch")
+    check("the refusal names something the caller can actually change",
+          any(a in out for a in _actions), f"names none of {_actions}: {out[:200]}")
+    check("...and does not offer --max-task as the remedy, which cannot change the families",
+          not re.search(r"(?<!NOT )(?<!not )(?:with a smaller|re-run\s+\S+\s+with)\s+--max-task", out),
+          f"offers --max-task as a fix: {out[:200]}")
+
     check("...and is NOT the internal-bug backstop, which would mean the merge happened",
           "bug in merge_families.py" not in out, f"reached the post-merge backstop: {out[:200]}")
     shutil.rmtree(wd)
@@ -2582,7 +2586,7 @@ def t_lead_search_is_numbering_invariant():
     # runs check-repo.py itself against a planted malformed baseline, which is the only way to
     # observe the behaviour that matters: the check is the LAST one in the file, so a raise there
     # pre-empts the failure summary and discards every genuine finding above it.
-    import subprocess as _sp2, tempfile as _tf2, shutil as _sh2
+    import subprocess as _sp2, tempfile as _tf2
     _shapes = ['[1,2]', '"x"', '42', '{"agentBinary":"/a/b"}', '{"agentBinary":[1]}',
                '{"agentBinary":{"stagedPath":7}}', '{"agentBinary": nul', '{"agentBinary":null}']
     _bad = []
@@ -3830,7 +3834,7 @@ def t_progress_names_the_next_stage():
 
         # A completed families.json from an earlier run must not make the sharding call announce
         # a family count. The file is real; it describes a different stage.
-        fams = make_families(d, ids)
+        make_families(d, ids)          # written for its side effect: the file must exist on disk
         rc, out = run("shard_candidates.py", d, "--probe", 12)
         check("a stale families.json does not turn the sharding line into a grouping line",
               "grouped into" not in out and "candidate pairs" in out, out.strip()[:200])

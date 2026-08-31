@@ -471,12 +471,12 @@ def main(wd, max_task, split_over):
     # from it. At the repo generator's 8-14 options that preference never fires -- an evaluated-passing
     # candidate and an exempt one were never available at the same pinch across 10,000 instances --
     # and an earlier version of this comment stated that as though it settled the question. It does
-    # not: at 20-40 options both kinds do appear. Measured further: the guard never changes the pick
-    # across 1,226 pinch decisions at 8-40 options, and DOES change it at 50 -- one instance fuses an
-    # evaluated 13%-separating pair where the plain order fused an exempt 33% one. So it is inert in
-    # the regimes that were swept and outcome-affecting above them, and production runs are 210-270
-    # options, which nothing here has tested. On the one irreversible act in this script that is a
-    # reason to keep the guard, not a demonstration that it does nothing.
+    # not: at 20-40 options both kinds do appear, and the guard changes the pick there -- measured
+    # at 3 of 2,674 pinch decisions at 20-40 and 1 of 1,096 at 50, i.e. about one in a thousand at
+    # both. An earlier version of this comment reported "never at 8-40, only at 50" from a smaller
+    # sweep and read a regime boundary into it; at ~0.1% and 1,226 draws, seeing none has probability
+    # about a quarter, so that was sampling luck rather than a threshold. It fires rarely and at
+    # every size tested, which on the one irreversible act in this script is the reason to keep it.
     #
     # The floor is right for its original job, refusing to STOP a run on almost no evidence, and the
     # asymmetry runs the other way for a merge, which is unrecoverable. Removing it here was measured

@@ -489,12 +489,11 @@ def main(wd, expect):
                 f"still colliding, so whether an assignment exists is UNKNOWN, not impossible "
                 f"({ex}). Re-run merge_families.py with --lead-budget set higher than "
                 f"{LEAD_NODES}. The search prunes as it assigns, so a raised budget buys a deeper "
-                f"tree rather than a wider re-enumeration. This message used to also suggest "
-                f"re-running plan_groups.py with more shards. A smaller --max-task DOES re-cut the "
-                f"grouping tasks and so changes the families this script is handed -- which is the "
-                f"action the two messages below name -- but it cannot help HERE: this search is "
-                f"over the families as given, and re-cutting tasks does not change the partition "
-                f"they came from.")
+                f"tree rather than a wider re-enumeration. Do NOT re-run plan_groups.py with a "
+                f"different --max-task hoping to change what this script is handed: that flag only "
+                f"decides which task FILE each cluster is dispatched in, and the clusters "
+                f"themselves are byte-identical at every value of it. A run already spent a "
+                f"re-run learning that (docs/INCIDENTS.md).")
         pair = worst_pinned_pair(fams, rel)
         if pair is None:
             die(f"{len(fams)} families still collide on their leads, and no merge here is one the "
@@ -502,12 +501,12 @@ def main(wd, expect):
                 f"fusing it, or would push a family past the {SHARE_MAX:.0%} separating share. A "
                 f"merge might well clear the collision -- that is not the difficulty. Fusing two "
                 f"families the adjudicators called apart, or never compared, is permanent and "
-                f"answers a question the evidence did not ask, so this stops instead. The shards "
-                f"were cut in a way the verdicts do not support: re-run plan_groups.py with a "
-                f"smaller --max-task so each grouping task is smaller, then re-run this script. "
-                f"(That flag re-cuts the tasks the groupers are given, which is what changes the "
-                f"families handed here -- it does not change the partition, so it will not move the "
-                f"lead search in plan_groups.py itself.) Do not hand-edit families.json.")
+                f"answers a question the evidence did not ask, so this stops instead. What can "
+                f"change is the input: re-adjudicate the pairs inside these families, which changes "
+                f"the partition plan_groups.py computes, and re-run the grouping dispatch over the "
+                f"new clusters. A different --max-task will NOT do it -- that flag only decides "
+                f"which task file each cluster is dispatched in, and the clusters are identical at "
+                f"every value of it. Do not hand-edit families.json.")
         i, j = pair
         fams[i]["members"] = fams[i]["members"] + fams[j]["members"]
         fams[i]["origin"].update(fams[j]["origin"])
@@ -529,9 +528,11 @@ def main(wd, expect):
             f"script's own merges ({ex}). Both merge paths are bounded by that rule, so reaching "
             f"this is a bug in merge_families.py, not something the shards can be blamed for -- "
             f"please report it with the group-result-*.json files. To get the run moving: re-run "
-            f"plan_groups.py with a smaller --max-task, which re-cuts the grouping tasks and so "
-            f"changes the families this script is handed. Do not hand-edit families.json, and do "
-            f"not re-run this script unchanged -- it is deterministic and will stop here again.")
+            f"the grouping dispatch over the same clusters -- the groupers may split a family this "
+            f"one widened -- or re-adjudicate the pairs inside it, which changes the partition "
+            f"itself. A different --max-task will NOT help: it only decides which task file each "
+            f"cluster lands in. Do not hand-edit families.json, and do not re-run this script "
+            f"unchanged -- it is deterministic and will stop here again.")
 
     # Every lead is final by here -- the greedy passes, the exhaustive solve and both merge paths
     # have all run -- so this is the first point at which the heading can be chosen at all.

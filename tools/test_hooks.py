@@ -84,7 +84,7 @@ def t_transcript_markers():
     check("no marker anywhere returns empty, so the caller can refuse", tm([("a.yaml", "prompt: hi")]) == [])
     # Behavioural, not a grep: run check-repo.py against a tree whose scenarios carry no marker
     # and require it to FAIL. Grepping for the message would still pass if fail() became print().
-    import subprocess, tempfile, glob as _g
+    import subprocess, glob as _g
     _repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _scen = os.path.join(_repo, "tests", "scenarios")
     _saved = {f: open(f, encoding="utf-8").read() for f in _g.glob(os.path.join(_scen, "*.yaml"))}
