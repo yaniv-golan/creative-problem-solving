@@ -8,6 +8,35 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **An object is a payload wherever it stands.** Asking *where* a brace sits turned the ambiguity
+  guard into a list of the markdown markers the last review happened to try. `> `, `- ` and `1. `
+  were handled; `| … |`, `_…_`, `<p>…</p>`, `[^1]: `, `<!-- … -->`, `- [x] ` and `![…](x.png)` were
+  not, and behind every one of them a real pool went invisible while a fenced empty stub loaded and
+  the run continued. Position is now asked of exactly one shape that needs it — a bare array of
+  scalars, the only thing an English sentence produces by accident. An object, or an array holding
+  one, counts wherever it appears.
+
+- **A tilde fence is a fence.** `build_report.py` learned that a fence is three or more backticks
+  **or tildes**; `robust_json`'s fence pattern still matched exactly three backticks. A
+  tilde-wrapped real pool was therefore not seen as fenced at all, the unfenced scan took whatever
+  value consumed the tail, and a trailing stub won silently. Both recognisers now accept either
+  character and a close at least as long as the open.
+
+- **The code mask knew CommonMark's spellings and not HTML's.** `<pre><!-- like this</pre>` renders
+  exactly as written, and the burial gate read it as a comment opening and hid the rest of the
+  page. `<pre>` and `<code>` are masked alongside fences, indented blocks and code spans.
+
+- **The gitignored-path check could not see the citation shape this repo actually uses.** Its
+  pattern required a filename with an extension directly under the tree, so
+  `docs/internal/preserved-runs/<run>` — a dated run directory — never matched, and three such
+  citations had been sitting in shipped files while the check reported green. It now matches nested
+  paths, and the three citations are summarised in place.
+
+- **The JSON corpus's two modes called different entry points** — `_unwrap` by default, `load_obj`
+  under `--shipped` — so they could disagree about a shape for a reason having nothing to do with
+  the commit, which is what that mode exists to isolate. Both run `load_obj` now.
+
+### Fixed
 - **A payload does not stop being a payload because a markdown marker sits in front of it.** The
   previous fix replaced a type test with a position test — does this brace start its line — and a
   second payload written as `> {real pool}`, `- {real pool}` or `1. {real pool}` after a fenced

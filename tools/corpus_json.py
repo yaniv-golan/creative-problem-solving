@@ -68,6 +68,28 @@ CORPUS = [
     ("stub fence then a list of numbers", f'```json\n{STUB}\n```\n[1, 2, 3]',               "REFUSE"),
     ("stub fence then an empty array",    f'```json\n{STUB}\n```\n[]',                      "REFUSE"),
 
+    # A TILDE FENCE IS A FENCE. `_mask_code` in build_report.py learned that a fence is three or
+    # more backticks OR tildes; the JSON reader's `_FENCE` did not move, so a tilde-wrapped real
+    # pool was not seen as fenced at all, the unfenced scan took the value that consumed the tail,
+    # and a trailing stub won. Two of three sites, on the fence recognizer itself.
+    ("tilde fence then a stub",     f'~~~json\n{REAL}\n~~~\n{STUB}',              "REFUSE"),
+    ("tilde fence alone",           f'~~~json\n{REAL}\n~~~',                       "PARSE"),
+    ("four-backtick fence alone",   f'````json\n{REAL}\n````',                     "PARSE"),
+    ("four-backtick fence + stub",  f'````json\n{REAL}\n````\n{STUB}',            "REFUSE"),
+
+    # AN OBJECT IS A PAYLOAD WHEREVER IT STANDS. Listing the markdown markers a payload may hide
+    # behind is a list of the last review's examples: `|`, `_`, `<p>`, `[^1]:`, `- [x]`, `![` were
+    # all absent, and each one made a real pool invisible while the stub loaded. The notation
+    # system is the population, and enumerating it is a losing game -- so position is asked ONLY
+    # of the one shape that genuinely needs it, an array of scalars.
+    ("stub fence then a table cell", f'```json\n{STUB}\n```\n| {REAL} |',         "REFUSE"),
+    ("stub fence then emphasis",     f'```json\n{STUB}\n```\n_{REAL}_',           "REFUSE"),
+    ("stub fence then an HTML tag",  f'```json\n{STUB}\n```\n<p>{REAL}</p>',      "REFUSE"),
+    ("stub fence then a footnote",   f'```json\n{STUB}\n```\n[^1]: {REAL}',       "REFUSE"),
+    ("stub fence then a comment",    f'```json\n{STUB}\n```\n<!-- {REAL} -->',    "REFUSE"),
+    ("stub fence then a task box",   f'```json\n{STUB}\n```\n- [x] {REAL}',       "REFUSE"),
+    ("stub fence then an image",     f'```json\n{STUB}\n```\n![{REAL}](x.png)',   "REFUSE"),
+
     # THE INVERSE OF "STARTS A LINE". A payload does not stop being a payload because a markdown
     # marker sits in front of it -- a blockquote, a bullet, a heading, a numbered item. Reading the
     # test literally, `> {real pool}` after a fenced stub was mid-line, invisible to the guard, and
@@ -141,14 +163,25 @@ def unwrap_proposed(text):
     each had been fixed separately. A corpus that reimplements the thing it tests is testing the
     reimplementation. It now calls robust_json directly and maps its refusal onto this file's
     exception, so `--shipped` and the default mode differ only in which commit is checked out.
+
+    AND IT CALLS THE SAME ENTRY POINT `--shipped` DOES. This ran `_unwrap` where `--shipped` ran
+    `load_obj`, which additionally refuses a top-level list -- so the two modes could disagree
+    about a shape for a reason that has nothing to do with the commit, and the sentence above
+    would have been false. Every shape in the corpus is currently an object, so it never showed.
     """
     import sys as _s
     _s.path.insert(0, SCRIPTS)
     import robust_json as _rj
-    try:
-        return _rj._unwrap(text)
-    except (getattr(_rj, "_Ambiguous", ()), getattr(_rj, "_NoPayload", ())) as e:
-        raise Ambiguous(str(e))
+    return _through_load_obj(_rj, text)
+
+
+def _through_load_obj(mod, text):
+    """Run `text` through a robust_json module exactly as a stage does: write it, then load it."""
+    import tempfile
+    d = tempfile.mkdtemp()
+    p = os.path.join(d, "x.json")
+    open(p, "w", encoding="utf-8").write(text)
+    return json.dumps(mod.load_obj(p))        # raises SystemExit on refusal; re-parsed by _strict
 
 
 class Ambiguous(Exception): pass
@@ -221,12 +254,7 @@ if __name__ == "__main__":
         rev = sys.argv[i + 1] if len(sys.argv) > i + 1 else "HEAD"
         rj = _at_revision(rev)
 
-        def shipped(text):
-            import tempfile
-            d = tempfile.mkdtemp(); p = os.path.join(d, "x.json")
-            open(p, "w").write(text)
-            return json.dumps(rj.load_obj(p))     # raises SystemExit on refusal; re-parsed by _strict
-        sys.exit(1 if run(shipped, f"robust_json at {rev}") else 0)
+        sys.exit(1 if run(lambda t: _through_load_obj(rj, t), f"robust_json at {rev}") else 0)
     else:
         bad = run(unwrap_proposed, "PROPOSED rule")
         sys.exit(1 if bad else 0)

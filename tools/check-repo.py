@@ -838,7 +838,12 @@ else:
     # sent to a path that resolves for exactly one person, and a dead relative link does not
     # 404, it just reads as a reference the reader failed to find. Summarise the finding in
     # place, or say the working is unpublished; both are honest, and a path is not.
-    cite = re.compile(r"(?:%s)[A-Za-z0-9._-]+\.[A-Za-z0-9]+"
+    # `/` INSIDE THE CLASS, AND NO REQUIRED EXTENSION. The pattern matched only a bare filename
+    # directly under the tree, so `docs/internal/preserved-runs/20260827-run1` -- the shape this
+    # repo actually cites, a dated run directory -- was invisible, and one such citation had been
+    # sitting in a shipped script while this check reported green. A directory a reader cannot
+    # open is the same dead pointer as a file they cannot open.
+    cite = re.compile(r"(?:%s)[A-Za-z0-9._/-]*[A-Za-z0-9_-]"
                       % "|".join(re.escape(t) for t in PRIVATE_TREES))
     dangling = []
     for rel in sorted(f for f in tracked if f):

@@ -612,7 +612,7 @@ def main(wd):
     # member that was NOT refuted. The two coincide until a lead is refuted, and then the family's
     # face is an option nothing verified, while every count still adds up.
     #
-    # Measured on the run that motivated this (docs/internal/preserved-runs/20260827-run1): four
+    # Measured on the run that motivated this (a preserved run of 2026-08-27, unpublished): four
     # options were refuted, two top-13 families promoted a replacement, and one of them -- f013,
     # lead p4-010 refuted, p2-008 promoted -- appears in no verified-*.json. That report went out
     # claiming a verified top 13 and carrying twelve. The label was honest ("not verified"), so no

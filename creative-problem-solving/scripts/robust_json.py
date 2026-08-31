@@ -53,7 +53,11 @@ def die(path, problem, fix):
 # JSON value beside it in either direction, is a file whose author disagreed with itself, and this
 # module's whole purpose is that a wrong answer is worse than a stopped run. Shapes and the corpus
 # that pins them: tools/corpus_json.py.
-_FENCE = re.compile(r"```[a-zA-Z]*[ \t]*\r?\n(.*?)\r?\n[ \t]*```", re.S)
+# THREE OR MORE BACKTICKS **OR TILDES**, and the close at least as long as the open. Matching only
+# ``` meant a tilde-fenced pool was not seen as fenced at all: the unfenced scan then took whatever
+# value consumed the tail, so a trailing stub won and the real pool vanished. build_report.py's
+# mask had already learned this spelling; this recogniser had not. Two of three sites, again.
+_FENCE = re.compile(r"(`{3,}|~{3,})[a-zA-Z]*[ \t]*\r?\n(.*?)\r?\n[ \t]*\1`*~*", re.S)
 
 
 # Whitespace and markdown block markers -- a quote, a bullet, a heading, a numbered item. What is
@@ -84,19 +88,27 @@ def _any_payload(text):
     sentence before it -- was invisible to the guard and the fenced stub won silently. Both
     motivating directions of the round-10 defect stayed broken for exactly that reason.
 
-    Any object or array counts, including an array of scalars: what disqualifies a candidate is
-    prose in front of it, which is where brackets like `[1, 2, 3]` live. Shapes:
-    tools/corpus_json.py.
+    AN OBJECT IS A PAYLOAD WHEREVER IT STANDS. Asking where the brace sits turned the guard into a
+    list of the markdown markers the last review happened to try: `> `, `- `, `1. ` were handled and
+    `| `, `_`, `<p>`, `[^1]: `, `- [x] `, `![` were not, each one hiding a real pool behind a stub.
+    The notation system is the population and enumerating it is a losing game.
+
+    So position is asked of exactly one shape that needs it: a bare array of SCALARS, which is the
+    only thing an English sentence produces by accident -- `I weighed options [1, 2, 3] first`. An
+    object, or an array holding one, is never punctuation. Shapes: tools/corpus_json.py.
     """
     dec = json.JSONDecoder()
     for i, ch in enumerate(text):
-        if ch not in "{[" or not _stands_alone(text, i):
+        if ch not in "{[":
             continue
         try:
             val, _ = dec.raw_decode(text[i:])
         except ValueError:
             continue
-        if isinstance(val, (dict, list)):
+        if isinstance(val, dict) or (isinstance(val, list)
+                                     and any(isinstance(x, dict) for x in val)):
+            return True
+        if isinstance(val, list) and _stands_alone(text, i):
             return True
     return False
 
@@ -115,7 +127,7 @@ def _payload(s):
 def _unwrap(text):
     """Strip a BOM, then resolve the payload: a lone fenced block, or prose before the first brace."""
     text = text.lstrip("﻿").strip()
-    blocks = [(m.group(1), m.start(), m.end()) for m in _FENCE.finditer(text)]
+    blocks = [(m.group(2), m.start(), m.end()) for m in _FENCE.finditer(text)]
 
     if blocks:
         holding = [b for b in blocks if _payload(b[0]) is not None]

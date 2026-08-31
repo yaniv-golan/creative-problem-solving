@@ -2111,7 +2111,7 @@ def t_promoted_lead_gate():
     nothing verified while every count still closes -- generated == presented + rejected, top-13
     all checked, arithmetic clean.
 
-    REAL INSTANCE, in docs/internal/preserved-runs/20260827-run1 (gitignored, so this fixture is
+    REAL INSTANCE, in a preserved run of 2026-08-27 (unpublished, so this fixture is
     synthetic): four options refuted; two top-13 families promoted a replacement; f001 promoted
     p2-006 which HAD been checked, and f013 promoted p2-008 which appears in no verified-*.json.
     That report went out claiming a verified top 13 and carrying twelve. f001 is the control and
@@ -2195,7 +2195,7 @@ def t_effective_lead():
     first member that was not refuted. The two agree until a lead is refuted, and nothing compared
     them -- so a refuted lead promotes an option nothing checked, and every gate still passes.
 
-    Recorded instance, preserved at docs/internal/preserved-runs/20260827-run1: family f001 at rank
+    Recorded instance, from the unpublished preserved run of 2026-08-27: family f001 at rank
     1 promoted p1-005 -> p2-006, which HAD been checked, and family f013 at rank 13 promoted
     p4-010 -> p2-008, which had not. Both in a shipped report.
 
@@ -2900,7 +2900,7 @@ def t_no_evidence_merge_is_refused():
     check("no adjudicated cross pair anywhere means no merge target",
           mf.worst_pinned_pair(fams, {}) is None, f"{mf.worst_pinned_pair(fams, {})}")
 
-    # REAL INSTANCE, in docs/internal/frozen-datasets/dense-frozen (gitignored, so this fixture is
+    # REAL INSTANCE, in the unpublished `dense-frozen` dataset (so this fixture is
     # transcribed): families 17 and 18 -- "Batch first and second review into one scarce-review"
     # and "Give second units same-day attention from the person" -- are single-option families with
     # NO adjudicated pair between them at all, and the fallback picked exactly that pair. Two

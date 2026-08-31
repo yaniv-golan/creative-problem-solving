@@ -522,6 +522,10 @@ _COMMENT = re.compile(r"<!--.*?-->|<!--.*", re.S)
 _FENCE_LINE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 _SPAN = re.compile(r"(`+)[^\n]*?\1")
 _INDENTED = re.compile(r"^(?: {4}|\t)")
+# HTML's spellings of the same thing. The mask learned CommonMark's three forms and stopped there,
+# so `<pre><!-- like this</pre>` -- which a renderer shows exactly as written -- read as a comment
+# opening and hid the rest of the page. Same family, one notation over.
+_HTML_CODE = re.compile(r"<(pre|code)\b[^>]*>.*?</\1\s*>|<(pre|code)\b[^>]*>.*", re.S | re.I)
 
 
 def _mask_code(doc):
@@ -536,6 +540,7 @@ def _mask_code(doc):
     Spaces rather than deletion so every span this module returns still indexes the real document.
     Shapes, including the two surfaces a fence-only mask missed: tools/corpus_burial.py.
     """
+    doc = _HTML_CODE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), doc)
     out, fence = [], None
     for line in doc.splitlines(keepends=True):
         blank = re.sub(r"[^\n]", " ", line)
