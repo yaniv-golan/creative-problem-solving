@@ -20,6 +20,7 @@ import json, sys, os, glob
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from verdicts import is_id
 from robust_json import load, load_obj
 from progress import line as progress_line
 
@@ -165,11 +166,20 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
     # lot as "duplicate proposal(s) dropped", so a proposer emitting records with a missing id --
     # or pairing an option with itself -- was described to the operator as one that repeated
     # itself. That is a different defect with a different fix, and the line named the wrong one.
+    # `is_id`, NOT truthiness. `not a or not b` passes any non-empty value, so an integer id was
+    # dealt to an adjudicator and first refused four stages later -- at which point the message
+    # could say the id was unknown but not that a proposer had invented it. Worse, an int then broke
+    # the named failure this script was already trying to print, because the unknown-id list joins
+    # its members as strings. A list or dict side raised `unhashable type` inside frozenset() before
+    # any check ran at all. The predicate lives in verdicts.py so the three readers of these records
+    # cannot drift apart again; this file used to be the second of the three that disagreed.
     seen, uniq = set(), []
     n_dupe = n_malformed = n_self = 0
     for p in pairs:
+        if not isinstance(p, dict):
+            n_malformed += 1; continue
         a, b = p.get("a"), p.get("b")
-        if not a or not b:
+        if not is_id(a) or not is_id(b):
             n_malformed += 1; continue
         if a == b:
             n_self += 1; continue

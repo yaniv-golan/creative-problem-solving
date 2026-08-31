@@ -22,6 +22,7 @@ from collections import defaultdict, Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load
+from verdicts import is_id
 
 # The verdict mix of every run whose relations.json is still held: `duplicate` share and joinable
 # share, ascending. Transcribed from run records kept outside this repository, so these are figures
@@ -49,6 +50,18 @@ assert JOIN_BAND[0] <= min(RECORDED_JOIN) and max(RECORDED_JOIN) <= JOIN_BAND[1]
 # higher = keeps the two options further apart
 SEPARATION = {"duplicate": 0, "implementation_variant": 1, "shared_component": 2, "distinct": 3}
 
+def _name(pair):
+    """Render a pair key for a message. A self-pair is a ONE-element frozenset.
+
+    `for a, b in keys` raised `ValueError: not enough values to unpack` on one, which turned a
+    diagnosable file into a traceback naming no stage -- in the reporting path of the very error
+    that was trying to explain the file. The sharder never emits a self-pair, but a re-proposed or
+    hand-repaired cand-*.json can, and it is exactly the shape that reaches these messages.
+    """
+    xs = sorted(pair)
+    return f"{xs[0]}~{xs[0]} (self-pair)" if len(xs) == 1 else f"{xs[0]}~{xs[1]}"
+
+
 def main(wd):
     shards = sorted(glob.glob(os.path.join(wd, "relations-*.json")))
     if not shards:
@@ -71,9 +84,32 @@ def main(wd):
     # tells the caller to write a re-adjudication to a new relations-<n>.json, so a per-file
     # comparison would refuse the very fix it just asked for -- an error message whose named
     # action does not clear it is the unactionable kind this repo keeps getting worked around.
+    # REFUSE A MALFORMED RECORD AT READ TIME, naming the file. Dropping it is what a proposer-side
+    # reader can do -- shard_candidates only forwards records -- but this stage measures a SET
+    # DIFFERENCE, so a dropped record shrinks the baseline the coverage and fabrication claims are
+    # computed against. The error then names the adjudicator when the broken stage is the proposer,
+    # and the remedy it prints ("re-dispatch the adjudicator against cand-<k>.json IN FULL") cannot
+    # clear it. Indexing them instead was worse: a missing side put None in a key and a later
+    # sorted() raised a bare TypeError with no stage in it.
+    def _pairs(path, key):
+        out = []
+        for e in load(path, key):
+            if not isinstance(e, dict):
+                sys.exit(f"FAIL: {os.path.basename(path)}: a record that is not an object "
+                         f"({type(e).__name__}). Re-run the stage that wrote it.")
+            a, b = e.get("a"), e.get("b")
+            if not is_id(a) or not is_id(b):
+                bad = "a" if not is_id(a) else "b"
+                sys.exit(f"FAIL: {os.path.basename(path)}: a record whose {bad!r} is not an option "
+                         f"id ({(a if bad == 'a' else b)!r}). Every stage downstream keys pairs on "
+                         f"these two strings, so this cannot be dealt, judged or counted. Re-run "
+                         f"the stage that wrote it; do not hand-edit the file.")
+            out.append((a, b, e))
+        return out
+
     back = set()
     for rp in shards:
-        back |= {frozenset((e.get("a"), e.get("b"))) for e in load(rp, "relations")}
+        back |= {frozenset((a, b)) for a, b, _ in _pairs(rp, "relations")}
     # EVERY cand-*.json is checked, including one with no relations-<k>.json of its own. That skip
     # used to be here, deferring a wholly-missing shard to the step 9 gate on the grounds that it
     # was "not yet adjudicated" -- but step 5 dispatches the whole batch and merges once, so there
@@ -89,10 +125,10 @@ def main(wd):
     all_dealt = set()
     for c in sorted(glob.glob(os.path.join(wd, "cand-*.json"))):
         k = os.path.basename(c)[5:-5]
-        dealt = {frozenset((p.get("a"), p.get("b"))) for p in load(c, "pairs")}
+        dealt = {frozenset((a, b)) for a, b, _ in _pairs(c, "pairs")}
         all_dealt |= dealt
         gap = dealt - back
-        if gap: missing.append((k, sorted(tuple(sorted(g)) for g in gap), len(dealt)))
+        if gap: missing.append((k, sorted(gap, key=lambda g: sorted(g)), len(dealt)))
 
     # AND THE OTHER DIRECTION. `dealt - back` catches a pair that went out and never came home.
     # `back - dealt` catches a verdict on a pair nobody sent -- an adjudicator judging two options
@@ -101,14 +137,17 @@ def main(wd):
     # SEPARATING verdict, and grouping, ranking and verification were all built on it before
     # verify_pipeline noticed four stages later. shard_candidates.py argues the same for the
     # proposer's half of this hole; this is the adjudicator's.
-    # Only when there ARE candidate files: with none on disk nothing was dealt, so there is no
-    # baseline to call a verdict invented against, and "cannot tell" must not read as "fabricated".
-    # The coverage loop above is silent in that state for the same reason.
-    invented = sorted(tuple(sorted(x)) for x in (back - all_dealt)) if all_dealt else []
+    # GUARD ON THE FILES, NOT ON THE SET. This read `if all_dealt`, so a cand-*.json present on disk
+    # and holding `"pairs": []` -- a positive statement that nothing was dealt -- was read as "no
+    # baseline, cannot tell" and every returned verdict was waved through. A shard that returned 116
+    # of 117 failed loudly while a proposer that dealt 0 passed; that is the same defect one file to
+    # the left. With no cand-*.json at all there genuinely is no baseline, and that stays silent.
+    _have_cands = bool(glob.glob(os.path.join(wd, "cand-*.json")))
+    invented = sorted((back - all_dealt), key=lambda x: sorted(x)) if _have_cands else []
     if invented:
         sys.exit(
             f"FAIL: {len(invented)} verdict(s) name a pair that was never dealt to any "
-            f"adjudicator: " + ", ".join(f"{a}~{b}" for a, b in invented[:6])
+            f"adjudicator: " + ", ".join(_name(x) for x in invented[:6])
             + (f", and {len(invented) - 6} more" if len(invented) > 6 else "")
             + "\n      No cand-*.json contains these, so nothing asked for them and nothing can "
               "check them. A verdict on two options that were never compared is an invention, not "
@@ -140,7 +179,7 @@ def main(wd):
                 lines.append(f"  shard {k} returned NOTHING: no relations-{k}.json, all {n} pair(s) dealt to it unjudged.")
             else:
                 lines.append(f"  shard {k} is short {len(gap)} of {n}: " +
-                             ", ".join(f"{a}~{b}" for a, b in gap[:12]) +
+                             ", ".join(_name(x) for x in gap[:12]) +
                              (f", and {len(gap) - 12} more" if len(gap) > 12 else ""))
         if whole:
             lines.append("For the shard(s) that returned nothing, re-dispatch the adjudicator "

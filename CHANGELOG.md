@@ -214,6 +214,34 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **Three readers of the same record disagreed about what a valid option id is, so one predicate now
+  serves all three.** `verdicts.relation_of` tested `not entry.get(side)` — truthiness, so `5`,
+  `true` and `[]` all count as present. `shard_candidates.py` tested the same way and **dealt an
+  integer id to an adjudicator**, first refused four stages later by a message that could say the id
+  was unknown but not that a proposer had invented it. Worse, the int then broke the named failure
+  that script was already trying to print, because the unknown-id list joins its members as strings.
+  `merge_relations.py` indexed the ids straight into a `frozenset`, so a missing side put `None` in
+  a key and a later `sorted()` raised a bare `TypeError` naming no stage — the failure `robust_json`
+  exists to replace — while a list or dict side raised `unhashable type` before any check ran.
+
+  `verdicts.is_id` is now the single predicate: a non-empty, non-whitespace **string**. Not a
+  numeric exclusion, because `isinstance(True, int)` is true and a numeric guard lets `true` through.
+
+  Two more from the same corpus. A **self-pair** collapses to a one-element `frozenset` that
+  `for a, b in …` cannot unpack, so it raised in the reporting path of the error trying to explain
+  the file; both messages now render a pair without assuming two elements. And the fabrication gate
+  guarded on `if all_dealt` rather than on whether candidate files exist, so a `cand-*.json` holding
+  `"pairs": []` — a positive statement that nothing was dealt — read as "no baseline, cannot tell"
+  and waved every returned verdict through. A shard returning 116 of 117 failed loudly while a
+  proposer dealing 0 passed.
+
+  Malformed records are **refused at read time** rather than dropped: this stage measures a set
+  difference, so a dropped record shrinks the baseline the coverage and fabrication claims are
+  computed against, and the error would name the adjudicator when the broken stage is the proposer.
+
+  Shapes are in `tools/corpus_ids.py`, 38 shape/stage pairs, driven through the real scripts: the
+  shipped code agreed with 14, it now agrees with all 38, and all 21,925 pair records across the 75
+  recorded files are still accepted.
 - **Four published figures named a population that was not the one measured.** Audited every number
   in the scripts and the README, re-deriving each from the files it claims to come from.
 

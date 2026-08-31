@@ -65,6 +65,24 @@ def share_ok(members, rel):
     return share_breach(members, rel) is None
 
 
+def is_id(x):
+    """True when x is usable as an option id: a non-empty, non-whitespace string.
+
+    ONE PREDICATE, BECAUSE THERE WERE ALREADY THREE READERS AND THEY DISAGREED. `relation_of` below
+    tested `not entry.get(side)`, which is truthiness -- so `5`, `true` and `[]` are all "present"
+    and travel on. `shard_candidates` tested the same way and dealt an integer id to an adjudicator;
+    it was first refused four stages later, by which point the message could only say the id was
+    unknown, not that a proposer had invented it. `merge_relations` indexed the ids straight into a
+    frozenset, so a missing side put `None` in a key and a later `sorted()` raised
+    `TypeError: '<' not supported between 'NoneType' and 'str'` -- a bare traceback naming no stage,
+    which is the failure this module exists to replace.
+
+    `isinstance(x, str)` and not a numeric exclusion, because `isinstance(True, int)` is True and a
+    numeric guard lets `true` through. `.strip()` because "   " is truthy.
+    """
+    return isinstance(x, str) and bool(x.strip())
+
+
 def relation_of(entry, where):
     """The verdict on one relations.json record, or exit naming the file and the pair.
 
@@ -83,10 +101,16 @@ def relation_of(entry, where):
     `where` is the filename, because merge_families reads relations.json while merge_relations
     reads relations-*.json, and a message naming neither sends the caller to the wrong one.
     """
+    if not isinstance(entry, dict):
+        sys.exit(f"FAIL: {where}: a relation record that is not an object ({type(entry).__name__}). "
+                 f"It is written by a script, so re-run the stage that produced it rather than "
+                 f"editing it.")
     for side in ("a", "b"):
-        if not entry.get(side):
-            sys.exit(f"FAIL: {where}: a relation record with no {side!r} id. It is written by a "
-                     f"script, so re-run the stage that produced it rather than editing it.")
+        if not is_id(entry.get(side)):
+            got = entry.get(side)
+            sys.exit(f"FAIL: {where}: a relation record whose {side!r} is not an option id "
+                     f"({got!r}). It is written by a script, so re-run the stage that produced it "
+                     f"rather than editing it.")
     v = entry.get("relation")
     if v not in JOINING | SEPARATING:
         got = "no 'relation' key" if v is None else repr(v)

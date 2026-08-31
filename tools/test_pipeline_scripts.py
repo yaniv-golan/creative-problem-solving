@@ -915,6 +915,49 @@ def t_burial_reaches_variants_and_the_reply():
     shutil.rmtree(d, True)
 
 
+def t_id_shapes_fail_by_name():
+    """A record whose id is not a string fails naming the file, in every reader of these records.
+
+    There were three readers and they disagreed. `verdicts.relation_of` tested `not entry.get(side)`
+    -- truthiness, so `5`, `true` and `[]` are all "present". `shard_candidates` tested the same way
+    and dealt an integer id to an adjudicator, first refused four stages later by a message that
+    could say the id was unknown but not that a proposer had invented it; worse, the int then broke
+    the named failure that script was already trying to print, because the unknown-id list joins its
+    members as strings. `merge_relations` indexed the ids straight into a frozenset, so a missing
+    side put None in a key and a later sorted() raised a bare TypeError with no stage in it, and a
+    self-pair collapsed to a one-element frozenset that `for a, b in ...` could not unpack -- in the
+    reporting path of the error that was trying to explain the file.
+
+    So the predicate lives in verdicts.py and all three use it. Shapes are in tools/corpus_ids.py,
+    imported rather than restated, and driven through the real scripts.
+    """
+    print("\nan unusable id fails by name, in every reader")
+    import importlib.util as _u
+    spec = _u.spec_from_file_location("corpus_ids", ROOT / "tools" / "corpus_ids.py")
+    corpus = _u.module_from_spec(spec); spec.loader.exec_module(corpus)
+
+    bad = corpus.run(corpus.run_shipped, "suite") if hasattr(corpus, "run_shipped") else None
+    if bad is None:
+        # Fall back to the module's own entry point, whatever it is called.
+        import subprocess as _sp
+        res = _sp.run([sys.executable, str(ROOT / "tools" / "corpus_ids.py"), "--shipped"],
+                      capture_output=True, text=True)
+        ok = "38/38" in res.stdout or "as specified" in res.stdout and "want" not in res.stdout
+        check("every corpus shape fails by name rather than by traceback",
+              ok and "TRACEBACK" not in res.stdout,
+              res.stdout.strip()[-300:])
+    else:
+        check("every corpus shape fails by name rather than by traceback", not bad, str(bad[:2]))
+
+    # And the predicate must be shared. Three readers disagreeing about what a valid record is
+    # produced every shape in that corpus; copying a fourth copy into each script would rebuild it.
+    check("...and the predicate is shared, not copied into each reader",
+          "is_id" in (SCRIPTS / "verdicts.py").read_text()
+          and "is_id" in (SCRIPTS / "merge_relations.py").read_text()
+          and "is_id" in (SCRIPTS / "shard_candidates.py").read_text(),
+          "one of the three readers does not use verdicts.is_id")
+
+
 def t_adjudicator_cannot_invent_a_pair():
     """A verdict on a pair nobody dealt is a fabrication, and step 5 passed it through.
 
@@ -4439,7 +4482,7 @@ def main():
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
               t_lead_search_scales_and_preserves, t_pinch_merge_is_reported,
               t_lead_search_is_numbering_invariant, t_burial_reaches_variants_and_the_reply, t_partition_gates_fire,
-              t_adjudicator_cannot_invent_a_pair,
+              t_adjudicator_cannot_invent_a_pair, t_id_shapes_fail_by_name,
               t_heartbeat_counts_pairs_not_judgements,
               t_dropped_pairs_are_named_by_reason, t_json_repairs_compose, t_no_evidence_merge_is_refused,
               t_superseded_verdicts_go_with_their_shards,
