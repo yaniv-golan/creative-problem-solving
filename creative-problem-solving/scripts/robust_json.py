@@ -53,15 +53,46 @@ def die(path, problem, fix):
 # JSON value beside it in either direction, is a file whose author disagreed with itself, and this
 # module's whole purpose is that a wrong answer is worse than a stopped run. Shapes and the corpus
 # that pins them: tools/corpus_json.py.
-# THREE OR MORE BACKTICKS **OR TILDES**, and the close at least as long as the open. Matching only
-# ``` meant a tilde-fenced pool was not seen as fenced at all: the unfenced scan then took whatever
-# value consumed the tail, so a trailing stub won and the real pool vanished. build_report.py's
-# mask had already learned this spelling; this recogniser had not. Two of three sites, again.
-_FENCE = re.compile(r"(`{3,}|~{3,})[a-zA-Z]*[ \t]*\r?\n(.*?)\r?\n[ \t]*\1`*~*", re.S)
+# ONE FENCE SCANNER, USED BY BOTH READERS. This file and build_report.py each grew their own, and
+# they have now disagreed three times: tildes, three-versus-four backticks, and the info string.
+# Each disagreement was a silent wrong answer in one of them, so the recogniser lives here and
+# build_report imports it. A shape that fools one now fools neither or both, and the corpus that
+# pins it is shared. Shapes: tools/corpus_json.py, tools/corpus_burial.py.
+_OPEN = re.compile(r"^ {0,3}(`{3,}|~{3,})([^\n]*)$")
 
 
-# Whitespace and markdown block markers -- a quote, a bullet, a heading, a numbered item. What is
-# NOT here is any letter or digit that is not part of a list marker: prose.
+def fence_spans(text):
+    """Every fenced block, as (body_start, body_end, block_start, block_end) offsets into `text`.
+
+    An info string is NOT AN ALPHABET. Matching `[a-zA-Z]*` after the ticks meant `json5`, `c++`,
+    `.json` or one leading space were not fences at all, so the payload inside one was never seen
+    and a trailing stub won silently. CommonMark says the info string is any text on the line, with
+    the single restriction that a backtick fence's may not contain a backtick.
+
+    A close must be at least as long as its open and carry nothing but whitespace, which is how a
+    four-backtick fence quotes a three-backtick one. An unclosed fence runs to the end of the text.
+    """
+    out, pos, open_at = [], 0, None
+    for line in text.splitlines(keepends=True):
+        end = pos + len(line)
+        m = _OPEN.match(line.rstrip("\r\n"))
+        if open_at is None:
+            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+                open_at = (pos, end, m.group(1))
+        elif m and m.group(1)[0] == open_at[2][0] and len(m.group(1)) >= len(open_at[2]) \
+                and not m.group(2).strip():
+            out.append((open_at[1], pos, open_at[0], end))
+            open_at = None
+        pos = end
+    if open_at is not None:
+        out.append((open_at[1], len(text), open_at[0], len(text)))
+    return out
+
+
+# Whitespace and markdown block markers -- a quote, a bullet, a heading, a numbered item. It is a
+# charset, and a charset is what every round of this has gone wrong on, so it is used in exactly
+# one place: the TRUNCATION test below, where being wrong in either direction costs a loud failure
+# rather than a silent one. It decides nothing about what counts as a payload.
 _MARKUP_ONLY = re.compile(r"[\s>*+\-#]*(?:\d+[.)][\s]*)?[\s>*+\-#]*$")
 
 
@@ -93,9 +124,15 @@ def _any_payload(text):
     `| `, `_`, `<p>`, `[^1]: `, `- [x] `, `![` were not, each one hiding a real pool behind a stub.
     The notation system is the population and enumerating it is a losing game.
 
-    So position is asked of exactly one shape that needs it: a bare array of SCALARS, which is the
-    only thing an English sentence produces by accident -- `I weighed options [1, 2, 3] first`. An
-    object, or an array holding one, is never punctuation. Shapes: tools/corpus_json.py.
+    AND NO POSITION TEST AT ALL. Exempting a bare array of scalars when prose precedes it kept a
+    charset alive on that one type, and the charset was missing `| `, `- [x] `, `[^1]: ` -- so a
+    scalar array in a table cell beside a fenced stub loaded the stub. Every round of this has
+    ended the same way: the exemption is a list of the last review's examples.
+
+    The exemption existed to spare `I weighed options [1, 2, 3] first` beside a fenced payload. That
+    file now stops the run, and this module's whole premise is that a stopped run costs forty
+    minutes while a wrong answer costs the answer. Refusing is the side of the trade the doctrine
+    already picked. Shapes: tools/corpus_json.py.
     """
     dec = json.JSONDecoder()
     for i, ch in enumerate(text):
@@ -105,10 +142,7 @@ def _any_payload(text):
             val, _ = dec.raw_decode(text[i:])
         except ValueError:
             continue
-        if isinstance(val, dict) or (isinstance(val, list)
-                                     and any(isinstance(x, dict) for x in val)):
-            return True
-        if isinstance(val, list) and _stands_alone(text, i):
+        if isinstance(val, (dict, list)):
             return True
     return False
 
@@ -127,7 +161,7 @@ def _payload(s):
 def _unwrap(text):
     """Strip a BOM, then resolve the payload: a lone fenced block, or prose before the first brace."""
     text = text.lstrip("﻿").strip()
-    blocks = [(m.group(2), m.start(), m.end()) for m in _FENCE.finditer(text)]
+    blocks = [(text[bs:be], s0, e0) for bs, be, s0, e0 in fence_spans(text)]
 
     if blocks:
         holding = [b for b in blocks if _payload(b[0]) is not None]

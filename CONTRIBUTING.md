@@ -345,7 +345,14 @@ did. So when you change a gate or a parser:
    the corpus held the shapes the change was meant to catch and none of the shapes it might start
    refusing. And when the same predicate appears at two call sites, the corpus needs both: a
    correction that reached one of them shipped three times.
-6. Only when the corpus is green does the rule move into the script, and the corpus becomes the
+6. **A mask is a reader.** Anything you teach a gate to ignore — so that *documenting* a notation
+   is not a failure — is a region that gate can no longer see. Every mask has a refuse-side twin:
+   the same notation holding the answer instead of describing it. Write both, or the mask becomes
+   the hiding place. And check what a renderer actually does before deciding a shape is harmless;
+   an HTML comment inside `<pre>` is still a comment.
+7. **Run the changed gate over the change.** A commit that broadens a check has to be checked by
+   it — including its own commit message and changelog entry.
+8. Only when the corpus is green does the rule move into the script, and the corpus becomes the
    test.
 
 Corpora live in `tools/`, not `docs/internal/` — that directory is gitignored, so a test importing

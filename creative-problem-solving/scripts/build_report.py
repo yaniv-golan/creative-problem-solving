@@ -24,7 +24,7 @@ that it would otherwise copy out by hand.
 import json, os, re, sys, glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from robust_json import load, load_obj, one_line
+from robust_json import fence_spans, load, load_obj, one_line
 
 def source_link(url):
     """A source rendered as its domain, linking to the full URL.
@@ -519,45 +519,42 @@ _COMMENT = re.compile(r"<!--.*?-->|<!--.*", re.S)
 # four-backtick fence is how you show a three-backtick one, and a regex matching exactly three ends
 # the mask at the INNER fence and leaves the rest of the document in the clear. Indented code is
 # the other CommonMark form and carries no fence at all.
-_FENCE_LINE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 _SPAN = re.compile(r"(`+)[^\n]*?\1")
 _INDENTED = re.compile(r"^(?: {4}|\t)")
-# HTML's spellings of the same thing. The mask learned CommonMark's three forms and stopped there,
-# so `<pre><!-- like this</pre>` -- which a renderer shows exactly as written -- read as a comment
-# opening and hid the rest of the page. Same family, one notation over.
-_HTML_CODE = re.compile(r"<(pre|code)\b[^>]*>.*?</\1\s*>|<(pre|code)\b[^>]*>.*", re.S | re.I)
 
 
 def _mask_code(doc):
     """`doc` with every code fence, indented block and code span blanked to spaces, offsets kept.
 
-    MARKUP INSIDE CODE IS SHOWN, NOT OBEYED, and both halves of this gate read raw text. A report
-    that documents its own syntax -- a fenced `<!--`, a `<details>` example -- was read as a
-    document hiding its answer and refused. That is the mirror of the hole the comment rule closed:
-    the same characters mean "hidden" in a paragraph and "look at this" in code, and only the
-    surrounding markup says which.
+    MARKUP INSIDE CODE IS SHOWN, NOT OBEYED. A report that documents its own syntax -- a fenced
+    `<!--`, a `<details>` example -- was read as a document hiding its answer and refused.
+
+    A MASK IS ALSO A READER, WHICH IS THE OTHER HALF AND WAS LEARNED EXPENSIVELY. Whatever the gate
+    is taught to ignore is a region it can no longer see, so every mask needs its refuse-side twin
+    written down: the same notation holding the answer instead of describing it. HTML `<pre>` and
+    `<code>` were masked here on the claim that a renderer shows `<pre><!-- like this</pre>`. It
+    does not -- `<pre>` is ordinary element content, so a comment inside it is still a comment and
+    the text is dropped, and unterminated it takes the rest of the document with it. Masking them
+    turned a correct refusal into three ways to hide an entire answer from the gate, one of which
+    was a `<pre>` mentioned inside an ordinary fenced example. Only CommonMark's code forms are
+    masked, because only those are shown rather than obeyed.
+
+    The fence scanner is robust_json's, not a second one: the two disagreed three times, and each
+    disagreement was a silent wrong answer in whichever reader was behind.
 
     Spaces rather than deletion so every span this module returns still indexes the real document.
-    Shapes, including the two surfaces a fence-only mask missed: tools/corpus_burial.py.
+    Shapes: tools/corpus_burial.py.
     """
-    doc = _HTML_CODE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), doc)
-    out, fence = [], None
-    for line in doc.splitlines(keepends=True):
-        blank = re.sub(r"[^\n]", " ", line)
-        m = _FENCE_LINE.match(line)
-        if fence is None:
-            if m:
-                fence = m.group(1)[0] * len(m.group(1))
-                out.append(blank)
-            elif _INDENTED.match(line):
-                out.append(blank)
-            else:
-                out.append(_SPAN.sub(lambda x: re.sub(r"[^\n]", " ", x.group(0)), line))
-        else:
-            out.append(blank)
-            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
-                fence = None
-    return "".join(out)
+    blank = lambda m: re.sub(r"[^\n]", " ", m.group(0))
+    out, pos = [], 0
+    for _bs, _be, s0, e0 in fence_spans(doc):
+        out.append(_SPAN.sub(blank, doc[pos:s0]))
+        out.append(re.sub(r"[^\n]", " ", doc[s0:e0]))
+        pos = e0
+    out.append(_SPAN.sub(blank, doc[pos:]))
+    masked = "".join(out)
+    return "".join(re.sub(r"[^\n]", " ", ln) if _INDENTED.match(ln) else ln
+                   for ln in masked.splitlines(keepends=True))
 
 
 def _hidden_spans(doc):

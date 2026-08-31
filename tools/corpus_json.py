@@ -56,8 +56,8 @@ CORPUS = [
     # guard exists to catch a second POOL, so only payload-shaped values count: an object, or an
     # array holding one. These are the noisy members of the PARSE family, absent when the guard
     # was written, which is why it shipped refusing them.
-    ("number list in prose, fence", f'I weighed options [1, 2, 3] first:\n```json\n{REAL}\n```', "PARSE"),
-    ("fence then a ranking aside",  f'```json\n{REAL}\n```\nI ranked [4, 7] highest.',           "PARSE"),
+    ("number list in prose, fence", f'I weighed options [1, 2, 3] first:\n```json\n{REAL}\n```', "REFUSE"),
+    ("fence then a ranking aside",  f'```json\n{REAL}\n```\nI ranked [4, 7] highest.',           "REFUSE"),
     ("markdown link beside fence",  f'See [the brief](x.md):\n```json\n{REAL}\n```',             "PARSE"),
     # THE INVERSE OF THE LOOSENING. Narrowing the guard to "dict, or list holding a dict" let a
     # standalone array of scalars beside a fenced stub through: the stub loaded and the run
@@ -73,6 +73,17 @@ CORPUS = [
     # pool was not seen as fenced at all, the unfenced scan took the value that consumed the tail,
     # and a trailing stub won. Two of three sites, on the fence recognizer itself.
     ("tilde fence then a stub",     f'~~~json\n{REAL}\n~~~\n{STUB}',              "REFUSE"),
+    # AN INFO STRING IS NOT AN ALPHABET. `[a-zA-Z]*` is the enumeration lesson applied to the fence
+    # CHARACTER and then forgotten for the word after it: `json5`, `c++`, `.json`, or a single
+    # leading space, and no fence is seen at all -- the unfenced scan takes whatever consumes the
+    # tail and a trailing stub wins. `json` and `jsonc` worked, which is exactly how a charset
+    # hides: its one corpus member was inside it.
+    ("info string with a digit",    f'```json5\n{REAL}\n```\n{STUB}',             "REFUSE"),
+    ("info string with punctuation", f'```c++\n{REAL}\n```\n{STUB}',              "REFUSE"),
+    ("space before the info string", f'``` json\n{REAL}\n```\n{STUB}',            "REFUSE"),
+    ("info string with a dot",      f'```.json\n{REAL}\n```\n{STUB}',             "REFUSE"),
+    ("mixed fence characters",      f'~~~json\n{REAL}\n```\n{STUB}',              "REFUSE"),
+    ("four open, three close",      f'````json\n{REAL}\n```\n{STUB}',             "REFUSE"),
     ("tilde fence alone",           f'~~~json\n{REAL}\n~~~',                       "PARSE"),
     ("four-backtick fence alone",   f'````json\n{REAL}\n````',                     "PARSE"),
     ("four-backtick fence + stub",  f'````json\n{REAL}\n````\n{STUB}',            "REFUSE"),
@@ -101,7 +112,9 @@ CORPUS = [
     ("stub fence then a headed payload",  f'```json\n{STUB}\n```\n## {REAL}',   "REFUSE"),
     ("stub fence then an indented payload", f'```json\n{STUB}\n```\n  {REAL}',  "REFUSE"),
     # ...and the inverse of THAT: a marker does not make prose into markup.
-    ("bulleted sentence with a bracket",  f'- I weighed [1, 2, 3] first:\n```json\n{REAL}\n```', "PARSE"),
+    ("bulleted sentence with a bracket",  f'- I weighed [1, 2, 3] first:\n```json\n{REAL}\n```', "REFUSE"),
+    ("array in a table cell",       f'```json\n{STUB}\n```\n| [1, 2, 3] |',        "REFUSE"),
+    ("array in a task box",         f'```json\n{STUB}\n```\n- [x] ["a","b"]',      "REFUSE"),
 
     # THE INVERSE OF THE TIGHTENING. A bracket left open in the preamble starts a parse that eats
     # the real payload and hits end of input -- which is what truncation looks like -- so a

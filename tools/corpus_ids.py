@@ -22,7 +22,9 @@ the corpus against both:
 
 Run: python3 tools/corpus_ids.py [--shipped] [--real [DIR ...]]
   (default)  run the corpus against the proposed rule below
-  --shipped  run the corpus against the CURRENT scripts, to record what already works
+  --shipped  run the corpus against a FROZEN copy of the old predicate held in this file.
+             Unlike corpus_json.py's --shipped, it does not take a git revision; what it
+             records is what the rule did before the change, not what a named commit does
   --real     run the proposed predicate over every recorded cand-*/relations-*/candidates/
              relations file under DIR (default docs/internal, if it is present), so the rule is
              known not to refuse a file the pipeline really produced

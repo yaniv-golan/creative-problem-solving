@@ -89,12 +89,29 @@ CORPUS = [
     ("<!-- in a tilde fence",
      "# Answer\n\nHow a comment opens:\n\n~~~html\n<!-- like this\n~~~\n\n%s" % BODY, "PASS",
      "the third fence spelling"),
+    # A MASK IS A READER. Anything the gate is taught to ignore is a region it can no longer see,
+    # and the accept-side shape that justifies a mask always has a refuse-side twin: the same
+    # notation holding the answer. Masking HTML <pre>/<code> was accepted on the claim that a
+    # renderer shows `<pre><!-- like this</pre>`. It does not -- <pre> is ordinary element content,
+    # so an HTML comment inside it is still a comment and the text is dropped; unterminated, it
+    # takes the rest of the document with it. The shape below was a correct refusal, "fixed" into
+    # a hole that let three more documents through.
     ("<!-- inside an HTML <pre>",
-     "# Answer\n\n<pre><!-- like this</pre>\n\n%s" % BODY, "PASS",
-     "the mask learned CommonMark's spellings of code and not HTML's; a renderer shows both"),
+     "# Answer\n\n<pre><!-- like this</pre>\n\n%s" % BODY, "REFUSE",
+     "a comment inside <pre> is a comment: the browser drops it, and unterminated it runs to EOF"),
     ("<!-- inside an HTML <code>",
-     "# Answer\n\n<code><!-- like this</code>\n\n%s" % BODY, "PASS",
-     "same tag family"),
+     "# Answer\n\n<code><!-- like this</code>\n\n%s" % BODY, "REFUSE",
+     "same tag family, same parse"),
+    ("the answer only inside <pre><!-- -->",
+     "# Answer\n\nA short summary.\n\n<pre><!--\n%s\n--></pre>\n" % BODY, "REFUSE",
+     "THE REFUSE-SIDE TWIN the mask was written without: the whole answer inside the masked region"),
+    ("prose names <pre>, then a comment",
+     "# Answer\n\nSee <pre>\n<!--\n%s\n-->\n" % BODY, "REFUSE",
+     "an unclosed <pre> anywhere blanked the rest of the document, so a mention was enough"),
+    ("<pre> inside a closed fence, then a real <details>",
+     "# Answer\n\n```html\n<pre><!-- x\n```\n\n<details><summary>s</summary>\n%s</details>\n" % BODY,
+     "REFUSE",
+     "the HTML mask ran BEFORE the fence mask, so a documented <pre> poisoned everything after it"),
     ("<details> shown in a code block",
      "# Answer\n\nThe markup is:\n\n```html\n<details><summary>s</summary>\n```\n\n%s" % BODY,
      "PASS",

@@ -8,6 +8,30 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **The mask added to stop the burial gate refusing documented syntax became a way to hide the
+  answer from it.** HTML `<pre>` and `<code>` were masked on the claim that a renderer displays
+  `<pre><!-- like this</pre>`. It does not: `<pre>` is ordinary element content, so a comment
+  inside it is still a comment and the text is dropped — unterminated, it takes the rest of the
+  page. The original refusal was correct. Masking it opened three ways to fold an entire answer
+  past both `check` and `check_reply`, the worst being a `<pre>` mentioned inside an ordinary
+  fenced example, which blanked everything after it. Only CommonMark's code forms are masked now,
+  because only those are shown rather than obeyed.
+
+- **One fence scanner, shared.** `robust_json` and `build_report` each carried their own and had
+  disagreed three times — tildes, three-versus-four backticks, and now the info string, where
+  `[a-zA-Z]*` meant ` ```json5 `, ` ```c++ `, ` ```.json ` and a single leading space were not
+  fences at all, so a payload inside one was invisible and a trailing stub loaded silently. The
+  scanner lives in `robust_json`, follows CommonMark on info strings and on a close at least as
+  long as its open, and `build_report` imports it.
+
+- **The last position exemption is gone.** Sparing a bare array of scalars when prose preceded it
+  kept a marker charset alive on that one type, and the charset was missing `| `, `- [x] `,
+  `[^1]: ` — so a scalar array in a table cell beside a fenced stub loaded the stub. Any object or
+  array now counts as a second payload. `I weighed options [1, 2, 3] first` beside a fenced payload
+  is refused, which is the side of the trade this module's premise already picked: a stopped run
+  costs forty minutes, a wrong answer costs the answer.
+
+### Fixed
 - **An object is a payload wherever it stands.** Asking *where* a brace sits turned the ambiguity
   guard into a list of the markdown markers the last review happened to try. `> `, `- ` and `1. `
   were handled; `| … |`, `_…_`, `<p>…</p>`, `[^1]: `, `<!-- … -->`, `- [x] ` and `![…](x.png)` were
@@ -27,10 +51,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   page. `<pre>` and `<code>` are masked alongside fences, indented blocks and code spans.
 
 - **The gitignored-path check could not see the citation shape this repo actually uses.** Its
-  pattern required a filename with an extension directly under the tree, so
-  `docs/internal/preserved-runs/<run>` — a dated run directory — never matched, and three such
-  citations had been sitting in shipped files while the check reported green. It now matches nested
-  paths, and the three citations are summarised in place.
+  pattern required a filename with an extension directly under the tree, so a dated run directory
+  one level deeper never matched, and four such citations had been sitting in shipped files while
+  the check reported green. It now matches nested paths, and all four are summarised in place.
+  (The first draft of this entry spelled the path out and tripped the widened check — the commit
+  that broadens a gate has to be run through it.)
 
 - **The JSON corpus's two modes called different entry points** — `_unwrap` by default, `load_obj`
   under `--shipped` — so they could disagree about a shape for a reason having nothing to do with
