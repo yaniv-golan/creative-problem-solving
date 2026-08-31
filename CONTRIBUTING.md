@@ -315,6 +315,35 @@ comparable. The pin and `latest` have opposite failure modes; this repo accepts 
   and downgrades the sha check to advisory. It is the substitution the hard failure exists to
   prevent: use it to unblock a single local run, never in CI, and never to record a cassette.
 
+## Fixing a gate: write the shapes down before you write the rule
+
+Four `tools/corpus_*.py` files exist and are imported by the tests rather than restated. They came
+out of a run of fixes where the same mistake happened four times: a gate was repaired against the
+one shape in the bug report, shipped, and turned out to miss the shapes beside it — twice making
+the behaviour worse than before the fix.
+
+Listing the adjacent shapes in a plan did not prevent it. Running the proposed rule against them
+did. So when you change a gate or a parser:
+
+1. **Write the shapes into `tools/corpus_<thing>.py`** — one entry per shape with the expected
+   outcome and a sentence saying why. Include the **inverse of the shape that motivated the fix**.
+   That single omission produced the worst defect in the series: a rule guarding "JSON after a
+   fence" left "JSON before a fence" silently broken.
+2. **Implement the rule in that file first**, as a plain function.
+3. **Run it against the shipped code** before changing anything. That number is the baseline and it
+   is usually worse than expected — the four corpora scored 18/21, 6/12, 14/38 and 4/7 against code
+   that was passing its whole test suite. Two shapes revealed fixes that would have *regressed*
+   behaviour the shipped code got right.
+4. Only when the corpus is green does the rule move into the script, and the corpus becomes the
+   test.
+
+Corpora live in `tools/`, not `docs/internal/` — that directory is gitignored, so a test importing
+from it passes locally and fails on a fresh clone. `check-repo.py` refuses a shipped file that
+cites a gitignored path.
+
+A green suite is not the property that matters here. Every one of those four gates had passing
+tests while missing most of its shapes.
+
 ## Commits and pull requests
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
