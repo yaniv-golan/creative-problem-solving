@@ -214,6 +214,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **The verdict-mix bands fired on six of the eight runs on record, including both complete ones.**
+  They were drawn when a single 0.7% run was read as the anomaly, so the floors sat at 5% and 40%.
+  Five of the eight recorded runs are at or below 2.2% duplicate: the low-duplicate regime is the
+  common case and the two early runs at 18.5% and 19.5% are the outliers. A warning that fires on
+  the runs it calls normal is one the reader learns to skip.
+
+  Only the lower edges moved — nothing recorded has come within 25 points of either ceiling. The
+  bands are now silent on all nine `relations.json` on disk.
+
+  **And the message cited evidence outside its own band**: "outside the 5%-45% of recorded runs
+  (18.5%, 19.5%, 0.7%)" named a run below the range it had just called the range of recorded runs.
+  The recorded values are now named constants with an import-time assert that each sits inside the
+  band it is cited for, so that class of sentence cannot be written again rather than being caught
+  by the next reader.
 - **Three partition checks in a row could not fire, and the third replaced the second.** The first
   read `len(placed) - len(rejected) + len(rejected) != len(ids)`, which cancels to the second. The
   second restates two gates 400 lines earlier. The third compared two sets those same gates had

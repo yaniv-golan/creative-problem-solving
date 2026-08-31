@@ -23,11 +23,28 @@ from collections import defaultdict, Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load
 
-# Bands from three recorded runs: duplicate 18.5% / 19.5% / 0.7%, joinable 60.3% / 61.7% / 33.2%.
-# Drawn so the one measured anomaly actually trips them -- a band that stays silent on the only
-# outlier it was built for is decoration.
-DUP_BAND = (0.05, 0.45)
-JOIN_BAND = (0.40, 0.85)
+# The verdict mix of every run whose relations.json is still held: `duplicate` share and joinable
+# share, ascending. Transcribed from run records kept outside this repository, so these are figures
+# of record rather than something a reader can recompute from what ships. Eight events, not nine
+# files: critique-mf-stateA and critique-repro are the same adjudication, so it is counted once.
+RECORDED_DUP = (0.006, 0.007, 0.013, 0.019, 0.022, 0.071, 0.185, 0.195)
+RECORDED_JOIN = (0.332, 0.346, 0.389, 0.401, 0.401, 0.539, 0.603, 0.617)
+
+# LOWER EDGES ONLY. The old floors of 5% and 40% fired on SIX of these eight runs, including both
+# complete preserved runs the rest of this project is calibrated against -- a warning that fires on
+# the runs it calls normal is one the reader learns to skip. They were drawn when a single 0.7% run
+# was read as the anomaly; five of the eight are now at or below 2.2%, so the low-duplicate regime
+# is the common case and the two early runs at 18.5% and 19.5% are the outliers. The ceilings are
+# untouched: nothing recorded has come within 25 points of either.
+DUP_BAND = (0.005, 0.45)
+JOIN_BAND = (0.30, 0.85)
+
+# The band must contain the evidence the messages cite for it. As an assert rather than as care,
+# because the previous version printed "outside the 5%-45% of recorded runs (18.5%, 19.5%, 0.7%)"
+# -- naming a recorded run outside the range it had just called the range of recorded runs -- and
+# nothing in the file could see it.
+assert DUP_BAND[0] <= min(RECORDED_DUP) and max(RECORDED_DUP) <= DUP_BAND[1], "cited dup outside its band"
+assert JOIN_BAND[0] <= min(RECORDED_JOIN) and max(RECORDED_JOIN) <= JOIN_BAND[1], "cited join outside its band"
 
 # higher = keeps the two options further apart
 SEPARATION = {"duplicate": 0, "implementation_variant": 1, "shared_component": 2, "distinct": 3}
@@ -244,14 +261,18 @@ def main(wd):
         print(f"verdict mix: duplicate {dup:.1%}, joinable {join:.1%} of {len(out)} pairs")
         if not (DUP_BAND[0] <= dup <= DUP_BAND[1]):
             print(f"WARN: the `duplicate` share is {dup:.1%}, outside the "
-                  f"{DUP_BAND[0]:.0%}-{DUP_BAND[1]:.0%} of recorded runs (18.5%, 19.5%, 0.7%). "
-                  f"A very low share leaves grouping almost nothing to join, so expect many "
-                  f"single-option families; a very high one merges options the reader wanted to "
-                  f"compare. Check a handful of verdicts by hand before trusting the grouping.")
+                  f"{DUP_BAND[0]:.1%}-{DUP_BAND[1]:.0%} band. The {len(RECORDED_DUP)} runs on "
+                  f"record span {min(RECORDED_DUP):.1%}-{max(RECORDED_DUP):.1%}, all of them "
+                  f"inside it, and {len(RECORDED_DUP)} runs of one problem domain is a record "
+                  f"rather than a distribution. A very low share leaves grouping almost nothing to "
+                  f"join, so expect many single-option families; a very high one merges options the "
+                  f"reader wanted to compare. Check a handful of verdicts by hand before trusting "
+                  f"the grouping.")
         if not (JOIN_BAND[0] <= join <= JOIN_BAND[1]):
             print(f"WARN: the joinable share is {join:.1%}, outside the "
-                  f"{JOIN_BAND[0]:.0%}-{JOIN_BAND[1]:.0%} of recorded runs (60.3%, 61.7%, 33.2%). "
-                  f"This sets how much of the pool can be grouped at all.")
+                  f"{JOIN_BAND[0]:.0%}-{JOIN_BAND[1]:.0%} band. The {len(RECORDED_JOIN)} runs on "
+                  f"record span {min(RECORDED_JOIN):.1%}-{max(RECORDED_JOIN):.1%}, all of them "
+                  f"inside it. This sets how much of the pool can be grouped at all.")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2: sys.exit(__doc__)
