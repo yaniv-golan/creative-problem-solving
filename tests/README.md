@@ -133,7 +133,8 @@ intervention #5, not a live-only assertion with a blind spot in the middle of it
 > now checked inside the run instead, by `scripts/verify_pipeline.py` — every proposed pair
 > adjudicated exactly once, every option in exactly one family, the ranking neither omitting nor
 > inventing a family, no index file carrying text, the agreement probe present and large enough,
-> and the presented count equal to the generated count. An external test cannot force that; a
+> and every generated option sitting in exactly one family, presented or explicitly refuted. An
+> external test cannot force that; a
 > script that counts files can, because a stage that did not run leaves nothing to count.
 >
 > **This was attempted and failed — in the skill body.** A `pool.jsonl` instruction — write each

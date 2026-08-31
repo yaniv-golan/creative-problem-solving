@@ -2990,6 +2990,58 @@ def t_wp4_gates():
               (rc != 0) == want_fail, f"rc={rc} — {out.strip()[:70]}")
         shutil.rmtree(d, True)
 
+def t_partition_gates_fire():
+    """The partition invariant is held by three gates, and none of them is the one that looked like it.
+
+    Three checks were written at the end of verify_pipeline to state `generated == presented +
+    rejected`, and all three were dead. The first cancelled algebraically to the second; the second
+    restated the two gates that run 400 lines earlier; the third compared two sets those same gates
+    had already forced equal. Each replacement was believed independent because its terms came from
+    different files -- but `placed` and `rejected` are both filtered against `ids` before they meet.
+
+    So this pins the gates that actually fire, which is what a deleted check leaves to assert. If a
+    later change relaxes any of them, the invariant stops being enforced and no test elsewhere
+    notices, because the checks that appeared to enforce it were never doing so.
+    """
+    print("\nthe gates that really hold the partition")
+    d = tempfile.mkdtemp()
+    ids, fams = full_fixture(d, multi=True)
+
+    # A family member that was never generated.
+    famfile = os.path.join(d, "families.json")
+    orig = json.load(open(famfile))
+    _fl = orig["families"] if isinstance(orig, dict) else orig
+    bad = json.loads(json.dumps(orig))
+    (bad["families"] if isinstance(bad, dict) else bad)[0]["members"].append("p9-999")
+    json.dump(bad, open(famfile, "w"))
+    rc, out = run("verify_pipeline.py", d)
+    check("a family holding an ungenerated id is refused",
+          rc != 0 and "unknown id" in out, f"rc={rc} {out.strip()[:120]}")
+
+    # A generated option that no family holds.
+    json.dump(orig, open(famfile, "w"))
+    short = json.loads(json.dumps(orig))
+    _sl = short["families"] if isinstance(short, dict) else short
+    _sl[0]["members"] = _sl[0]["members"][1:] or _sl[0]["members"]
+    json.dump(short, open(famfile, "w"))
+    rc2, out2 = run("verify_pipeline.py", d)
+    check("a generated option in no family is refused",
+          rc2 != 0 and "in no family" in out2, f"rc={rc2} {out2.strip()[:120]}")
+
+    # A verdict on an id that was never generated.
+    json.dump(orig, open(famfile, "w"))
+    vf = sorted(glob.glob(os.path.join(d, "verified-*.json")))
+    if vf:
+        v = json.load(open(vf[0]))
+        v["checked"].append({"id": "p9-999", "verdict": "refuted",
+                             "source": "https://example.com", "quote": "x"})
+        json.dump(v, open(vf[0], "w"))
+        rc3, out3 = run("verify_pipeline.py", d)
+        check("a verdict on an ungenerated id is refused",
+              rc3 != 0 and "unknown id" in out3, f"rc={rc3} {out3.strip()[:120]}")
+    shutil.rmtree(d, True)
+
+
 def t_verify_pipeline():
     print("\nverify_pipeline — the gates, each starved in turn")
     def fresh(fn=None, conflicts=0, multi=False):
@@ -4385,7 +4437,7 @@ def main():
               t_a_note_renders_whatever_the_verdict_says, t_progress_names_the_next_stage,
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
               t_lead_search_scales_and_preserves, t_pinch_merge_is_reported,
-              t_lead_search_is_numbering_invariant, t_burial_reaches_variants_and_the_reply,
+              t_lead_search_is_numbering_invariant, t_burial_reaches_variants_and_the_reply, t_partition_gates_fire,
               t_adjudicator_cannot_invent_a_pair,
               t_heartbeat_counts_pairs_not_judgements,
               t_dropped_pairs_are_named_by_reason, t_json_repairs_compose, t_no_evidence_merge_is_refused,

@@ -821,7 +821,7 @@ assumed: a negation round against that structure returned one search-verified op
    It fails if any option is in no family or in two, if a family is empty or unlabelled, if the
    ranking omits or invents a family, if any index file carries text, if a proposed pair was
    never adjudicated, if the shards were concatenated rather than merged, if the agreement probe
-   is missing or too small, or if the presented count does not equal the generated count. **If
+   is missing or too small, or if a refuted option sits in no family. **If
    it fails, fix the stage it names and re-run it.**
 
 Do not generate options in your own context first. Dispatch one generator per lens you chose in

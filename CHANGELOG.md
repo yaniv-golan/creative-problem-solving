@@ -214,6 +214,25 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **Three partition checks in a row could not fire, and the third replaced the second.** The first
+  read `len(placed) - len(rejected) + len(rejected) != len(ids)`, which cancels to the second. The
+  second restates two gates 400 lines earlier. The third compared two sets those same gates had
+  already forced equal — `:219` refuses a family member that was never generated, `:224` refuses a
+  generated option no family holds, so `placed == ids` unconditionally by the time any of them ran.
+  Confirmed by suppressing `die()` and watching each candidate stray get eaten by an earlier gate.
+
+  All three are gone. In their place, a comment naming where the invariant is actually held: those
+  two gates, plus `:457` for the verdicts, plus `build_report.py`'s `slots + rejected != generated`
+  one step later — where `slots` is counted off the render loop rather than derived from the
+  partition, which is the first point in a run that an independent number for "presented" exists.
+  A new test perturbs each of the three gates and asserts each fires, since a deleted check leaves
+  nothing else to assert.
+
+- **Five documents asserted `presented == generated`, which the code retracted.** A run with a
+  refuted option presents fewer than it generated — `20260827-run1` is 270 and 266 — and
+  `verify_pipeline.py` has said so since the three-option-states change. `references/pipeline.md`
+  (both copies), `tests/README.md`, `DESIGN-NOTES.md` and the maintainer memory all still carried
+  the old form; `DESIGN-NOTES.md` contradicted its own correct statement 700 lines earlier.
 - **The burial gates measure readability rather than one spelling of the tag.** Both have been wrong
   twice. First they counted `### N.` headings inside a `<details>` block, so folding away everything
   *beneath* the headings passed with the structure standing — the nested variants are the majority

@@ -651,20 +651,24 @@ def main(wd):
     print("OK")
     print(f"generated={len(ids)} presented={len(placed) - len(rejected)} "
           f"rejected={len(rejected)} families={n} variants_nested={len(placed)-n}")
-    if len(placed) != len(ids): die("every generated option must sit in exactly one family")
-    # This used to read `len(placed) - len(rejected) + len(rejected) != len(ids)`, which cancels to
-    # the line above and so could never fire on its own -- the module's headline invariant, spelled
-    # by a check with no independent term in it. `presented` is DEFINED as placed minus rejected, so
-    # no arithmetic over those two can test it. What is independent is where the two sets come from:
-    # `rejected` is read from the verifiers' verdicts, `placed` from the grouper's families. A
-    # refuted id that no family holds means those stages disagree about which options exist, and the
-    # rejected band would name an option the report cannot place.
-    _stray = sorted(set(rejected) - set(placed))
-    if _stray:
-        die(f"{len(_stray)} option(s) were refuted by search but sit in no family: "
-            + ", ".join(_stray[:6]) + (f", and {len(_stray) - 6} more" if len(_stray) > 6 else "")
-            + " — the verdicts and the grouping disagree about which options exist, so the rejected "
-              "band would name an option the report cannot place")
+    # THE PARTITION INVARIANT IS HELD ABOVE AND BELOW THIS LINE, NOT ON IT. Two checks used to sit
+    # here and neither could fire, which took three attempts to notice:
+    #
+    #   `len(placed) - len(rejected) + len(rejected) != len(ids)`  cancels to `len(placed) != len(ids)`
+    #   `len(placed) != len(ids)`                                  restates the two gates below
+    #   `set(rejected) - set(placed)`                              is empty for the same reason
+    #
+    # `:219` refuses a family member that is not a generated id, so `placed ⊆ ids`. `:224` refuses a
+    # generated id no family holds, so `ids ⊆ placed`. Neither is conditional, so by here
+    # `placed == ids` as sets. `:457` refuses a verified id outside `ids`, so `rejected ⊆ ids` too.
+    # Anything derived from those three sets is therefore already decided, and a check written over
+    # them has no independent term to disagree with. Verified by suppressing `die()` and watching
+    # each candidate stray get eaten by an earlier gate every time.
+    #
+    # What DOES test it is `build_report.py`'s `slots + len(rejected) != len(text)`, one step later:
+    # `slots` is counted off the render loop rather than derived from the partition, so it catches a
+    # divergence between what the report emitted and what the grouping says. That is the first point
+    # in the run where a number for "presented" exists independently at all.
     if rejected:
         print(f"rejected (refuted by search, present these in their own band with the source): "
               f"{rejected}")

@@ -882,7 +882,7 @@ whether it ran. The answer is not a better instruction. Every stage now leaves f
 `scripts/verify_pipeline.py` refuses to let an answer be written unless they add up: every
 proposed pair adjudicated exactly once, every option in exactly one family, the ranking neither
 omitting nor inventing a family, no index file carrying text, the agreement probe present and
-large enough, presented count equal to generated count, no `confirmed` verdict without a source
+large enough, every option presented or explicitly refuted, no `confirmed` verdict without a source
 URL. A stage that did not run leaves nothing to count. The same principle governs the progress
 heartbeat: all four lines are printed by scripts, three of them riding calls the pipeline cannot
 skip, because a command whose only job is to print is the first one dropped and its absence is
