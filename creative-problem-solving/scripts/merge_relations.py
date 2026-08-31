@@ -134,12 +134,19 @@ def main(wd):
     # names -- re-adjudicate into a new relations-<n>.json -- still clears it.
     missing = []
     all_dealt = set()
+    # WHAT WAS ACTUALLY PLANTED, read off the deal. The probe's claim is that a pair went to two
+    # DIFFERENT shards so two adjudicators judged it blind, and only the cand-*.json files know
+    # that. Counting distinct shards per pair here costs one Counter over a loop that already
+    # reads every one of them.
+    dealt_in = Counter()
     for c in sorted(glob.glob(os.path.join(wd, "cand-*.json"))):
         k = os.path.basename(c)[5:-5]
         dealt = {frozenset((a, b)) for a, b, _ in _pairs(c, "pairs")}
         all_dealt |= dealt
+        dealt_in.update(dealt)                      # `dealt` is a set: this counts shards, not rows
         gap = dealt - back
         if gap: missing.append((k, sorted(gap, key=lambda g: sorted(g)), len(dealt)))
+    planted = {k for k, n in dealt_in.items() if n > 1}
 
     # AND THE OTHER DIRECTION. `dealt - back` catches a pair that went out and never came home.
     # `back - dealt` catches a verdict on a pair nobody sent -- an adjudicator judging two options
@@ -219,9 +226,31 @@ def main(wd):
             seen[frozenset((e.get("a"), e.get("b")))].append(dict(e, _shard=os.path.basename(s)))
 
     # The probe is only the pairs two DIFFERENT adjudicators judged blind.
-    probe = {k: v for k, v in seen.items() if len({e["_shard"] for e in v}) > 1}
+    #
+    # BOTH HALVES: PLANTED AND RETURNED TWICE. This read only the second half -- a pair sitting in
+    # two different relations FILES -- which is the mechanism's consequence, not the mechanism. A
+    # repair that re-judges a whole shard into a new index puts every pair of that shard in two
+    # files while none of them was planted, so the figure inflated, `verify_pipeline.py`'s
+    # `probe_pairs < floor` gate was LOOSENED by the repair, and the reader was told a cross-check
+    # had happened that had not. Measured: a true probe of 12 read 38, at 100%, because a shard
+    # re-judged against itself agrees with itself. It is the heartbeat defect one stage on -- a
+    # sentence asserting the mechanism while the arithmetic counted something else.
+    #
+    # Keyed on the DEAL, not on the file index. "Both judging files must be shard files" reads the
+    # index and is wrong in the other direction: when a shard's adjudicator returns nothing and a
+    # repair supplies that shard in full, the planted pair really was judged by two blind
+    # adjudicators and must still count. Shapes, both directions: tools/corpus_probe.py.
+    probe = {k: v for k, v in seen.items()
+             if k in planted and len({e["_shard"] for e in v}) > 1}
     self_judged = sum(1 for v in seen.values()
                       if len(v) > 1 and len({e["_shard"] for e in v}) == 1)
+    # NAME THE THIRD CASE, or a repair looks like it did nothing. A pair judged in two different
+    # files that was never dealt to two shards is neither a cross-check nor self-judgement, so it
+    # falls out of both counts above. That exclusion is correct and it is invisible: the operator
+    # re-judges a shard, the probe does not move, and nothing distinguishes that from a repair
+    # that never ran. This is the `note:` below for self-judged pairs, one exclusion over.
+    rejudged = sum(1 for k, v in seen.items()
+                   if k not in planted and len({e["_shard"] for e in v}) > 1)
     conflicts = {k: v for k, v in probe.items() if len({e["relation"] for e in v}) > 1}
 
     out = []
@@ -252,6 +281,10 @@ def main(wd):
     if self_judged:
         print(f"note: {self_judged} pair(s) judged twice by the SAME adjudicator, excluded "
               f"from the probe — one reader agreeing with itself measures nothing")
+    if rejudged:
+        print(f"note: {rejudged} pair(s) re-judged by another adjudicator without having been "
+              f"planted in two shards, excluded from the probe — re-judging a shard measures "
+              f"agreement with a repair, not the blind cross-check the probe reports")
     if probe:
         print(f"agreement probe: {agreed}/{len(probe)} pairs judged the same by two adjudicators"
               + (f" ({rate:.0%})" if rate is not None else ""))

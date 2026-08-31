@@ -18,6 +18,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
   re-running `merge_families.py` after ranking invalidates steps 7 and 8.
 
 ### Fixed
+- **A repair that re-judged a whole shard inflated the agreement probe, loosening the gate that
+  reads it.** The probe reports how many pairs two adjudicators judged blind, and it counted a pair
+  appearing in two different `relations-*.json` files — the mechanism's consequence, not the
+  mechanism. Re-judging a shard into a new index puts every pair of that shard in two files while
+  none of them was planted, so the count rose, `verify_pipeline.py`'s `probe_pairs < floor` gate was
+  made *easier* to clear by the repair, and the reader was handed a cross-check that had not
+  happened: a true probe of 12 read 38, at 100% agreement, because a shard re-judged against itself
+  agrees with itself. The count is now keyed on the deal — a pair must have been dealt to two
+  different `cand-*.json` and come back from two different files. Keying it on the file index
+  instead would have been wrong in the other direction: when a shard's adjudicator returns nothing
+  and a repair supplies that shard in full, the planted pair really was judged blind by two
+  adjudicators and must still count. Both directions are pinned in `tools/corpus_probe.py`, which
+  scored 7 of 10 against the shipped code. A pair re-judged without having been planted now falls
+  out of the probe and out of the self-judged count, so it is named to the operator rather than
+  disappearing — otherwise a repair that changes nothing looks exactly like a repair that never ran.
+  No preserved run contains a repair file, so both complete ones merge byte-identically.
+
 - **Naming four elements as hiding places refused every report that mentions one.** The pattern was
   `<tag[^>]*>.*` with `re.S`, which does not match a tag — it matches the rest of the document, so
   one `<script>` in ordinary prose hid everything after it. The shape that would have shipped is

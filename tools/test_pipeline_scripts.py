@@ -1107,6 +1107,57 @@ def t_heartbeat_counts_pairs_not_judgements():
           "duplicate INSIDE one shard" in names, f"{sorted(names)}")
 
 
+def t_probe_counts_planted_pairs_not_duplicated_files():
+    """The probe counted pairs in two relations FILES, which a repair produces without planting.
+
+    Re-judging a whole shard into a new relations index puts every pair of that shard in two files
+    while none of them was planted, so `probe_pairs` inflated -- and `verify_pipeline.py` gates on
+    it with `probe_pairs < floor`, so the repair LOOSENED the gate instead of tripping it. The
+    reader was told the same number: "the adjudicators agreed on 38 of the 38 pairs that two of
+    them both judged", at 100%, because a shard re-judged against itself agrees with itself.
+
+    The inverse is why the fix is keyed on the deal rather than on the file index: when a shard's
+    adjudicator returns nothing and a repair supplies that shard in full, the planted pair really
+    was judged by two blind adjudicators and must still count. Shapes for both directions are in
+    tools/corpus_probe.py, imported rather than restated.
+    """
+    print("\nthe probe counts what was planted, not what appears in two files")
+    import importlib.util as _u
+    spec = _u.spec_from_file_location("corpus_probe", ROOT / "tools" / "corpus_probe.py")
+    corpus = _u.module_from_spec(spec); spec.loader.exec_module(corpus)
+
+    bad = corpus.run(corpus.probe_proposed, "in-suite")
+    check(f"all {len(corpus.CORPUS)} corpus shapes report the right probe count", not bad,
+          "; ".join(f"{n}: want {w} got {g}" for n, w, g, _ in bad[:2]))
+
+    names = {n for n, _, _, _, _ in corpus.CORPUS}
+    check("...and the corpus pins the repair that supplies a dead shard, which the cheap fix breaks",
+          any(n.startswith("THE INVERSE") for n in names), f"{sorted(names)}")
+
+    # AND THE EXCLUSION IS NAMED. A re-judged pair now falls out of the probe AND out of
+    # self_judged -- it is neither planted nor judged twice by one reader -- so without a word for
+    # it the operator sees a repair change nothing and has no way to tell that from a repair that
+    # did not run. That is the shape this file's own `note:` for self-judged pairs exists to
+    # prevent, one exclusion over.
+    d = tempfile.mkdtemp()
+    try:
+        a, b, c2, e = "p1-001", "p1-002", "p1-003", "p1-004"
+        json.dump({"pairs": [{"a": a, "b": b}, {"a": c2, "b": e}]},
+                  open(os.path.join(d, "cand-1.json"), "w"))
+        json.dump({"pairs": [{"a": a, "b": b}]}, open(os.path.join(d, "cand-2.json"), "w"))
+        for i, ps in ((1, [(a, b), (c2, e)]), (2, [(a, b)]), (3, [(a, b), (c2, e)])):
+            json.dump({"relations": [{"a": x, "b": y, "relation": "distinct"} for x, y in ps]},
+                      open(os.path.join(d, f"relations-{i}.json"), "w"))
+        rc, out = run("merge_relations.py", d)
+        check("a re-judged pair the probe cannot count is named to the operator",
+              rc == 0 and "re-judged" in out, out.strip()[:200])
+        check("...and it is not smuggled into the reader's line, which is about the probe",
+              "re-judged" not in next((l for l in out.splitlines() if l.startswith("SAY:")), ""),
+              next((l for l in out.splitlines() if l.startswith("SAY:")), "")[:160])
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t_dropped_pairs_are_named_by_reason():
     """A record missing an id was reported to the operator as a duplicate proposal.
 
@@ -4116,19 +4167,31 @@ def t_superseded_verdicts_go_with_their_shards():
             json.dump({"relations": [{"a": a, "b": b, "relation": "distinct"} for a, b in ps]},
                       open(os.path.join(d, f"relations-{k}.json"), "w"))
         os.remove(os.path.join(d, "relations-9.json"))
-        # ANTI-VACUITY: a duplicate verdict file DOES move this number, so the equality above is
-        # a real constraint rather than two constants that happen to agree.
-        json.dump({"relations": [{"a": a, "b": b, "relation": "distinct"} for a, b in cur["1"]]},
-                  open(os.path.join(d, "relations-77.json"), "w"))
-        run("merge_relations.py", d)
-        _moved = json.load(open(os.path.join(d, "agreement.json")))["probe_pairs"]
-        os.remove(os.path.join(d, "relations-77.json"))
         rc, out = run("merge_relations.py", d)
         intact = json.load(open(os.path.join(d, "agreement.json")))["probe_pairs"]
-        check("a duplicate verdict file DOES move the probe count", _moved != planted,
-              f"planted={planted} with-duplicate={_moved} — if equal, the check below is vacuous")
         check("the probe count returns to its pre-repair value once the extra file is gone",
               rc == 0 and intact == planted, f"planted={planted} intact={intact} {out.strip()[:110]}")
+
+        # ANTI-VACUITY: the number must be responsive to SOMETHING, or the equality above is two
+        # constants agreeing. The lever here used to be a duplicate verdict file, and that stopped
+        # being one on purpose: the probe is now keyed on the deal, so re-judging a shard it was
+        # never planted in cannot pad it. That was the defect. The honest lever is the loss of a
+        # real cross-check -- withhold one of the two verdicts on a PLANTED pair and the count must
+        # fall by exactly one, because that pair now has one blind reader instead of two.
+        twin = next((p for p in cur["2"]
+                     if any(p in ps for k, ps in cur.items() if k != "2")), None)
+        check("the fixture has a planted pair to withhold", twin is not None,
+              "no pair of shard 2 is planted elsewhere — the check below is vacuous")
+        if twin is None: return
+        for k, ps in cur.items():
+            keep = [p for p in ps if not (k == "2" and p == twin)]
+            json.dump({"relations": [{"a": a, "b": b, "relation": "distinct"} for a, b in keep]},
+                      open(os.path.join(d, f"relations-{k}.json"), "w"))
+        run("merge_relations.py", d)
+        _moved = json.load(open(os.path.join(d, "agreement.json")))["probe_pairs"]
+        check("withholding one verdict on a planted pair DOES move the probe count",
+              _moved == planted - 1,
+              f"planted={planted} one-withheld={_moved} — if equal, the check above is vacuous")
     finally:
         shutil.rmtree(d, True)
 
@@ -4855,6 +4918,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_lead_search_is_numbering_invariant, t_burial_reaches_variants_and_the_reply, t_partition_gates_fire,
               t_adjudicator_cannot_invent_a_pair, t_id_shapes_fail_by_name,
               t_heartbeat_counts_pairs_not_judgements,
+              t_probe_counts_planted_pairs_not_duplicated_files,
               t_dropped_pairs_are_named_by_reason, t_json_repairs_compose, t_no_evidence_merge_is_refused,
               t_superseded_verdicts_go_with_their_shards,
               t_label_is_one_line, t_every_phase_boundary_speaks,
