@@ -41,22 +41,60 @@ def die(path, problem, fix):
           f"      written by {_author(path)}; {fix}")
     sys.exit(1)
 
-# `search`, not `match`, and no end anchor: the anchored form only stripped a fence that was the
-# WHOLE file, so each repair worked alone and none composed. A preamble before the fence, or a
-# sign-off after it, defeated the fence strip -- and the brace-cut that ran next then left the
-# closing ``` in place, so `Here you go:\n```json\n{...}\n``` ` failed as "Extra data" while
-# either half alone parsed. The three shapes a model actually emits are prose, a fence, and both.
-_FENCE = re.compile(r"```[a-zA-Z]*\s*\n(.*?)\n\s*```", re.S)
+# AMBIGUITY IS REFUSED, IN BOTH DIRECTIONS. This has been wrong twice in opposite ways. Anchored to
+# the whole file, a fence with any prose or sign-off around it was not stripped at all, so ordinary
+# shapes failed as "Extra data". Unanchored, `search` bound the FIRST fence and discarded the rest,
+# so a generator that wrote a fenced stub and then the real pool loaded as an empty pool -- a silent
+# wrong answer where the anchored version had at least been loud. The fix for that guarded JSON
+# AFTER a fence and left the mirror alive.
+#
+# So the rule is symmetric and it refuses rather than guesses: a fenced block is the payload only
+# when it is the ONLY thing in the file that parses. Two parseable fences, or a fence with another
+# JSON value beside it in either direction, is a file whose author disagreed with itself, and this
+# module's whole purpose is that a wrong answer is worse than a stopped run. Shapes and the corpus
+# that pins them: tools/corpus_json.py.
+_FENCE = re.compile(r"```[a-zA-Z]*[ \t]*\r?\n(.*?)\r?\n[ \t]*```", re.S)
+
+
+def _payload(s):
+    """s parsed as an object or array, else None. A scalar is not a payload any stage here writes."""
+    s = s.strip()
+    if not s or s[:1] not in ("{", "["):
+        return None
+    try:
+        return json.loads(s)
+    except Exception:
+        return None
+
 
 def _unwrap(text):
-    """Strip BOM, a code fence anywhere in the text, and any prose before the first brace/bracket."""
+    """Strip a BOM, then resolve the payload: a lone fenced block, or prose before the first brace."""
     text = text.lstrip("﻿").strip()
-    m = _FENCE.search(text)
-    if m: text = m.group(1).strip()
+    blocks = [(m.group(1), m.start(), m.end()) for m in _FENCE.finditer(text)]
+
+    if blocks:
+        holding = [b for b in blocks if _payload(b[0]) is not None]
+        if len(holding) > 1:
+            raise _Ambiguous("more than one fenced block holds JSON, so which one is the file")
+        if len(holding) == 1:
+            body, start, end = holding[0]
+            outside = (text[:start] + "\n" + text[end:]).strip()
+            cut = min([i for i in (outside.find("{"), outside.find("[")) if i != -1] or [-1])
+            if _payload(outside) is not None or (cut >= 0 and _payload(outside[cut:]) is not None):
+                raise _Ambiguous("a fenced block and a second JSON value are both present")
+            return body.strip()
+        # A fence was present and none held JSON. The file announced where its payload was; do not
+        # go looking elsewhere and hand back something the author did not point at.
+        raise _Ambiguous("a fenced block is present but holds no JSON object")
+
     if text[:1] not in ("{", "["):
         cut = min([i for i in (text.find("{"), text.find("[")) if i != -1] or [-1])
         if cut > 0: text = text[cut:]
     return text
+
+
+class _Ambiguous(Exception):
+    """Two candidate payloads, or a fence pointing at nothing. Refuse rather than pick."""
 
 def _no_constants(c):
     raise ValueError(f"{c} is not valid JSON")
@@ -128,6 +166,14 @@ def load(path, key=None, kind=list):
     try:
         data = json.loads(_unwrap(raw), parse_constant=_no_constants,
                           object_pairs_hook=_no_dupe_keys)
+    except _Ambiguous as e:
+        # Named, like every other refusal here. A traceback naming no stage is the failure this
+        # module replaces, and an ambiguous file is the one case where guessing costs a wrong
+        # answer rather than a stopped run.
+        die(path, f"holds more than one candidate payload — {e}",
+            "that stage must write exactly one JSON value; if it wrote a summary and then the "
+            "real output, or wrapped one copy in a code fence, re-run it and have it emit only "
+            "the file")
     except ValueError as e:
         msg = str(e)
         if "Unterminated" in msg or "Expecting ',' delimiter" in msg or "Expecting value" in msg and len(raw) > 2000:

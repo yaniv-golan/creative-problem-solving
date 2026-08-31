@@ -214,6 +214,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **A JSON file with two payloads is refused instead of silently resolved to one of them.** This was
+  wrong twice, in opposite directions. Anchored to the whole file, the fence pattern fired only when
+  the fence *was* the file, so prose or a sign-off around it made ordinary shapes fail as "Extra
+  data". Unanchoring it fixed those and introduced the worse failure: `search` bound the **first**
+  fence and discarded the rest, so a generator that wrote a fenced stub and then the real pool
+  loaded as an **empty pool** — a wrong answer where the old behaviour was at least a stopped run.
+  And an empty pool is a legal shape, so nothing downstream could tell.
+
+  The property is not "the repairs compose"; it is that an ambiguous file is refused. A fenced block
+  is the payload only when it is the only thing in the file that parses — two parseable fences, or a
+  fence with another JSON value beside it **in either direction**, now fails naming the file and the
+  stage. The mirror matters: the first fix for this guarded a second value *after* a fence and left
+  *before* alive.
+
+  Shapes are pinned in `tools/corpus_json.py`, which the test imports rather than restates.
+  It was run against the shipped code first — 18 of 21, the three failures all silent — and every
+  one of the 357 preserved and eval JSON files still loads.
 - **The pair count the reader is given counted judgements, not pairs.** 48 pairs are planted into
   two shards each so two adjudicators judge them blind — that is how a run reports its own grouping
   reliability — and the heartbeat summed `len(pairs)` across shards, counting each twice. Both

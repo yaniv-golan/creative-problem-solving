@@ -946,40 +946,49 @@ def t_adjudicator_cannot_invent_a_pair():
 
 
 def t_json_repairs_compose():
-    """Each documented repair worked alone; none of them worked together.
+    """One payload parses; two payloads are refused, in either order.
 
-    `_unwrap` strips a BOM, a code fence, and prose before the first brace. The fence pattern was
-    anchored to the whole file, so it only fired when the fence WAS the file -- a preamble before
-    it, or a sign-off after it, defeated the strip, and the brace-cut that ran next then left the
-    closing fence in place. So the three shapes a model actually emits (prose, a fence, and both)
-    were one supported and two refused as "Extra data", though the module's job is exactly this.
+    This has been wrong twice in opposite directions. Anchored to the whole file, the fence pattern
+    fired only when the fence WAS the file, so prose or a sign-off around it made ordinary shapes
+    fail as "Extra data". Unanchored, `search` bound the FIRST fence and dropped the rest -- a
+    generator that wrote a fenced stub and then the real pool loaded as an empty pool, which is a
+    silent wrong answer where the anchored version was at least loud. The fix for THAT guarded a
+    second value after a fence and left the mirror (value first, fence second) alive.
+
+    So the property is not "compose the repairs"; it is that an ambiguous file is refused. The
+    shapes, including the inverse of each motivating one, are pinned in
+    tools/corpus_json.py, which is imported here rather than restated -- a corpus copied
+    into a test is a corpus that drifts from the rule it was written against.
     """
-    print("\nthe JSON repairs compose, and corruption still fails loudly")
-    import importlib.machinery as _m
-    rj = _m.SourceFileLoader("rj_x", str(SCRIPTS / "robust_json.py")).load_module()
+    print("\nthe JSON payload is resolved or refused, never guessed")
+    import importlib.util as _u
+    # TRACKED, not under docs/internal/. The corpus was written there first and check-repo.py
+    # refused it -- a test importing a gitignored file passes here and fails on a fresh clone,
+    # the same "green locally, red for everyone else" class the repo already guards against.
+    spec = _u.spec_from_file_location("corpus_json", ROOT / "tools" / "corpus_json.py")
+    corpus = _u.module_from_spec(spec); spec.loader.exec_module(corpus)
+    import importlib.machinery as _mach
+    rj = _mach.SourceFileLoader("rj_corpus", str(SCRIPTS / "robust_json.py")).load_module()
+
     d = tempfile.mkdtemp(); f = os.path.join(d, "x.json")
-
-    for label, text in (("a bare object", '{"a":1}'),
-                        ("a fence", '```json\n{"a":1}\n```'),
-                        ("prose then an object", 'Here you go:\n{"a":1}'),
-                        ("prose then a fence", 'Here you go:\n```json\n{"a":1}\n```'),
-                        ("a fence then a sign-off", '```json\n{"a":1}\n```\nHope that helps.'),
-                        ("prose, fence and sign-off", 'Sure:\n```json\n{"a":1}\n```\nDone.')):
+    bad = []
+    for name, text, want in corpus.CORPUS:
         open(f, "w").write(text)
-        ok = True
-        try: rj.load_obj(f)
-        except SystemExit: ok = False
-        check(f"...{label} parses", ok, f"refused: {text[:40]!r}")
+        try:
+            got = rj.load_obj(f)
+            outcome = "PARSE" if isinstance(got, (dict, list)) else "REFUSE"
+        except SystemExit:
+            outcome = "REFUSE"
+        if outcome != want:
+            bad.append(f"{name}: wanted {want}, got {outcome}")
+    check(f"all {len(corpus.CORPUS)} corpus shapes behave as specified",
+          not bad, "; ".join(bad[:3]))
 
-    # And the repairs must not have become a parser that accepts anything.
-    for label, text in (("a truncated object", '{"a":1'), ("an empty file", ""),
-                        ("prose with no JSON at all", "I could not do it."),
-                        ("NaN", '{"a":NaN}'), ("duplicate keys", '{"a":1,"a":2}')):
-        open(f, "w").write(text)
-        refused = False
-        try: rj.load_obj(f)
-        except SystemExit: refused = True
-        check(f"...{label} is still refused", refused, f"accepted: {text[:40]!r}")
+    # The corpus is only worth having if it contains the mirror of what it was written for.
+    names = {n for n, _, _ in corpus.CORPUS}
+    check("...and the corpus pins both directions of the ambiguous case",
+          "stub fence THEN real" in names and "real THEN stub fence" in names,
+          f"missing a direction: {sorted(names)[:6]}")
     shutil.rmtree(d, True)
 
 
