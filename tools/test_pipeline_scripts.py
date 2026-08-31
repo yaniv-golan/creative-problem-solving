@@ -885,21 +885,38 @@ def t_burial_reaches_variants_and_the_reply():
     run("build_report.py", d, "--out", rep)
     body = fill_placeholders(rep)
 
+    # A SHAPE MAY BRING ITS OWN OPTIONS, and then the fixture's manifest is the wrong one to judge
+    # it against: the defect in that shape lives in an OPTION's text, not in the report's prose.
+    # Substituting the real body would leave the manifest's options absent, and the missing-options
+    # gate would refuse it -- the wanted verdict for a reason that is not the shape under test.
+    man_path = rep + ".manifest.json"
+    real_man = open(man_path, encoding="utf-8").read()
+
+    def _stage(doc, name):
+        own = getattr(corpus, "OPTS_BY_SHAPE", {}).get(name)
+        if own:
+            open(man_path, "w").write(json.dumps({"options": own, "words": 1, "families": 1}))
+            return doc
+        open(man_path, "w").write(real_man)
+        return doc.replace(corpus.BODY, body)
+
     bad = []
     for name, doc, want, why in corpus.CORPUS:
-        open(rep, "w").write(doc.replace(corpus.BODY, body))
+        open(rep, "w").write(_stage(doc, name))
         rc, _out = run("build_report.py", "--check", rep)
         got = "REFUSE" if rc != 0 else "PASS"
         if got != want:
             bad.append(f"{name}: wanted {want}, got {got} ({why})")
+    open(man_path, "w").write(real_man)
     check(f"--check agrees with all {len(corpus.CORPUS)} corpus shapes", not bad, "; ".join(bad[:3]))
 
     run("build_report.py", d, "--out", rep)
     body = fill_placeholders(rep)
     rp = os.path.join(d, "reply.md")
+    real_man = open(man_path, encoding="utf-8").read()
     bad2 = []
     for name, doc, want, why in corpus.CORPUS:
-        open(rp, "w").write(doc.replace(corpus.BODY, body))
+        open(rp, "w").write(_stage(doc, name))
         rc, _out = run("build_report.py", "--check-reply", rp, "--against", rep)
         got = "REFUSE" if rc != 0 else "PASS"
         if got != want:

@@ -19,6 +19,9 @@ SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
                        "creative-problem-solving", "scripts")
 
 OPTS = ["Option one text", "Option two text"]
+# One shape needs its own options, because the defect is in an OPTION's text, not the report's.
+OPTS_BY_SHAPE = {"an option's own text names <script>":
+                 ["Inject a <script> tag to isolate the widget.", "Option two text"]}
 BODY = "### 1. Fam A\n\nOption one text\n\n### 2. Fam B\n\nOption two text\n"
 
 # (label, document, expectation, why)
@@ -74,6 +77,10 @@ CORPUS = [
     # outright -- so an answer living only inside one is as gone as one inside a comment, and this
     # gate had never been asked about them in seventeen rounds. <textarea> is deliberately absent:
     # its content IS shown, in a box.
+    ("an option's own text names <script>",
+     "### 1. Fam A\n\nInject a <script> tag to isolate the widget.\n\n### 2. Fam B\n\n"
+     "Option two text\n", "PASS",
+     "THE SHAPE THAT WOULD HAVE SHIPPED: an ordinary option about web work, refused as buried"),
     ("answer only inside <script>",
      "# Answer\n\nA short summary.\n\n<script>\n%s\n</script>\n" % BODY, "REFUSE",
      "a browser paints nothing for script content, and GitHub removes the element"),
@@ -131,6 +138,18 @@ CORPUS = [
      "# Answer\n\n```html\n<pre><!-- x\n```\n\n<details><summary>s</summary>\n%s</details>\n" % BODY,
      "REFUSE",
      "the HTML mask ran BEFORE the fence mask, so a documented <pre> poisoned everything after it"),
+    # THE MENTION TWIN. An unclosed-to-EOF matcher is a mask of everything after the opener, which
+    # is the mechanism that made <pre> a hiding place two commits ago -- reattached to four new tag
+    # names. CommonMark only starts an HTML block at a tag that BEGINS a line; a tag inside a
+    # paragraph is inline, and every renderer this report reaches sanitises it. So prose that names
+    # the tag, and an option whose own text names it, must stay readable. The second of those is
+    # the one that would have shipped: an option about web development killed the run.
+    ("prose mentions <script> mid-paragraph",
+     "# Answer\n\nUse <script> to run JS.\n\n%s" % BODY, "PASS",
+     "inline HTML in a paragraph, not an HTML block: the heading after it is still visible"),
+    ("prose mentions <iframe> mid-paragraph",
+     "# Answer\n\nEmbed it with <iframe> here.\n\n%s" % BODY, "PASS",
+     "same"),
     ("<script> shown in a code block",
      "# Answer\n\nThe markup is:\n\n```html\n<script>alert(1)</script>\n```\n\n%s" % BODY, "PASS",
      "THE REFUSE-SIDE TWIN'S TWIN: documenting a raw-text element is not hiding in one"),
@@ -219,7 +238,7 @@ def gate_check(doc, opts):
 def run(fn, label):
     bad = []
     for name, doc, want, why in CORPUS:
-        got = "REFUSE" if fn(doc, OPTS) else "PASS"
+        got = "REFUSE" if fn(doc, OPTS_BY_SHAPE.get(name, OPTS)) else "PASS"
         if got != want:
             bad.append((name, want, got, why))
     print(f"\n{label}: {len(CORPUS) - len(bad)}/{len(CORPUS)} shapes as specified")

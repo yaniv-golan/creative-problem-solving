@@ -347,14 +347,20 @@ did. So when you change a gate or a parser:
    the corpus held the shapes the change was meant to catch and none of the shapes it might start
    refusing. And when the same predicate appears at two call sites, the corpus needs both: a
    correction that reached one of them shipped three times.
-6. **A mask is a reader.** Anything you teach a gate to ignore — so that *documenting* a notation
+6. **An unclosed-to-EOF matcher is a mask of everything after its opener.** `<tag[^>]*>.*` with
+   `re.S` does not match a tag, it matches the rest of the document — so it hides whatever follows
+   from whichever gate reads it, and one *mention* of the tag in ordinary prose is enough to fire.
+   That mechanism has now produced a hole and a false refusal in consecutive commits, on two
+   different tag lists. Anchor to where the notation actually begins: CommonMark starts an HTML
+   block only at a tag that begins a line, and a tag inside a paragraph is inline.
+7. **A mask is a reader.** Anything you teach a gate to ignore — so that *documenting* a notation
    is not a failure — is a region that gate can no longer see. Every mask has a refuse-side twin:
    the same notation holding the answer instead of describing it. Write both, or the mask becomes
    the hiding place. And check what a renderer actually does before deciding a shape is harmless;
    an HTML comment inside `<pre>` is still a comment.
-7. **Run the changed gate over the change.** A commit that broadens a check has to be checked by
+8. **Run the changed gate over the change.** A commit that broadens a check has to be checked by
    it — including its own commit message and changelog entry.
-8. Only when the corpus is green does the rule move into the script, and the corpus becomes the
+9. Only when the corpus is green does the rule move into the script, and the corpus becomes the
    test.
 
 Corpora live in `tools/`, not `docs/internal/` — that directory is gitignored, so a test importing

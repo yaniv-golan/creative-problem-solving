@@ -503,7 +503,7 @@ def _visible_twin(doc, line, spans):
     """True when this heading text also appears outside every collapsed span."""
     import re as _r
     for m in _r.finditer(_r.escape(line), doc):
-        if not any(a <= m.start() < b for a, b in spans):
+        if not any(a <= m.start() < b for a, b, *_ in spans):
             return True
     return False
 
@@ -562,7 +562,14 @@ def _mask_code(doc):
 # asked about them in seventeen rounds. GitHub strips <script> and <style> outright. <textarea> is
 # deliberately not in this list: its content IS shown, as the field's value. Unclosed runs to the
 # end of the document, like every other hiding place here.
-_INERT = re.compile(r"<(script|style|template|iframe)\b[^>]*>(?:.*?</\1\s*>|.*)", re.S | re.I)
+# AT THE START OF A LINE, which is CommonMark's rule for where an HTML block begins, not a tag
+# name anywhere in the text. An unclosed-to-EOF matcher is a mask of everything after its opener --
+# the exact mechanism that turned <pre> into a hiding place one commit earlier, reattached to four
+# new names. A tag inside a paragraph is inline HTML, sanitised by every renderer this report
+# reaches, so prose that NAMES the tag stays readable -- including an option whose own text names
+# it, which is an ordinary option about web work and was being refused as buried.
+_INERT = re.compile(r"^ {0,3}<(script|style|template|iframe)\b[^>]*>(?:.*?</\1\s*>|.*)",
+                    re.S | re.I | re.M)
 
 
 def _hidden_spans(doc):
@@ -574,9 +581,10 @@ def _hidden_spans(doc):
     handed to the predicate that would have refused it.
     """
     masked = _mask_code(doc)
-    return (_collapsed_spans(masked)
-            + [(m.start(), m.end()) for m in _COMMENT.finditer(masked)]
-            + [(m.start(), m.end()) for m in _INERT.finditer(masked)])
+    return ([(a, b, "a collapsed <details> block") for a, b in _collapsed_spans(masked)]
+            + [(m.start(), m.end(), "an HTML comment") for m in _COMMENT.finditer(masked)]
+            + [(m.start(), m.end(), f"a <{m.group(1).lower()}> element")
+               for m in _INERT.finditer(masked)])
 
 
 def _buried(doc, options):
@@ -598,9 +606,27 @@ def _buried(doc, options):
     out = []
     for o in options:
         hits = [m.start() for m in re.finditer(re.escape(o), doc)]
-        if hits and all(any(s <= h < e for s, e in spans) for h in hits):
+        if hits and all(any(s <= h < e for s, e, _k in spans) for h in hits):
             out.append(o)
     return out
+
+
+def _where_hidden(doc, options):
+    """The names of the hiding places the buried options actually sit in.
+
+    THE MESSAGE HAS TO NAME THE ONE THAT FIRED. It recited "a collapsed <details> block or an HTML
+    comment" whichever region had swallowed the answer, so a report folded into a <script> was
+    refused for a reason that was not true of it -- the same right-verdict-wrong-reason shape this
+    corpus already caught once in its own runner.
+    """
+    spans = _hidden_spans(doc)
+    names = []
+    for o in options:
+        for h in [m.start() for m in re.finditer(re.escape(o), doc)]:
+            for s, e, kind in spans:
+                if s <= h < e and kind not in names:
+                    names.append(kind)
+    return " or ".join(names) or "a hidden region"
 
 
 def check_reply(reply_path, report_path):
@@ -643,8 +669,8 @@ def check_reply(reply_path, report_path):
     gone_r = _buried(reply, opts_r)
     if gone_r:
         sys.exit(
-            f"FAIL: {len(gone_r)} of {len(opts_r)} options are only reachable inside a collapsed "
-            f"<details> block or an HTML comment in {os.path.basename(reply_path)}. The reader is shown a summary and "
+            f"FAIL: {len(gone_r)} of {len(opts_r)} options are only reachable inside "
+            f"{_where_hidden(reply, gone_r)} in {os.path.basename(reply_path)}. The reader is shown a summary and "
             f"told the answer is machine output they can skip. Every gate before this one counted "
             f"the options and found them present -- presence was never the property worth having.\n"
             f"      A covering line above the content is fine. Folding the content away is not.")
@@ -838,18 +864,18 @@ def check(path, skeleton_words=None):
         if opts:
             gone = _buried(body, opts)
             if gone:
-                sys.exit(f"FAIL: {len(gone)} of {len(opts)} options are only reachable inside a "
-                         f"collapsed <details> block or an HTML comment. Every one is still in "
-                         f"the file and none of them is readable; present the list rather than "
-                         f"hiding it behind a summary.")
+                sys.exit(f"FAIL: {len(gone)} of {len(opts)} options are only reachable inside "
+                         f"{_where_hidden(body, gone)}. Every one is still in the file and none of "
+                         f"them is readable; present the list rather than hiding it behind a "
+                         f"summary.")
         # THE HEADING FALLBACK ONLY RUNS WITHOUT A MANIFEST, and asks the same question the option
         # check does: is this heading readable ANYWHERE. Counting headings inside a collapsed span
         # regardless refused a correct report that repeats itself in an appendix -- the options
         # check passed it and this fired anyway.
         buried = 0 if opts else sum(
             1 for m in re.finditer(r"^### \d+\..*$", body, re.M)
-            if all(a <= h < b for h in [m.start()] for a, b in spans if a <= m.start() < b)
-            and any(a <= m.start() < b for a, b in spans)
+            if all(a <= h < b for h in [m.start()] for a, b, *_ in spans if a <= m.start() < b)
+            and any(a <= m.start() < b for a, b, *_ in spans)
             and not _visible_twin(body, m.group(0), spans))
         if buried:
             sys.exit(f"FAIL: {buried} of {len(heads)} families sit inside a collapsed <details> "

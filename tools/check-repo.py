@@ -843,7 +843,10 @@ else:
     # repo actually cites, a dated run directory -- was invisible, and one such citation had been
     # sitting in a shipped script while this check reported green. A directory a reader cannot
     # open is the same dead pointer as a file they cannot open.
-    cite = re.compile(r"(?:%s)[A-Za-z0-9._/-]*[A-Za-z0-9_-]"
+    # NOT INSIDE A LONGER PATH OR A URL. `https://example.com/docs/internal/foo.md` is a link to
+    # somebody else's site, not a pointer at this repo's unpublished tree, and matching it would
+    # teach a contributor that the check cries wolf.
+    cite = re.compile(r"(?<![A-Za-z0-9._/-])(?:%s)[A-Za-z0-9._/-]*[A-Za-z0-9_-]"
                       % "|".join(re.escape(t) for t in PRIVATE_TREES))
     dangling = []
     for rel in sorted(f for f in tracked if f):

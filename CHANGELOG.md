@@ -8,6 +8,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **Naming four elements as hiding places refused every report that mentions one.** The pattern was
+  `<tag[^>]*>.*` with `re.S`, which does not match a tag — it matches the rest of the document, so
+  one `<script>` in ordinary prose hid everything after it. The shape that would have shipped is
+  an *option* about web development: `Inject a <script> tag to isolate the widget.` buried every
+  option below it and stopped the run. This is the same unclosed-to-EOF mechanism that had turned
+  `<pre>` into a hiding place one commit earlier, reattached to a new tag list. The match is now
+  anchored where CommonMark actually begins an HTML block — a tag at the start of a line — and a
+  tag inside a paragraph is inline HTML, which every renderer this report reaches sanitises.
+
+- **The burial message named a hiding place that was not the one that fired.** It recited "a
+  collapsed `<details>` block or an HTML comment" whichever region had swallowed the answer, so a
+  report folded into a `<script>` was refused for a reason untrue of it. It now names the region
+  the buried options actually sit in.
+
+- **The gitignored-citation check matched inside URLs.** `https://example.com/docs/internal/foo.md`
+  is a link to someone else's site, not a pointer at this repo's unpublished tree.
+
+### Fixed
 - **An answer hidden inside `<script>`, `<style>`, `<template>` or an `<iframe>` passed both burial
   gates.** A browser paints none of those, and GitHub strips the first two outright, so an option
   whose only copy lives in one is as gone as one inside a comment — but `<details>` and `<!-- -->`
