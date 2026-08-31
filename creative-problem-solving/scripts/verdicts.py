@@ -20,6 +20,8 @@ covered.
 """
 
 import itertools
+import os
+import re
 import sys
 
 JOINING = {"duplicate", "implementation_variant"}
@@ -118,3 +120,126 @@ def relation_of(entry, where):
                  f"{sorted(JOINING | SEPARATING)}. Re-run the stage that wrote {where}; do not "
                  f"hand-edit it, since every count downstream is derived from it.")
     return v
+
+
+# --------------------------------------------------------------------------
+# The pool index, checked where it is consumed
+# --------------------------------------------------------------------------
+# `references/pipeline.md` binds THREE surfaces to one number: the filename (`pool-<k>.json`), the
+# JSON field (`"pool": k`) and every option id (`p<k>-001`). Nothing checked that they agree, and
+# `shard_candidates.py` reads two of the three against each other -- it keys pool sizes off the
+# FIELD and counts pair endpoints off the ID PREFIX. When those disagree the denominator for a pool
+# is absent, `sizes.get(k, 0) / total` is 0, and `if exp and ...` skips that pool in silence. The
+# per-pool concentration check then reports nothing for exactly the pool that needed it, and the
+# run exits 0.
+#
+# This is not hypothetical. One preserved dataset wrote the ITEM COUNT into the `pool` field of all
+# nine files, which collapses the size map to two keys and disables the check for the whole run.
+#
+# COMPARED AS DIGIT STRINGS, NEVER AS NUMBERS. A file named `pool-1.json` carrying `"pool": 1` with
+# ids `p01-001` satisfies every numeric comparison and still splits the two lookups: the size map
+# gets the key "1", the endpoint counter gets "01". Measured on a witness, the genuinely saturated
+# pool (47.6% of endpoints against an 11.1% expectation) was the one pool skipped, and the warning
+# that did fire named an innocent neighbour. A check that compares values rather than digits closes
+# the door it was written for and leaves this one open.
+POOL_FILE = re.compile(r"^pool-(\d+)\.json$")
+POOL_ITEM_ID = re.compile(r"^p(\d+)-\d{3}$")
+
+
+def pool_index_problem(path, pool):
+    """The first surface whose index disagrees with the filename, or None.
+
+    Returns a sentence for a caller to die on. Four of the five legs guard a demonstrated bypass
+    rather than an observed incident; leg 3 is the one with a historical instance.
+    """
+    name = os.path.basename(path)
+    m = POOL_FILE.match(name)
+    if not m:
+        return (f"{name} matches pool-*.json but is not pool-<k>.json with a bare index. The "
+                f"index in the filename is what binds a pool to its `pool` field and to its "
+                f"option ids, so a name this pattern cannot read is a pool nothing downstream can "
+                f"attribute to a lens. If this is not a generator's pool, move it out of the "
+                f"pool-*.json glob; if it is, rename it to its index.")
+    k = m.group(1)
+    if not k.strip("0"):
+        # Named apart from padding: "rename it pool-1.json" is right for pool-01 and
+        # catastrophic for pool-0, where pool-1.json already exists in every real run.
+        return (f"{name} has index 0. Pool indices start at 1 and run to N, one per lens. "
+                f"Renumber the pools contiguously from 1; do not rename this onto pool-1.json, "
+                f"which is another generator's pool.")
+    if k != k.lstrip("0"):
+        return (f"{name} has a zero-padded index. Canonical is pool-1.json upward: the size map "
+                f"is keyed on these digits exactly as written, so a padded name and an unpadded "
+                f"id prefix land in different buckets and the pool drops out of the "
+                f"concentration check without a word. Rename it pool-{k.lstrip('0')}.json.")
+
+    field = pool.get("pool")
+    # `type(x) is int` rather than isinstance: bool subclasses int, so True would pass an
+    # isinstance test and then str() to the key "True", which no id prefix can ever match.
+    if type(field) is not int:
+        if field is None:
+            return (f"{name}: no \"pool\" field. It is what binds this file's options to its size "
+                    f"when the per-pool concentration check divides one by the other; absent, the "
+                    f"pool is counted in neither half. Add \"pool\": {k}.")
+        return (f"{name}: the \"pool\" field is {field!r} ({type(field).__name__}), not an integer. "
+                f"The size map keys on whatever str() returns for it -- \"True\" for a boolean, "
+                f"\"1.0\" for a float -- and a key no option id matches drops the pool out of the "
+                f"concentration check in silence. The type is checked rather than the value "
+                f"because which off-contract types happen to survive str() is not a property worth "
+                f"depending on. Write \"pool\": {k}, as a bare number.")
+    if str(field) != k:
+        return (f"{name}: the \"pool\" field says {field}, the filename says {k}. These are the two "
+                f"halves of the same lookup, so while they disagree the per-pool concentration "
+                f"check divides one pool's pair endpoints by another pool's size, or by nothing at "
+                f"all. Set \"pool\" to {k}.")
+
+    seen = {}
+    for it in pool.get("items") or []:
+        # Non-dict items are not this check's business and must not become its crash. HEAD
+        # tolerated a stray scalar here, and `shard_candidates.py` skips them the same way when
+        # it builds `real`; an item with no shape has no index to disagree with. Whether a pool
+        # may hold one at all is a different question, for a different gate.
+        if not isinstance(it, dict):
+            continue
+        i = it.get("id")
+        m2 = POOL_ITEM_ID.match(str(i))
+        if not m2:
+            return (f"{name}: id {i!r} is not p<pool>-<three digits>. Ids are the only handle every "
+                    f"later stage has on an option, and the digits before the dash are how a pair "
+                    f"endpoint is attributed back to a pool.")
+        if m2.group(1) != k:
+            return (f"{name}: id {i!r} carries pool index {m2.group(1)}, but this is pool {k}. Pair "
+                    f"endpoints are attributed by that prefix and pool sizes by the filename, so a "
+                    f"mismatched prefix moves a pool's options into another pool's denominator: a "
+                    f"real over-concentration is reported against the wrong pool, or not at all.")
+        if i in seen:
+            return (f"{name}: id {i!r} appears twice. Ids are unique across all pools by contract, "
+                    f"and the per-pool concentration check divides that pool's pair endpoints by "
+                    f"its item COUNT while every other reader treats ids as a set -- so a repeated "
+                    f"id inflates the pool's expected share and hides a real over-concentration in "
+                    f"exactly the pool holding it, while the warning that does fire names an "
+                    f"innocent neighbour. Write each option once.")
+        seen[i] = True
+    return None
+
+
+def pool_index_set_problem(paths):
+    """Pool indices across a run must be contiguous 1..N, or None.
+
+    A gap means a generator's pool is missing -- the run bought fewer starting points than it paid
+    for -- and every per-pool share downstream is computed against a universe that is short by one
+    pool without anything saying so.
+    """
+    ks = []
+    for p in paths:
+        m = POOL_FILE.match(os.path.basename(p))
+        if m:
+            ks.append(int(m.group(1)))
+    if not ks:
+        return None
+    want = list(range(1, len(ks) + 1))
+    if sorted(ks) != want:
+        return (f"pool indices are {sorted(ks)}, not a contiguous {want}. A missing index is a "
+                f"generator whose pool never landed; every per-pool share below is then measured "
+                f"against a universe short by that pool, and nothing else in the run says so.")
+    return None

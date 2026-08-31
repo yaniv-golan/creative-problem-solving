@@ -1119,6 +1119,18 @@ lenses run 17-19 per run. Against: at K=30 the quota already forces the tail, so
 self-reported probability may not discriminate, and a per-option probability is a numeric
 novelty signal sitting in front of a ranker forbidden to use one.
 
+**Half of that Against is an assumption and should not be spent as a measurement.** Whether the
+quota "already forces the tail" — whether late pool positions carry more, less or the same
+marginal value as early ones — is unresolved in both directions. The obvious test, asking whether
+families reachable only late in a pool survive ranking, is confounded by family size: a family of
+*m* members has an expected first appearance near K/(m+1) whether or not position carries any
+meaning at all, so "reachable only late" and "small" are the same statement. Measured against a
+null that holds family sizes and pool membership fixed and reshuffles only slot assignment, the
+observed effect is not distinguishable from chance — and the recorded runs are too few to read
+that as equivalence rather than as absence of evidence. So the case against restoring VS rests on
+one measured claim, that the ranker may not use a numeric novelty signal, and one assumed one.
+Pre-register on the measured half.
+
 ## Known weaknesses and open questions
 
 - **~~The diversity kernel is lexical.~~ Resolved 2026-08-18 by retirement, not upgrade** —

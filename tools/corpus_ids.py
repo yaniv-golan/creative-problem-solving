@@ -45,7 +45,7 @@ MERGE = os.path.join(SCRIPTS, "merge_relations.py")
 # A pool the control pairs are real against, so check_ids_are_real is exercised rather than
 # skipped. Its absence is a separate shape below: with no pool on disk that check only WARNs, and
 # the warning is the difference between an int id dying here and an int id reaching step 9.
-POOL = {"pool": "1", "items": [{"id": f"p1-{i:03d}", "text": f"opt {i}"} for i in range(1, 13)]}
+POOL = {"pool": 1, "items": [{"id": f"p1-{i:03d}", "text": f"opt {i}"} for i in range(1, 13)]}
 CTRL = [{"a": f"p1-{i:03d}", "b": f"p1-{i + 1:03d}"} for i in range(1, 12)]
 
 GOOD = [{"a": "p1-001", "b": "p1-002"}, {"a": "p1-003", "b": "p1-004"}]

@@ -20,7 +20,7 @@ import json, sys, os, glob
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from verdicts import is_id
+from verdicts import is_id, pool_index_problem, pool_index_set_problem, POOL_FILE
 from robust_json import load, load_obj
 from progress import line as progress_line
 
@@ -40,13 +40,30 @@ def read_pools(wd):
     passed load(), which strips the fence, then died on the raw read with a JSONDecodeError naming
     a line number in a warning helper. Wrapper noise is what robust_json exists to absorb, so
     nothing reads a model-written file around it.
+
+    Returns (k, pool) pairs, k being the index parsed from the FILENAME as a string. Callers key on
+    that rather than on the `pool` field: the two are now checked to agree, but a consumer reading
+    the field is correct only for as long as that check holds, while one reading the filename is
+    correct on its own. Never `enumerate` position -- both scripts sort lexicographically, so at
+    N >= 10 `pool-10.json` sorts second.
     """
+    paths = sorted(glob.glob(os.path.join(wd, "pool-*.json")))
     pools = []
-    for f in sorted(glob.glob(os.path.join(wd, "pool-*.json"))):
+    for f in paths:
         pool = load_obj(f)
         if not isinstance(pool.get("items"), list):
             load(f, "items")  # does not return: dies naming the stage that wrote the file
-        pools.append(pool)
+        # Checked HERE, where the value is first consumed, rather than only at the last gate.
+        # verify_pipeline.py keeps the same check as a backstop, but it runs at step 9 -- some
+        # forty minutes after this script has already divided one pool's endpoints by another
+        # pool's size and printed a clean line about it.
+        problem = pool_index_problem(f, pool)
+        if problem:
+            sys.exit(f"FAIL: {problem}")
+        pools.append((POOL_FILE.match(os.path.basename(f)).group(1), pool))
+    problem = pool_index_set_problem(paths)
+    if problem:
+        sys.exit(f"FAIL: {problem}")
     return pools
 
 
@@ -73,7 +90,7 @@ def check_ids_are_real(wd, uniq):
               "against the options that exist. A fabricated id will not surface until the last "
               "gate of the run.")
         return
-    real = {it.get("id") for p in pools for it in p["items"] if isinstance(it, dict)}
+    real = {it.get("id") for _, p in pools for it in p["items"] if isinstance(it, dict)}
     unknown = sorted({x for pair in uniq for x in (pair["a"], pair["b"]) if x not in real})
     if not unknown:
         print(f"ids ok: {len(uniq)} pair(s) reference only ids that exist in {len(pools)} pool(s)")
@@ -110,9 +127,21 @@ def concentration_warnings(wd, uniq):
               f"tends to become the hub of an oversized family; check it is not a generic "
               f"restatement of the problem.")
 
+    # Keyed on the index parsed from the FILENAME, not on the `pool` field and not on enumerate
+    # position. The field is now checked to equal it, so today the three agree -- but keying on the
+    # filename means this loop is right on its own rather than right because a gate elsewhere holds,
+    # and the old `or n + 1` fallback is gone with it (`0` is falsy, so it used to become `n + 1`
+    # and look correct).
     sizes = {}
-    for n, pool in enumerate(read_pools(wd)):
-        sizes[str(pool.get("pool") or n + 1)] = len(pool["items"])
+    for k, pool in read_pools(wd):
+        # DISTINCT ids, not len(items). `check_ids_are_real` above builds `real` as a set and the
+        # endpoint counter below counts id occurrences, so a pool whose items repeat an id used to
+        # get a denominator larger than the universe every other reader sees -- inflating its
+        # expected share, deflating its ratio, and hiding a real over-concentration in exactly the
+        # pool holding the duplicates while the warning named an innocent neighbour. A uniqueness
+        # leg in pool_index_problem now refuses that shape outright; this counts the same thing the
+        # numerator counts so the arithmetic is right on its own either way.
+        sizes[k] = len({it.get("id") for it in pool["items"] if isinstance(it, dict)})
     if not sizes:
         # Said out loud rather than skipped in silence: an absent input that quietly disables a
         # check is indistinguishable from a check that passed.

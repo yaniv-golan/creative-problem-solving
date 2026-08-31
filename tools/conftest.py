@@ -17,7 +17,8 @@ from pathlib import Path
 import pytest
 
 HERE = Path(__file__).resolve().parent
-SUITES = ["test_pipeline_scripts.py", "test_hooks.py", "test_diversity.py"]
+SUITES = ["test_pipeline_scripts.py", "test_hooks.py", "test_diversity.py",
+          "test_extract_attribution.py"]
 
 # check-repo.py is a suite too -- it asserts several dozen things about the tree and exits
 # non-zero -- but its

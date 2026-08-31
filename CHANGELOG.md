@@ -8,6 +8,43 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **A pool that disagreed with its own filename silently switched off the concentration check.**
+  `references/pipeline.md` binds three surfaces to one number — the file (`pool-<k>.json`), the
+  field (`"pool": k`) and every option id (`p<k>-001`) — and nothing compared them.
+  `shard_candidates.py` reads two of the three against each other: it keys pool sizes off the
+  field and counts proposed pair endpoints off the id prefix. When those disagree the denominator
+  for a pool is missing, `sizes.get(k, 0) / total` is `0`, and `if exp and …` skips that pool
+  without a word, so the check reports nothing for exactly the pool that needed it and the run
+  exits 0. One recorded run wrote the item count into the field of all nine pools, which collapsed
+  the size map to two keys and disabled the check for the whole run.
+
+  The index is now checked where it is first consumed, with the last gate keeping it as a
+  backstop, and **compared as digit strings rather than as numbers**. That distinction is the
+  whole check: a file named `pool-1.json` carrying `"pool": 1` with ids `p01-001` satisfies every
+  numeric comparison and still splits the two lookups — the sizes get the key `"1"`, the endpoints
+  get `"01"`. On a witness built that way the genuinely saturated pool was the one pool skipped,
+  and the warning that did fire named an innocent neighbour. The field is also type-checked, since
+  `true` and `1.0` both compare equal to `1` and then produce keys no id can match.
+
+- **The pool template read two ways, and only the orchestrator ever read it.** Step 2 defines `N`
+  as the number of lenses; the example beneath it then showed `"pool": N` and ids `pN-001`, which
+  taken literally makes every pool in a nine-lens run `"pool": 9`. Generators never see it — they
+  are dispatched with a composed prompt, and the sole reader is the orchestrator, which has always
+  interpolated the per-pool index correctly. So no recorded run is affected and nothing was
+  broken; what is fixed is that a check on the index cannot rest on a contract with two readings.
+  It now uses `k`, the letter the line above already binds.
+
+### Changed
+- **The generator quota is described as what it is: a target with a licensed early stop.** It had
+  been glossed as *"a floor to push past the obvious, not a target"*, which contradicts the
+  instruction it describes — a floor a generator may stop below is not a floor — and the same
+  sentence gave a realised range that later runs left. Nothing forbids overshoot, nothing requires
+  reaching the number, and realised pools across recorded runs run roughly 15 to 35. **No
+  pool-size gate is added in either direction**, because none is derivable from the instruction:
+  stopping short is licensed and overshoot is not prohibited. The check added above constrains the
+  pool *index*, never its size. Whether a different quota would be better is an open question that
+  the runs recorded so far cannot answer.
+
 - **The mask added to stop the burial gate refusing documented syntax became a way to hide the
   answer from it.** HTML `<pre>` and `<code>` were masked on the claim that a renderer displays
   `<pre><!-- like this</pre>`. It does not: `<pre>` is ordinary element content, so a comment

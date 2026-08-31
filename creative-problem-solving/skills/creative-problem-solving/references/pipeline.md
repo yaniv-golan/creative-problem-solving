@@ -466,8 +466,8 @@ assumed: a negation round against that structure returned one search-verified op
    (k = 1..N, its own index in the batch) and returns only a one-line receipt — path and count.
 
    ```json
-   {"lens": "<assigned lens>", "pool": N,
-    "items": [{"id": "pN-001", "text": "one option, one sentence"}, ...]}
+   {"lens": "<assigned lens>", "pool": k,
+    "items": [{"id": "pk-001", "text": "one option, one sentence"}, ...]}
    ```
    Ids are `p<pool>-<three digits>`, unique across all N pools.
 

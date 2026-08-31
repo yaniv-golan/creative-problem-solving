@@ -26,6 +26,7 @@ from progress import announced, BOUNDARIES
 # One definition of the share rule; merge_families.py bounds its merges by the same import.
 from verdicts import JOINING, SEPARATING, SHARE_MAX as SEP_SHARE_MAX, share_breach  # noqa: F401
 from verdicts import relation_of
+from verdicts import pool_index_problem, pool_index_set_problem
 
 # The floor, against 48 planted by shard_candidates.py. The two are deliberately not equal:
 # merge_relations drops a probe pair when both copies land with the same adjudicator, and a floor
@@ -58,9 +59,19 @@ def main(wd):
     pools = sorted(glob.glob(os.path.join(wd, "pool-*.json")))
     if not pools: die(f"no pool-*.json in {wd}")
 
+    # Backstop. shard_candidates.py refuses the same shapes at step 4, where the value is first
+    # consumed; this is the gate that catches a run whose sharding was done by hand or by an older
+    # copy of that script.
+    #
+    # PER-FILE FIRST, THEN THE SET -- the same order shard_candidates.py uses. Run the other way
+    # round, a directory of pool-0..8 was diagnosed here as "indices are not contiguous, a
+    # generator's pool never landed" and there as "pool-0.json has index 0", so the two gates
+    # named different faults for one input and only one of them was right.
     ids, text, lenses = {}, {}, {}
     for p in pools:
         d = load_obj(p)
+        problem = pool_index_problem(p, d)
+        if problem: die(problem)
         # One lens per pool, and no lens twice. Two pools carrying the same lens means a
         # generator was dispatched with a lens another already had -- the run paid for N passes
         # and bought fewer than N starting points, which is the one thing the fan-out exists to
@@ -74,6 +85,13 @@ def main(wd):
                 f"than pools. Re-dispatch the duplicate with a lens from references/lenses.md")
         lenses[lens.lower()] = os.path.basename(p)
         for it in d.get("items") or []:
+            # Named here rather than tripped over. pool_index_problem skips a non-object item --
+            # it has no index to disagree with -- and nothing else spoke for it, so the run
+            # reached .get() on a string and died with a bare AttributeError naming no stage.
+            if not isinstance(it, dict):
+                die(f"{os.path.basename(p)}: an item is {type(it).__name__}, not an object "
+                    f"({str(it)[:40]!r}). Every option is {{\"id\": ..., \"text\": ...}}; a bare "
+                    f"value has no id for any later stage to refer to it by.")
             i, t = it.get("id"), (it.get("text") or "").strip()
             if not i or not t: die(f"{os.path.basename(p)}: item missing id or text")
             if not re.fullmatch(r"p\d+-\d{3}", str(i)):
@@ -82,6 +100,8 @@ def main(wd):
                     f"and fails somewhere with less context")
             if i in ids: die(f"duplicate id {i} in {os.path.basename(p)} and {ids[i]}")
             ids[i], text[i] = os.path.basename(p), t
+    problem = pool_index_set_problem(pools)
+    if problem: die(problem)
     if not ids: die("pools contain no items")
 
     # The run must have recorded what the user actually said, separately from what Phase 0 added

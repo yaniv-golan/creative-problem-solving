@@ -4480,8 +4480,341 @@ def t_grouping_line_reports_merges_not_only_splits():
         shutil.rmtree(d, True)
 
 
-def main():
-    for t in (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
+
+
+def t_pool_index_must_match_its_file():
+    """The `pool` field, the filename and every id prefix name one number, or the run stops.
+
+    Fixture drawn from the real defect: one preserved dataset wrote the ITEM COUNT into the `pool`
+    field of all nine files. `shard_candidates.py` keys pool sizes off that field and pair endpoints
+    off the id prefix, so the size map collapsed to two keys, every lookup for "1".."9" returned 0,
+    and `if exp and ...` skipped every pool -- the per-pool concentration check was disabled for the
+    whole run and the run exited 0. Asserted on the MESSAGE, not the exit code: that dataset fails
+    for other reasons too, so rc alone cannot tell this check from its absence.
+    """
+    print("\npool index agrees with its file")
+    d = tempfile.mkdtemp()
+    try:
+        make_pools(d, 4, 8)
+        json.dump({"pairs": [{"a": f"p1-{i:03d}", "b": f"p2-{i:03d}"} for i in range(1, 8)]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        rc, out = run("shard_candidates.py", d, "--probe", 4)
+        check("a correct run is untouched by the check", rc == 0, out.strip()[:140])
+
+        # The real shape: pool-3.json claims to be pool 8 (its item count).
+        f = os.path.join(d, "pool-3.json")
+        pool = json.load(open(f)); pool["pool"] = len(pool["items"])
+        json.dump(pool, open(f, "w"))
+        rc, out = run("shard_candidates.py", d, "--probe", 4)
+        check("a field that disagrees with the filename fails", rc != 0, out.strip()[:140])
+        check("...and the message names both halves",
+              "pool-3.json" in out and "field says 8" in out and "filename says 3" in out,
+              out.strip()[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_wrong_id_prefix_is_caught():
+    """A pool whose ids carry another pool's index moves its options into another denominator.
+
+    This passed sharding AND full verification before the check existed: ids match the generic
+    shape p<digits>-<three digits>, they are unique, every count adds up, and the concentration
+    figure is computed against the wrong pool. Nothing downstream can see it.
+    """
+    print("\npool ids carry their own pool's index")
+    d = tempfile.mkdtemp()
+    try:
+        make_pools(d, 4, 8)
+        f = os.path.join(d, "pool-2.json")
+        pool = json.load(open(f))
+        for it in pool["items"]:
+            it["id"] = it["id"].replace("p2-", "p1-", 1)
+        json.dump(pool, open(f, "w"))
+        json.dump({"pairs": [{"a": f"p3-{i:03d}", "b": f"p4-{i:03d}"} for i in range(1, 8)]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        rc, out = run("shard_candidates.py", d, "--probe", 4)
+        check("a foreign id prefix fails", rc != 0, out.strip()[:140])
+        check("...and the message names the file and the prefix",
+              "pool-2.json" in out and "carries pool index 1" in out, out.strip()[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_pool_field_type_is_int():
+    """`true`, `1.0`, `0` and `"1"` in the `pool` field each fail by name.
+
+    The size map is built with str() on this value. `true` becomes the key "True" and `1.0` becomes
+    "1.0", neither of which any id prefix matches, so the pool leaves the concentration check in
+    silence -- through a field that compares EQUAL to the right index and would pass a `== k` test.
+    `0` is the third door: it is falsy, so the old `or n + 1` fallback silently substituted the
+    enumerate position and the file looked correct.
+    """
+    print("\nthe pool field is an integer")
+    for bad, label in ((True, "true"), (1.0, "1.0"), (0, "0"), ("1", "a string")):
+        d = tempfile.mkdtemp()
+        try:
+            make_pools(d, 4, 8)
+            f = os.path.join(d, "pool-1.json")
+            pool = json.load(open(f)); pool["pool"] = bad
+            json.dump(pool, open(f, "w"))
+            json.dump({"pairs": [{"a": f"p3-{i:03d}", "b": f"p4-{i:03d}"} for i in range(1, 8)]},
+                      open(os.path.join(d, "candidates.json"), "w"))
+            rc, out = run("shard_candidates.py", d, "--probe", 4)
+            check(f"a pool field of {label} fails", rc != 0, out.strip()[:140])
+            check(f"...and the message names pool-1.json for {label}",
+                  "pool-1.json" in out, out.strip()[:200])
+        finally:
+            shutil.rmtree(d, True)
+
+
+def t_zero_padded_index_is_caught():
+    """pool-1.json + `"pool": 1` + ids p01-001 passes every NUMERIC comparison and still splits.
+
+    The size map is keyed on the digits as written, so it gets "1" while the endpoint counter gets
+    "01". `sizes.get("01", 0)` is 0, `exp` is 0, and the pool is skipped -- measured on this exact
+    witness, the saturated pool (47.6% of endpoints against 11.1% expected) was the one pool never
+    checked, and the warning that DID fire named its innocent neighbour, with rc=0.
+
+    The negative control matters as much as the positive: the same fixture with unpadded ids must
+    pass AND must still report the concentration, or the gate would have "fixed" the bypass by
+    making the underlying warning unreachable.
+    """
+    print("\na zero-padded index is not a different spelling of the same pool")
+    for pad, must_fail in (("01", True), ("1", False)):
+        d = tempfile.mkdtemp()
+        try:
+            make_pools(d, 4, 8)
+            f = os.path.join(d, "pool-1.json")
+            pool = json.load(open(f))
+            for it in pool["items"]:
+                it["id"] = f"p{pad}-" + it["id"].split("-", 1)[1]
+            json.dump(pool, open(f, "w"))
+            # Pool 1 saturated by INTRA-pool pairs: a cross-pool pair gives pool 1 only one of
+            # its two endpoints, which caps its share at 0.5 -- exactly 2.0x expected, and the
+            # threshold is a strict `>`. The first version of this control was silent for that
+            # reason and would have passed against a gate that made the warning unreachable.
+            p1 = [f"p{pad}-{i:03d}" for i in range(1, 9)]
+            pairs = [{"a": a, "b": b} for n, a in enumerate(p1) for b in p1[n + 1:]]
+            pairs += [{"a": f"p2-{i:03d}", "b": f"p3-{i:03d}"} for i in range(1, 9)]
+            json.dump({"pairs": pairs}, open(os.path.join(d, "candidates.json"), "w"))
+            rc, out = run("shard_candidates.py", d, "--probe", 4)
+            if must_fail:
+                check("a zero-padded id prefix fails", rc != 0, out.strip()[:140])
+                check("...and the message names the prefix, not a neighbour",
+                      "pool-1.json" in out and "carries pool index 01" in out, out.strip()[:200])
+            else:
+                check("the same fixture unpadded is accepted", rc == 0, out.strip()[:140])
+                check("...and the real concentration is reported against pool 1",
+                      "pool 1 holds" in out, out.strip()[:200])
+        finally:
+            shutil.rmtree(d, True)
+
+
+def t_every_test_is_registered():
+    """A test that is defined but never called is a check nobody is running.
+
+    Asserted in BOTH directions against the module-level TESTS tuple. The tuple was an anonymous
+    literal inside main()'s `for` statement, so there was no object to compare against and this
+    could not be written; hoisting it to module scope is what makes the check possible.
+
+    Two limits, recorded rather than glossed: this protects the suite only while it is itself
+    registered, and it does not port -- tools/test_hooks.py calls its t_* functions directly with
+    no tuple at all.
+    """
+    print("\nevery defined test is registered")
+    defined = {n for n, v in globals().items() if n.startswith("t_") and callable(v)}
+    registered = {t.__name__ for t in TESTS}
+    check("no test is defined but unregistered", defined <= registered,
+          f"unregistered: {sorted(defined - registered)}")
+    check("no test is registered but undefined", registered <= defined,
+          f"undefined: {sorted(registered - defined)}")
+
+
+def t_duplicate_id_inside_a_pool_is_caught():
+    """The sixth door: five clean legs, a real over-concentration, and the wrong pool named.
+
+    `sizes` divided a pool's pair endpoints by `len(pool["items"])` while every other reader
+    treats ids as a SET. Repeat one pool's items and its denominator inflates, its ratio deflates
+    below the threshold, and the pool that is genuinely saturated is skipped -- while the warning
+    that does fire names its innocent partner, at rc=0. Measured on the witness below: pool 1 held
+    an endpoint in all 30 pairs and the output warned about pool 2 at 8.0x.
+
+    Fixed twice on purpose, so neither fix is load-bearing alone: a uniqueness leg refuses the
+    shape, and the size map counts distinct ids so the arithmetic is right even without the leg.
+    """
+    print("\na repeated id cannot inflate its own pool's denominator")
+    d = tempfile.mkdtemp()
+    try:
+        for k in range(1, 10):
+            items = [{"id": f"p{k}-{i:03d}", "text": "x"} for i in range(1, 31)]
+            if k == 1:
+                items = items * 8          # 240 entries, 30 distinct ids
+            json.dump({"lens": f"lens-{k}", "pool": k, "items": items},
+                      open(os.path.join(d, f"pool-{k}.json"), "w"))
+        json.dump({"pairs": [{"a": f"p1-{i:03d}", "b": f"p2-{i:03d}"} for i in range(1, 31)]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        rc, out = run("shard_candidates.py", d, "--probe", 8)
+        check("a repeated id fails", rc != 0, out.strip()[:140])
+        check("...and the message names the file and the id",
+              "pool-1.json" in out and "appears twice" in out, out.strip()[:200])
+        check("...and does not name an innocent neighbouring pool",
+              "pool 2 holds" not in out, out.strip()[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_pool_filename_and_contiguity_are_checked():
+    """Legs 1 and 5, which had no test at all: an unreadable filename and a non-contiguous set.
+
+    Both scripts must give the SAME diagnosis for one input. They did not: `verify_pipeline.py`
+    ran the set check before the per-file checks, so `pool-0.json .. pool-8.json` was "a
+    generator's pool never landed" there and "pool-0.json has index 0" in the sharder. Nothing was
+    missing -- there was an extra index -- and only one of the two was right.
+    """
+    print("\npool filename and index contiguity")
+
+    # Leg 1: index 0. The remediation must NOT say "rename it pool-1.json", which in a real run
+    # is another generator's pool.
+    d = tempfile.mkdtemp()
+    try:
+        for k in range(0, 9):
+            json.dump({"lens": f"lens-{k}", "pool": k,
+                       "items": [{"id": f"p{k}-{i:03d}", "text": "x"} for i in range(1, 9)]},
+                      open(os.path.join(d, f"pool-{k}.json"), "w"))
+        json.dump({"pairs": [{"a": f"p1-{i:03d}", "b": f"p2-{i:03d}"} for i in range(1, 9)]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        rc, out = run("shard_candidates.py", d, "--probe", 4)
+        check("a pool indexed 0 fails", rc != 0, out.strip()[:140])
+        check("...and is not told to rename itself onto pool-1.json",
+              "has index 0" in out and "rename this onto pool-1.json" in out, out.strip()[:220])
+        rc2, out2 = run("verify_pipeline.py", d)
+        check("...and verify_pipeline gives the SAME diagnosis, not a different one",
+              "has index 0" in out2, out2.strip()[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+    # Leg 5: a gap in the middle. Every per-file leg passes; only the set is wrong.
+    d = tempfile.mkdtemp()
+    try:
+        for k in (1, 2, 4):
+            json.dump({"lens": f"lens-{k}", "pool": k,
+                       "items": [{"id": f"p{k}-{i:03d}", "text": "x"} for i in range(1, 9)]},
+                      open(os.path.join(d, f"pool-{k}.json"), "w"))
+        json.dump({"pairs": [{"a": f"p1-{i:03d}", "b": f"p2-{i:03d}"} for i in range(1, 9)]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        rc, out = run("shard_candidates.py", d, "--probe", 4)
+        check("a gap in the pool indices fails", rc != 0, out.strip()[:140])
+        check("...and the message names the set it found",
+              "[1, 2, 4]" in out and "contiguous" in out, out.strip()[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_verify_pipeline_backstops_the_pool_index():
+    """The backstop had no test: all four earlier cases invoke only shard_candidates.py.
+
+    Deleting both call sites in verify_pipeline.py left the whole suite green, so the claim that
+    the last gate catches a run sharded by hand or by an older script was resting on one
+    hand-measurement.
+    """
+    print("\nverify_pipeline backstops the pool index")
+    d = tempfile.mkdtemp()
+    try:
+        make_pools(d, 4, 8)
+        f = os.path.join(d, "pool-3.json")
+        pool = json.load(open(f)); pool["pool"] = len(pool["items"])
+        json.dump(pool, open(f, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("verify_pipeline refuses a pool index that disagrees with its file", rc != 0,
+              out.strip()[:140])
+        check("...naming the file and both halves",
+              "pool-3.json" in out and "field says 8" in out and "filename says 3" in out,
+              out.strip()[:220])
+
+        # And the id-prefix leg, through the same gate.
+        json.dump(json.load(open(f)) | {"pool": 3}, open(f, "w"))
+        pool = json.load(open(f))
+        for it in pool["items"]:
+            it["id"] = it["id"].replace("p3-", "p1-", 1)
+        json.dump(pool, open(f, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("verify_pipeline refuses a foreign id prefix", rc != 0, out.strip()[:140])
+        check("...naming the prefix it found",
+              "carries pool index 1" in out, out.strip()[:220])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_denominator_counts_distinct_ids_not_entries():
+    """The second half of the duplicate-id fix, which had no assertion of its own.
+
+    `sizes` counts DISTINCT ids; `check_ids_are_real` builds `real` as a set and the endpoint
+    counter counts id occurrences, so any entry that is not a usable option must not enlarge the
+    denominator. The uniqueness leg refuses repeated ids before the arithmetic is reached, so the
+    shape that DOES reach it is a pool padded with items that are not objects: the index legs skip
+    those, and only the denominator decides whether the pool's share is computed against 30 real
+    options or 230 entries.
+
+    Measured on this fixture: with distinct ids, pools 1 and 2 are both reported at 4.5x, which is
+    right -- each holds half the endpoints against an 11% expectation. Counting entries instead,
+    pool 1 vanishes from the report entirely (its padding inflates its own expected share) and
+    pool 2 is published at a wrong 7.8x. The saturated pool hidden, the neighbour misreported: the
+    same failure the index legs exist to prevent, arriving through the value rather than the key.
+    """
+    print("\nthe concentration denominator counts options, not entries")
+    d = tempfile.mkdtemp()
+    try:
+        for k in range(1, 10):
+            items = [{"id": f"p{k}-{i:03d}", "text": "x"} for i in range(1, 31)]
+            if k == 1:
+                items = items + ["not an option"] * 200
+            json.dump({"lens": f"lens-{k}", "pool": k, "items": items},
+                      open(os.path.join(d, f"pool-{k}.json"), "w"))
+        json.dump({"pairs": [{"a": f"p1-{i:03d}", "b": f"p2-{i:03d}"} for i in range(1, 31)]},
+                  open(os.path.join(d, "candidates.json"), "w"))
+        rc, out = run("shard_candidates.py", d, "--probe", 8)
+        check("a pool padded with non-options is not refused by the index legs", rc == 0,
+              out.strip()[:140])
+        check("...and the saturated pool is still reported", "pool 1 holds" in out,
+              out.strip()[:200])
+        check("...at a ratio computed against its real options, not its entry count",
+              "pool 1 holds 4.5x" in out, out.strip()[:200])
+        check("...and its neighbour is reported at the same true ratio, not an inflated one",
+              "pool 2 holds 4.5x" in out, out.strip()[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_an_item_that_is_not_an_object_fails_by_name():
+    """A generator that writes plain strings instead of {id,text} objects.
+
+    The index check deliberately steps over these -- an item with no shape has no index to
+    disagree with -- but nothing else named them either, so the run reached `it.get("id")` and
+    died on a bare AttributeError with no stage in it, which is the exact failure `verdicts.py`
+    exists to replace. HEAD did the same. Named now, at the gate that already validates item
+    shape.
+    """
+    print("\nan item that is not an object is named, not tripped over")
+    d = tempfile.mkdtemp()
+    try:
+        make_pools(d, 4, 8)
+        f = os.path.join(d, "pool-2.json")
+        pool = json.load(open(f))
+        pool["items"] = ["idea one", "idea two", "idea three"]
+        json.dump(pool, open(f, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("a non-object item fails", rc != 0, out.strip()[:140])
+        check("...by name, with no traceback", "Traceback" not in out, out.strip()[:200])
+        check("...naming the file and what it found",
+              "pool-2.json" in out and "not an object" in out, out.strip()[:220])
+    finally:
+        shutil.rmtree(d, True)
+
+
+# Hoisted from an anonymous literal inside main()'s `for` statement so that
+# t_every_test_is_registered has an object to compare against. A tuple that exists only as a
+# loop header cannot be introspected, so "is every defined test actually run" was unaskable.
+TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
               t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
           t_wp4_gates, t_rev6_report, t_relation_gate, t_reply_gate,
               t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
@@ -4509,7 +4842,19 @@ def main():
               t_superseded_verdicts_go_with_their_shards,
               t_label_is_one_line, t_every_phase_boundary_speaks,
               t_the_failed_integrity_check_still_speaks,
-              t_grouping_line_reports_merges_not_only_splits):
+              t_grouping_line_reports_merges_not_only_splits,
+    t_pool_index_must_match_its_file, t_wrong_id_prefix_is_caught,
+    t_pool_field_type_is_int, t_zero_padded_index_is_caught,
+    t_duplicate_id_inside_a_pool_is_caught, t_pool_filename_and_contiguity_are_checked,
+    t_verify_pipeline_backstops_the_pool_index,
+    t_denominator_counts_distinct_ids_not_entries,
+    t_an_item_that_is_not_an_object_fails_by_name,
+    t_every_test_is_registered,
+)
+
+
+def main():
+    for t in TESTS:
         t()
 
     print()
