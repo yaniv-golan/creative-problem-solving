@@ -110,14 +110,29 @@ def _sharded(wd):
     # no number, and this script's whole claim is that every figure in it was read off a file.
     shards = sorted(glob.glob(os.path.join(wd, "cand-*.json")))
     if not shards: return None
-    pairs = sum(len(load(f, "pairs")) for f in shards)
+    # DISTINCT PAIRS, NOT JUDGEMENTS. This summed len(pairs) across shards, and the probe plants 48
+    # pairs into two shards each so two adjudicators judge them blind -- so every one of those was
+    # counted twice. Measured on both preserved runs: the line said 1,342 and 1,651 where the
+    # candidate sets hold 1,294 and 1,603, inflated by exactly 48 both times. SKILL.md tells the
+    # orchestrator to repeat every SAY: line verbatim, so this is a number the reader is handed.
+    judgements = sum(len(load(f, "pairs")) for f in shards)
+    seen = set()
+    for f in shards:
+        for p in load(f, "pairs"):
+            seen.add(frozenset((p.get("a"), p.get("b"))))
+    pairs = len(seen)
+    # Say what the gap is rather than quietly dropping it: the double-judged pairs are the run's
+    # own reliability probe, and naming them is more useful than either number alone.
+    planted = (f" {judgements - pairs} of them are judged twice, by two adjudicators who cannot see "
+               f"each other, so the run can report how much its grouping is worth — "
+               f"{judgements:,} judgements in all." if judgements > pairs else "")
     # Nothing here reads families.json, which is what makes a stale one from an earlier run
     # unable to turn the sharding line into a grouping line. That used to need a guard; now the
     # stage simply does not look at the file it would have misread.
     return (f"{SAY}{pairs:,} candidate pairs, split into "
-            f"{_plural(len(shards), 'batch', 'batches')}. Next, adjudicators judge every one of "
-            f"them. This is the longest wait in the run — several minutes, with nothing printed "
-            f"until every batch is back.")
+            f"{_plural(len(shards), 'batch', 'batches')}.{planted} Next, adjudicators judge every "
+            f"one of them. This is the longest wait in the run — several minutes, with nothing "
+            f"printed until every batch is back.")
 
 
 def _ranked(wd):

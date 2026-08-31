@@ -945,6 +945,97 @@ def t_adjudicator_cannot_invent_a_pair():
     shutil.rmtree(d, True)
 
 
+def t_json_repairs_compose():
+    """Each documented repair worked alone; none of them worked together.
+
+    `_unwrap` strips a BOM, a code fence, and prose before the first brace. The fence pattern was
+    anchored to the whole file, so it only fired when the fence WAS the file -- a preamble before
+    it, or a sign-off after it, defeated the strip, and the brace-cut that ran next then left the
+    closing fence in place. So the three shapes a model actually emits (prose, a fence, and both)
+    were one supported and two refused as "Extra data", though the module's job is exactly this.
+    """
+    print("\nthe JSON repairs compose, and corruption still fails loudly")
+    import importlib.machinery as _m
+    rj = _m.SourceFileLoader("rj_x", str(SCRIPTS / "robust_json.py")).load_module()
+    d = tempfile.mkdtemp(); f = os.path.join(d, "x.json")
+
+    for label, text in (("a bare object", '{"a":1}'),
+                        ("a fence", '```json\n{"a":1}\n```'),
+                        ("prose then an object", 'Here you go:\n{"a":1}'),
+                        ("prose then a fence", 'Here you go:\n```json\n{"a":1}\n```'),
+                        ("a fence then a sign-off", '```json\n{"a":1}\n```\nHope that helps.'),
+                        ("prose, fence and sign-off", 'Sure:\n```json\n{"a":1}\n```\nDone.')):
+        open(f, "w").write(text)
+        ok = True
+        try: rj.load_obj(f)
+        except SystemExit: ok = False
+        check(f"...{label} parses", ok, f"refused: {text[:40]!r}")
+
+    # And the repairs must not have become a parser that accepts anything.
+    for label, text in (("a truncated object", '{"a":1'), ("an empty file", ""),
+                        ("prose with no JSON at all", "I could not do it."),
+                        ("NaN", '{"a":NaN}'), ("duplicate keys", '{"a":1,"a":2}')):
+        open(f, "w").write(text)
+        refused = False
+        try: rj.load_obj(f)
+        except SystemExit: refused = True
+        check(f"...{label} is still refused", refused, f"accepted: {text[:40]!r}")
+    shutil.rmtree(d, True)
+
+
+def t_dropped_pairs_are_named_by_reason():
+    """A record missing an id was reported to the operator as a duplicate proposal.
+
+    Three different defects shared one `continue` and one counter: a genuine repeat, a record with
+    a missing id, and an option paired with itself. The summary called all of them "duplicate
+    proposal(s) dropped", so a proposer emitting malformed records was described as one repeating
+    itself -- a different defect with a different fix, and the line named the wrong one.
+    """
+    print("\na dropped pair is named by the reason it was dropped")
+    d = tempfile.mkdtemp()
+    for k in range(1, 4):
+        json.dump({"items": [{"id": f"p{k}-{i:03d}"} for i in range(6)], "lens": f"l{k}", "pool": k},
+                  open(os.path.join(d, f"pool-{k}.json"), "w"))
+    json.dump({"pairs": [{"a": "p1-000", "b": "p1-001"}, {"a": "p1-000", "b": "p1-001"},
+                         {"b": "p1-002"}, {"a": "p1-003", "b": "p1-003"},
+                         {"a": "p2-000", "b": "p3-000"}]},
+              open(os.path.join(d, "candidates.json"), "w"))
+    rc, out = run("shard_candidates.py", d, "--shards", 1, "--probe", 0)
+    check("a malformed record is not reported as a duplicate",
+          "missing an id" in out, out.strip()[:160])
+    check("...and a self-pair is named as one", "self-pair" in out, out.strip()[:160])
+    check("...and a real duplicate is still named", "duplicate proposal" in out, out.strip()[:160])
+    shutil.rmtree(d, True)
+
+
+def t_heartbeat_counts_pairs_not_judgements():
+    """The pair count the reader is told is the sum over shards, which double-counts the probe.
+
+    48 pairs are deliberately planted into two shards each so two adjudicators judge them blind --
+    that is how the run reports its own grouping reliability. Summing `len(pairs)` across shards
+    therefore counts each of those twice. Measured on both preserved runs: the line said 1,342 and
+    1,651 where the candidate sets hold 1,294 and 1,603, inflated by exactly 48 in both.
+
+    SKILL.md tells the orchestrator to repeat every `SAY:` line verbatim, so this is a number the
+    reader is given, not an internal log.
+    """
+    print("\nthe heartbeat counts distinct pairs, and says what the planted ones are")
+    import importlib.machinery as _m
+    pg = _m.SourceFileLoader("prog_x", str(SCRIPTS / "progress.py")).load_module()
+    d = tempfile.mkdtemp()
+    # Two shards, one pair planted in both -- the probe's shape in miniature.
+    json.dump({"pairs": [{"a": "p1-000", "b": "p1-001"}, {"a": "p1-002", "b": "p1-003"}]},
+              open(os.path.join(d, "cand-1.json"), "w"))
+    json.dump({"pairs": [{"a": "p1-004", "b": "p1-005"}, {"a": "p1-000", "b": "p1-001"}]},
+              open(os.path.join(d, "cand-2.json"), "w"))
+    line = pg._sharded(d)
+    check("the count is of distinct pairs, not of judgements",
+          "3 candidate pairs" in line, f"got: {line}")
+    check("...and the line says the planted pairs are judged twice, rather than hiding them",
+          "twice" in line and "4" in line, f"got: {line}")
+    shutil.rmtree(d, True)
+
+
 def t_reply_gate():
     """The reply the reader receives must carry the report, not a summary of it.
 
@@ -4280,7 +4371,9 @@ def main():
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
               t_lead_search_scales_and_preserves, t_pinch_merge_is_reported,
               t_lead_search_is_numbering_invariant, t_burial_reaches_variants_and_the_reply,
-              t_adjudicator_cannot_invent_a_pair, t_no_evidence_merge_is_refused,
+              t_adjudicator_cannot_invent_a_pair,
+              t_heartbeat_counts_pairs_not_judgements,
+              t_dropped_pairs_are_named_by_reason, t_json_repairs_compose, t_no_evidence_merge_is_refused,
               t_superseded_verdicts_go_with_their_shards,
               t_label_is_one_line, t_every_phase_boundary_speaks,
               t_the_failed_integrity_check_still_speaks,

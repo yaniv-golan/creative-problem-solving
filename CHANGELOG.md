@@ -214,6 +214,31 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **The pair count the reader is given counted judgements, not pairs.** 48 pairs are planted into
+  two shards each so two adjudicators judge them blind — that is how a run reports its own grouping
+  reliability — and the heartbeat summed `len(pairs)` across shards, counting each twice. Both
+  preserved runs were inflated by exactly 48: the line said 1,342 and 1,651 where the candidate sets
+  hold 1,294 and 1,603. `SKILL.md` has the orchestrator repeat every `SAY:` line verbatim, so this
+  was a number handed to the reader. It now counts distinct pairs and names the planted ones rather
+  than dropping them silently.
+
+- **A record missing an id was reported as a duplicate proposal.** `shard_candidates.py` dropped
+  genuine repeats, malformed records and self-pairs through one branch and one counter, then
+  described all of them as duplicates — a different defect with a different fix, named wrongly. Each
+  reason is now counted and reported separately.
+
+- **The JSON repairs worked one at a time and not together.** `robust_json._unwrap` strips a BOM, a
+  code fence and prose before the first brace, but the fence pattern was anchored to the whole file,
+  so it only fired when the fence *was* the file. Prose before a fence, or a sign-off after one,
+  defeated the strip and the brace-cut then left the closing fence in place — so two of the three
+  shapes a model actually emits failed as "Extra data" in the module whose job is exactly this.
+  Verified that every corruption case (truncated, empty, prose-only, `NaN`, duplicate keys, bare
+  array) is still refused with its named message.
+
+- **Two figures about verifier notes were wrong, in different places.** `references/pipeline.md`
+  said 5 of 5 records on one preserved run; it is 13 of 13, as `verify_pipeline.py` already said.
+  Both then called the total "sixteen"; 13 + 11 is 24. Counted from the preserved `verified-*.json`
+  files.
 - **The burial gate counted family headings, so the majority of the answer could be folded away.**
   `build_report.py`'s own docstring names the attack — collapsing the list into a `<details>` block
   headed "raw machine output (ignore)" keeps every word and passes any check that only counts

@@ -161,12 +161,21 @@ def plan_shards(npairs, nprobe, per_shard):
 def main(wd, nshards, nprobe, per_shard=PER_SHARD):
     pairs = load(os.path.join(wd, "candidates.json"), "pairs")
 
+    # THREE REASONS, COUNTED SEPARATELY. These were one `continue` and the summary reported the
+    # lot as "duplicate proposal(s) dropped", so a proposer emitting records with a missing id --
+    # or pairing an option with itself -- was described to the operator as one that repeated
+    # itself. That is a different defect with a different fix, and the line named the wrong one.
     seen, uniq = set(), []
+    n_dupe = n_malformed = n_self = 0
     for p in pairs:
         a, b = p.get("a"), p.get("b")
-        if not a or not b or a == b: continue
+        if not a or not b:
+            n_malformed += 1; continue
+        if a == b:
+            n_self += 1; continue
         k = frozenset((a, b))
-        if k in seen: continue
+        if k in seen:
+            n_dupe += 1; continue
         seen.add(k); uniq.append({"a": a, "b": b})
     if not uniq: sys.exit("FAIL: candidates.json proposed no usable pairs")
 
@@ -285,9 +294,11 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
     hb = progress_line(wd, stage="sharded")
     if hb: print(hb)
 
-    dropped = len(pairs) - len(uniq)
+    _why = [f"{n} {w}" for n, w in ((n_dupe, "duplicate proposal(s)"),
+                                    (n_malformed, "record(s) missing an id"),
+                                    (n_self, "self-pair(s)")) if n]
     print(f"{len(uniq)} unique pairs"
-          + (f" ({dropped} duplicate proposal(s) dropped)" if dropped else "")
+          + (f" ({', '.join(_why)} dropped)" if _why else "")
           + f" across {nshards} shards {[len(s) for s in shards]}"
             f" (dispatch one adjudicator per shard); "
             f"{planted} planted twice as the agreement probe")

@@ -41,12 +41,17 @@ def die(path, problem, fix):
           f"      written by {_author(path)}; {fix}")
     sys.exit(1)
 
-_FENCE = re.compile(r"^\s*```[a-zA-Z]*\s*\n(.*?)\n\s*```\s*$", re.S)
+# `search`, not `match`, and no end anchor: the anchored form only stripped a fence that was the
+# WHOLE file, so each repair worked alone and none composed. A preamble before the fence, or a
+# sign-off after it, defeated the fence strip -- and the brace-cut that ran next then left the
+# closing ``` in place, so `Here you go:\n```json\n{...}\n``` ` failed as "Extra data" while
+# either half alone parsed. The three shapes a model actually emits are prose, a fence, and both.
+_FENCE = re.compile(r"```[a-zA-Z]*\s*\n(.*?)\n\s*```", re.S)
 
 def _unwrap(text):
-    """Strip BOM, a code fence, and any prose before the first brace/bracket."""
+    """Strip BOM, a code fence anywhere in the text, and any prose before the first brace/bracket."""
     text = text.lstrip("﻿").strip()
-    m = _FENCE.match(text)
+    m = _FENCE.search(text)
     if m: text = m.group(1).strip()
     if text[:1] not in ("{", "["):
         cut = min([i for i in (text.find("{"), text.find("[")) if i != -1] or [-1])

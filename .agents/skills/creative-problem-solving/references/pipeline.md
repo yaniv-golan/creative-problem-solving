@@ -791,7 +791,7 @@ assumed: a negation round against that structure returned one search-verified op
    than the option makes is still `confirmed`, and the difference between that and a clean
    `confirmed` is a sentence the reader needs. On `no_external_claim` it is the only place to say
    why nothing was checkable. Verifiers were already writing this field before anything read it —
-   on the two preserved runs, 5 of 5 and 11 of 19 records carried one, and all sixteen were
+   on the two preserved runs, 13 of 13 and 11 of 19 records carried one, and all twenty-four were
    discarded.
 
    **Four verdicts, and the difference between the last two is the whole point.**

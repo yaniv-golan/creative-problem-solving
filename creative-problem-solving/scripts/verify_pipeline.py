@@ -463,8 +463,8 @@ def main(wd):
         # `note` — the verifier's qualification, and it is NOT a new field. Verifiers were
         # already writing it unprompted while nothing read it: 13 of 13 records on the 2026-08-28
         # run, 11 of 19 across the 20260827 run, with agents/verifier.md mentioning neither
-        # `note` nor `caveat`. Sixteen qualifications were discarded before anyone looked at the
-        # files rather than at the two scripts that consume them.
+        # `note` nor `caveat`. Twenty-four qualifications were discarded before anyone looked at
+        # the files rather than at the two scripts that consume them.
         #
         # Allowed on every verdict, including no_external_claim, which is where the argument for
         # refusing it looked strongest and is wrong: `p2-008` on that run is no_external_claim
