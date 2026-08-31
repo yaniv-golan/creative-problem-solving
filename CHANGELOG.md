@@ -214,6 +214,25 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **The burial gates measure readability rather than one spelling of the tag.** Both have been wrong
+  twice. First they counted `### N.` headings inside a `<details>` block, so folding away everything
+  *beneath* the headings passed with the structure standing — the nested variants are the majority
+  of the options on a recorded run. The fix for that matched the tag literally, and missed
+  `<DETAILS>`, `</details >`, a newline inside the open tag, and an unclosed block, which folds the
+  rest of the document on GitHub. Measured: the shipped predicate agreed with 6 of 12 shapes.
+
+  It also had two false positives, refusing correct reports: a `<details open>` block, whose content
+  is visible, and a report that presents every option and repeats them in a collapsed appendix.
+
+  A third fix was proposed and rejected on measurement: exempting any block carrying `open` is
+  defeated by `<details open>` wrapping a plain `<details>`, which the shipped code refuses and the
+  exemption would pass — the gate turned off by its own fix. Shapes are pinned in
+  `tools/corpus_burial.py`, which the tests drive through the real script for both the report and
+  the reply; the rule was run there against the shipped code first, and reaches 12 of 12.
+
+  One shared helper serves both gates, so they cannot drift apart again, and the heading fallback
+  now runs only when there is no manifest — counting headings inside a collapsed span regardless is
+  what refused the appendix report even after the option check had passed it.
 - **A JSON file with two payloads is refused instead of silently resolved to one of them.** This was
   wrong twice, in opposite directions. Anchored to the whole file, the fence pattern fired only when
   the fence *was* the file, so prose or a sign-off around it made ordinary shapes fail as "Extra

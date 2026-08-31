@@ -857,55 +857,61 @@ def t_invention_surfaces():
     shutil.rmtree(d, True)
 
 def t_burial_reaches_variants_and_the_reply():
-    """Hiding is checked on the numbered headings only, and not on the reply at all.
+    """Both gates ask whether the answer is readable, not whether a tag is spelled one way.
 
-    `check`'s own docstring names the attack -- "collapsing the whole list into a <details> block
-    headed 'raw machine output (ignore)' keeps every word and passes any check that only counts
-    presence" -- and then counts `^### \d+\.` inside the block, which is the family headings. The
-    nested variants are a line each under their family and match nothing, so on a real run the
-    majority of the options can be folded away with every heading left visible.
+    This has been wrong twice. First the gate counted `### N.` headings inside a <details> block, so
+    folding away everything BENEATH the headings passed with the structure standing -- on a recorded
+    run the nested variants are the majority of the options. The fix for that matched
+    `<details…>(.*?)</details>` literally, which misses `<DETAILS>`, `</details >` and an unclosed
+    block that folds the rest of the document, and it refused a correct report that repeats its
+    options in a collapsed appendix.
 
-    `check_reply` guards "the surface every other gate misses" and has no burial gate at all, so
-    the reply can carry the whole report under a summary telling the reader to ignore it. That is
-    the artifact the reader actually receives.
+    A third proposed fix would have exempted any block carrying `open` -- which an `<details open>`
+    wrapper around a plain `<details>` defeats entirely, turning the gate off while passing the
+    review that suggested it. The shipped code refuses that shape; a fix must not regress it.
+
+    So the shapes live in tools/corpus_burial.py and are driven through the real script here, both
+    for the report and for the reply. The corpus is imported rather than restated: a corpus copied
+    into a test drifts from the rule it was written against.
     """
-    print("\nburial is caught in the variants and in the reply, not just in the headings")
+    print("\nboth burial gates measure readability, across every spelling of the tag")
+    import importlib.util as _u
+    spec = _u.spec_from_file_location("corpus_burial", ROOT / "tools" / "corpus_burial.py")
+    corpus = _u.module_from_spec(spec); spec.loader.exec_module(corpus)
+
     d = tempfile.mkdtemp()
-    ids, fams = full_fixture(d, multi=True)
+    full_fixture(d, multi=True)
     rep = os.path.join(d, "report.md")
     run("build_report.py", d, "--out", rep)
     body = fill_placeholders(rep)
 
-    # Every numbered heading stays visible; everything under it is folded away.
-    lines, out, inside = body.split("\n"), [], False
-    for ln in lines:
-        if re.match(r"^### \d+\.", ln):
-            if inside: out.append("</details>"); inside = False
-            out.append(ln); out.append("<details><summary>detail</summary>"); inside = True
-        else:
-            out.append(ln)
-    if inside: out.append("</details>")
-    open(rep, "w").write("\n".join(out))
-    rc, o = run("build_report.py", "--check", rep)
-    check("folding the variants away is refused even with every heading visible",
-          rc != 0 and "collapsed" in o, f"rc={rc} {o.strip()[:120]}")
+    bad = []
+    for name, doc, want, why in corpus.CORPUS:
+        open(rep, "w").write(doc.replace(corpus.BODY, body))
+        rc, _out = run("build_report.py", "--check", rep)
+        got = "REFUSE" if rc != 0 else "PASS"
+        if got != want:
+            bad.append(f"{name}: wanted {want}, got {got} ({why})")
+    check(f"--check agrees with all {len(corpus.CORPUS)} corpus shapes", not bad, "; ".join(bad[:3]))
 
-    # And the reply, which no burial gate covered.
     run("build_report.py", d, "--out", rep)
     body = fill_placeholders(rep)
-    buried = os.path.join(d, "buried_reply.md")
-    open(buried, "w").write("Short summary: I found some options.\n\n"
-                            "<details><summary>full machine output — you can ignore this</summary>\n\n"
-                            + body + "\n</details>\n")
-    rc2, o2 = run("build_report.py", "--check-reply", buried, "--against", rep)
-    check("a reply that buries the report under a summary is refused",
-          rc2 != 0 and "collapsed" in o2, f"rc={rc2} {o2.strip()[:120]}")
+    rp = os.path.join(d, "reply.md")
+    bad2 = []
+    for name, doc, want, why in corpus.CORPUS:
+        open(rp, "w").write(doc.replace(corpus.BODY, body))
+        rc, _out = run("build_report.py", "--check-reply", rp, "--against", rep)
+        got = "REFUSE" if rc != 0 else "PASS"
+        if got != want:
+            bad2.append(f"{name}: wanted {want}, got {got} ({why})")
+    check(f"--check-reply agrees with all {len(corpus.CORPUS)} corpus shapes",
+          not bad2, "; ".join(bad2[:3]))
 
-    # The legitimate case must still pass: a covering line, then the content, nothing folded.
-    good = os.path.join(d, "good_reply.md")
-    open(good, "w").write("Here is the full list — I would start with the first.\n\n" + body)
-    rc3, o3 = run("build_report.py", "--check-reply", good, "--against", rep)
-    check("...while a plain reply carrying the report still passes", rc3 == 0, o3.strip()[:120])
+    # The corpus is only worth having if it pins the two shapes a fix for this got wrong.
+    names = {n for n, _, _, _ in corpus.CORPUS}
+    check("...and the corpus pins the nesting bypass and the appendix false positive",
+          "open wrapping closed" in names and "visible AND in appendix" in names,
+          f"missing one: {sorted(names)}")
     shutil.rmtree(d, True)
 
 

@@ -21,7 +21,7 @@ that it would otherwise copy out by hand.
   build_report.py --check <report.md>      # every {{...}} filled in, and the options intact
   build_report.py --check-reply <reply.md> --against <report.md>   # the reply carries the report
 """
-import json, os, sys, glob
+import json, os, re, sys, glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, load_obj, one_line
@@ -459,6 +459,72 @@ def _missing_options(man, haystack):
 
 
 
+_DET_OPEN = re.compile(r"<details([^>]*)>", re.I | re.S)
+_DET_CLOSE = re.compile(r"</\s*details\s*>", re.I)
+
+
+def _collapsed_spans(doc):
+    """Spans of `doc` a reader must click to see.
+
+    Four things a `<details[^>]*>(.*?)</details>` findall gets wrong, each of which shipped as a
+    green report with the answer folded away:
+
+      - the tag is case-insensitive, and the close tag may carry whitespace (`</details >`)
+      - an UNCLOSED <details> folds everything after it, to the end of the document
+      - `open` renders a block expanded, so its content is visible -- but only when the block is not
+        itself inside a collapsed one. An open wrapper around a closed block hides just as well, and
+        an `open` exemption that ignores nesting turns this gate off entirely
+      - `open` is an attribute NAME, so `<details class="open">` is collapsed
+
+    Shapes, including the ones an earlier fix for this got wrong: tools/corpus_burial.py.
+    """
+    events = ([(m.start(), m.end(), "o", m.group(1)) for m in _DET_OPEN.finditer(doc)]
+              + [(m.start(), m.end(), "c", "") for m in _DET_CLOSE.finditer(doc)])
+    events.sort()
+    spans, stack = [], []
+    for start, end, kind, attrs in events:
+        if kind == "o":
+            is_open = re.search(r"(?:^|\s)open(?:\s|=|$)", attrs, re.I) is not None
+            stack.append(((not is_open) or any(c for c, _ in stack), end))
+        else:
+            if not stack:
+                continue
+            collapsed, content_start = stack.pop()
+            if collapsed and not any(c for c, _ in stack):
+                spans.append((content_start, start))
+    while stack:
+        collapsed, content_start = stack.pop()
+        if collapsed and not any(c for c, _ in stack):
+            spans.append((content_start, len(doc)))
+    return spans
+
+
+def _visible_twin(doc, line, spans):
+    """True when this heading text also appears outside every collapsed span."""
+    import re as _r
+    for m in _r.finditer(_r.escape(line), doc):
+        if not any(a <= m.start() < b for a, b in spans):
+            return True
+    return False
+
+
+def _buried(doc, options):
+    """The options whose EVERY occurrence is inside a collapsed span.
+
+    Not "appears inside one". A report that presents its options and then repeats them in a
+    collapsed raw-data appendix hides nothing, and the first version of this gate refused it.
+    """
+    spans = _collapsed_spans(doc)
+    if not spans:
+        return []
+    out = []
+    for o in options:
+        hits = [m.start() for m in re.finditer(re.escape(o), doc)]
+        if hits and all(any(s <= h < e for s, e in spans) for h in hits):
+            out.append(o)
+    return out
+
+
 def check_reply(reply_path, report_path):
     """The reply the reader actually receives must contain the report, not a summary of it.
 
@@ -495,20 +561,15 @@ def check_reply(reply_path, report_path):
     # folds its options into a <details> block; this function checked only that the options were
     # PRESENT, so a reply could carry the whole report under "full machine output -- you can ignore
     # this" and pass. Presence was never the property worth having; readability is.
-    import re as _re
-    hidden_r = _re.findall(r"<details[^>]*>(.*?)</details>", reply, _re.S)
-    if hidden_r:
-        blob_r = "\n".join(hidden_r)
-        opts_r = man.get("options") or []
-        gone_r = [o for o in opts_r if o in blob_r]
-        if gone_r:
-            sys.exit(
-                f"FAIL: {len(gone_r)} of {len(opts_r)} options sit inside a collapsed <details> "
-                f"block in {os.path.basename(reply_path)}. The reader is shown a summary and told "
-                f"the answer is machine output they can skip. Every gate before this one counted "
-                f"the options and found them present -- presence was never the property worth "
-                f"having.\n"
-                f"      A covering line above the content is fine. Folding the content away is not.")
+    opts_r = man.get("options") or []
+    gone_r = _buried(reply, opts_r)
+    if gone_r:
+        sys.exit(
+            f"FAIL: {len(gone_r)} of {len(opts_r)} options are only reachable inside a collapsed "
+            f"<details> block in {os.path.basename(reply_path)}. The reader is shown a summary and "
+            f"told the answer is machine output they can skip. Every gate before this one counted "
+            f"the options and found them present -- presence was never the property worth having.\n"
+            f"      A covering line above the content is fine. Folding the content away is not.")
 
     _slot_check(reply, man, reply_path)
     brief = _find_brief(report_path)
@@ -669,7 +730,6 @@ def check(path, skeleton_words=None):
     """
     if not os.path.exists(path): sys.exit(f"FAIL: {path} was never written")
     body = open(path, encoding="utf-8-sig").read()
-    import re
 
     left = re.findall(r"\{\{([^}]{0,60})", body)
     if left:
@@ -686,9 +746,8 @@ def check(path, skeleton_words=None):
     # run the nested variants are 160 of 266 options, each a line under its family and matching no
     # heading pattern, so the majority of the answer could be hidden while this reported nothing.
     # The manifest is the list of what has to be readable, so ask it rather than the markup.
-    hidden = re.findall(r"<details[^>]*>(.*?)</details>", body, re.S)
-    if hidden:
-        blob = "\n".join(hidden)
+    spans = _collapsed_spans(body)
+    if spans:
         man_path = path + ".manifest.json"
         opts = []
         if os.path.exists(man_path):
@@ -697,12 +756,21 @@ def check(path, skeleton_words=None):
             except Exception:
                 opts = []
         if opts:
-            gone = [o for o in opts if o in blob]
+            gone = _buried(body, opts)
             if gone:
-                sys.exit(f"FAIL: {len(gone)} of {len(opts)} options sit inside a collapsed "
-                         f"<details> block. Every one is still in the file and none of them is "
-                         f"readable; present the list rather than hiding it behind a summary.")
-        buried = sum(len(re.findall(r"^### \d+\.", h, re.M)) for h in hidden)
+                sys.exit(f"FAIL: {len(gone)} of {len(opts)} options are only reachable inside a "
+                         f"collapsed <details> block. Every one is still in the file and none of "
+                         f"them is readable; present the list rather than hiding it behind a "
+                         f"summary.")
+        # THE HEADING FALLBACK ONLY RUNS WITHOUT A MANIFEST, and asks the same question the option
+        # check does: is this heading readable ANYWHERE. Counting headings inside a collapsed span
+        # regardless refused a correct report that repeats itself in an appendix -- the options
+        # check passed it and this fired anyway.
+        buried = 0 if opts else sum(
+            1 for m in re.finditer(r"^### \d+\..*$", body, re.M)
+            if all(a <= h < b for h in [m.start()] for a, b in spans if a <= m.start() < b)
+            and any(a <= m.start() < b for a, b in spans)
+            and not _visible_twin(body, m.group(0), spans))
         if buried:
             sys.exit(f"FAIL: {buried} of {len(heads)} families sit inside a collapsed <details> "
                      f"block. Every option is still in the file and none of them is readable; "
