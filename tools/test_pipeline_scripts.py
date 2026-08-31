@@ -2815,11 +2815,12 @@ def t_no_evidence_merge_is_refused():
     `worst_pinned_pair` picks the merge that best follows the evidence, skipping any pair with no
     joining verdict and any pair that would breach the separating-share rule. When neither kind
     exists it used to fall back to the two smallest families whose union passed the share check --
-    with no joining evidence required at all. Measured over 40,000 pinched states: 609 such picks,
-    including families with no adjudicated cross pair between them.
+    with no joining evidence required at all. Measured over 40,000 generated family sets (the sweep
+    at the foot of this test, run at 40,000 rather than 4,000): 609 such picks, including families
+    with no adjudicated cross pair between them. Not "pinched states" -- 21,809 of the 40,000 are
+    pinched and none of the 609 is among them, which is the whole point of the next paragraph.
 
-    Such a merge often DOES break the collision -- roughly two thirds of them were load-bearing in
-    generated states -- so refusing costs those runs a hard stop. It is refused anyway: fusing two
+    It is refused anyway: fusing two
     families the adjudicators called apart, or never compared, permanently answers a question the
     evidence did not ask. It now returns None and the caller stops with a message naming both
     reasons a merge can be unavailable.
@@ -2874,7 +2875,7 @@ def t_no_evidence_merge_is_refused():
         if not any(r2.get(frozenset((x, y))) in mf.JOINING
                    for x in fs[i]["members"] for y in fs[j]["members"]):
             bad += 1
-    check("every merge target across 4,000 pinched states carries joining evidence",
+    check("every merge target across 4,000 generated family sets carries joining evidence",
           bad == 0, f"{bad} pick(s) had none")
 
 

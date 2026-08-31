@@ -214,6 +214,39 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **Four published figures named a population that was not the one measured.** Audited every number
+  in the scripts and the README, re-deriving each from the files it claims to come from.
+
+  **`609 of 40,000 pinched states`** — the count is exact and the generator *is* committed (the
+  sweep in `t_no_evidence_merge_is_refused`, at a tenth the scale), but "pinched" is false twice
+  over: 21,809 of the 40,000 are pinched, and **not one of the 609 is among them**. The sentence
+  named a population that both exists and excludes the entire finding, three lines above another
+  sentence in the same comment that had it right.
+
+  **`0 in 48,000`** had no generator anywhere and is withdrawn rather than reconstructed. Its
+  neighbour, `13 in 432,000`, is real and reproduces exactly — but from a sweep that is not in this
+  repo, so it now says so rather than reading as something a reader can re-run.
+
+  **The agreement range `75% to 85%`** excluded 89.6%, which appears in *both* complete preserved
+  runs — and which the 80–90% range it replaced contained. The correction moved the ceiling away
+  from the best-evidenced runs. `85.4`, one of the five values behind it, appears nowhere in the
+  repo or its history except the commit that introduced the claim. The README now leads with the
+  figure a reader can check — 37 of 48 on the tracked capture — and gives the preserved range as
+  77% to 90%.
+
+  **`3.3x to 1.4x` and `about 90% of families`** are correct for `clusters.json` and the sentence
+  said *families*, one stage later — and one of the two runs the 90% rests on has no `families.json`
+  at all. Same defect as the 609: right number, wrong population. Reworded to name the partition the
+  grouper is handed. The duplicate-share endpoints (19.5%, 0.7%) were checked and are real, in
+  `run3-partial` and `rerun-partial`; a review had claimed neither existed, having sampled five of
+  the nine files. The floor is now stated as "under 1%", since the true minimum across all nine is
+  0.62%.
+
+  **`160 of 266` nested variants** matches no dataset; the run it cites gives 150. Replaced with
+  157 of 270 from the tracked capture, which a reader can verify.
+
+  Also removes the retracted "roughly two thirds were load-bearing" from a test docstring — the
+  fourth time in this series a correction reached two of three sites.
 - **The verdict-mix bands fired on six of the eight runs on record, including both complete ones.**
   They were drawn when a single 0.7% run was read as the anomaly, so the floors sat at 5% and 40%.
   Five of the eight recorded runs are at or below 2.2% duplicate: the low-duplicate regime is the
@@ -312,7 +345,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `build_report.py`'s own docstring names the attack — collapsing the list into a `<details>` block
   headed "raw machine output (ignore)" keeps every word and passes any check that only counts
   presence — and then counted `### N.` headings inside the block. Nested variants are a line each
-  under their family and match no heading, and on a recorded run they are 160 of 266 options. A
+  under their family and match no heading, and they are the majority of the options — 157 of 270 on
+  the tracked capture. A
   report with every heading visible and everything beneath them folded away passed. It now asks the
   manifest which options are hidden rather than asking the markup.
 

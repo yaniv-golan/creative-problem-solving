@@ -743,8 +743,10 @@ def check(path, skeleton_words=None):
 
     # COUNT OPTIONS, NOT HEADINGS. This counted `### N.` inside the block -- the family headings --
     # so folding away everything BENEATH them passed with the structure left standing. On a recorded
-    # run the nested variants are 160 of 266 options, each a line under its family and matching no
-    # heading pattern, so the majority of the answer could be hidden while this reported nothing.
+    # run the nested variants are the majority of the options -- 157 of 270 on the capture under
+    # evals/transcripts/capture-2026-08-30-retention/, which is the one a reader can check -- each a
+    # line under its family and matching no heading pattern, so most of the answer could be hidden
+    # while this reported nothing.
     # The manifest is the list of what has to be readable, so ask it rather than the markup.
     spans = _collapsed_spans(body)
     if spans:

@@ -193,19 +193,20 @@ same material would do. Read the families as a way through the list, not as a pr
 problem.
 
 **Grouping often does less work than it sounds like.** How much the list actually shortens
-varies a lot. Across five recorded runs the share of judged pairs called outright duplicates
-ranged from 19.5% down to 0.7%, and the grouped list came out anywhere from 3.3x shorter to
-**1.4x shorter**. In the two runs at the bottom of that range, **about 90% of families held a
-single option** — the report is then essentially the full list with a handful of near-repeats
-tucked together. Options drawn from nine deliberately unlike angles often are not versions of
+varies a lot. Across the runs preserved during development the share of judged pairs called
+outright duplicates ranged from 19.5% down to under 1%, and the partition the grouper is handed
+came out anywhere from 3.3x shorter to **1.4x shorter** than the raw list. In the two runs at the
+bottom of that range, **about 90% of those groups held a single option** — the report is then
+essentially the full list with a handful of near-repeats tucked together. Options drawn from nine deliberately unlike angles often are not versions of
 each other.
 
 **No count of "distinct options" is reported anywhere**, because that number is not measurable.
 
 **Every run reports how much to trust its own grouping.** Forty-eight pairs are planted twice,
 so two adjudicators who cannot see each other judge the same pair. The agreement rate is printed
-in the answer, and across five recorded runs has landed between **75% and 85%** — so roughly one
-judged pair in five is a coin toss between two readers of the same evidence. A run where fewer
+in the answer. On the run captured in this repo it was 37 of 48 pairs — **77%** — and across the
+runs preserved during development it has ranged from **77% to 90%**, so somewhere between one
+judged pair in four and one in ten is a coin toss between two readers of the same evidence. A run where fewer
 than forty come back from two different adjudicators fails instead of printing a rate it cannot
 support.
 

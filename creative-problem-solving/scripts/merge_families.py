@@ -208,19 +208,26 @@ def worst_pinned_pair(fams, rel):
         # families whose union passed the share rule, with no requirement of any joining verdict
         # between them. `pick` above already skips a pair with no joining evidence and a pair that
         # would breach the share rule, so reaching this line means EVERY pair fails one of those --
-        # and the fallback merged one anyway. Measured over 40,000 pinched states: 609 picks with no
-        # joining evidence at all, including families with no adjudicated cross pair between them.
+        # and the fallback merged one anyway. Measured over 40,000 GENERATED FAMILY SETS -- the sweep
+        # at the foot of `t_no_evidence_merge_is_refused` in tools/test_pipeline_scripts.py, run at
+        # 40,000 rather than 4,000: 609 picks with no joining evidence at all, including families
+        # with no adjudicated cross pair between them.
         #
-        # WHAT THE 609 FIGURE BELOW IS, AND IS NOT. It counts calls to this function over 40,000
-        # generated family sets -- NOT events a run can reach. `main` asks for a pair only when
-        # `solve_leads` finds no assignment AND proved none exists, and in every one of those 609
-        # `solve_leads` DID find an assignment. Zero were reachable. Two review rounds argued about
-        # whether such a merge is load-bearing (53%? two thirds?) using populations that contain no
-        # reachable case at all, and this comment carried both figures in turn.
+        # WHAT THE 609 IS, AND IS NOT. It counts calls to this function -- NOT events a run reaches.
+        # `main` asks for a pair only when `solve_leads` finds no assignment AND proved none exists,
+        # and in every one of those 609 `solve_leads` DID find an assignment. Zero were reachable.
+        # 21,809 of the 40,000 sets ARE pinched and not one of the 609 is among them, which is why
+        # this comment calling them "pinched states" named a population that both exists and
+        # excludes the entire finding. Two review rounds then argued about whether such a merge is
+        # load-bearing (53%? two thirds?) inside a population containing no reachable case at all.
         #
-        # Sweeps that filter for reachability find it very rare: 13 firings in 432,000 states in one
-        # sweep, 0 in 48,000 in another. So this refusal guards a shape nobody has observed a run
-        # reach -- and is worth keeping on those terms, not on a measured frequency. The reason is
+        # A sweep that DOES filter for reachability finds it very rare: 13 firings in 432,000 states
+        # across a grid of family count, family size and verdict mix. That sweep is not in this
+        # repo, so treat the 13 as a note rather than as something you can re-run here; the shape it
+        # found is the regression fixture instead. A second figure once cited beside it, "0 in
+        # 48,000", had no generator anywhere and is withdrawn rather than reconstructed. So this
+        # refusal guards a shape nobody has observed a run reach -- and is worth keeping on those
+        # terms, not on a measured frequency. The reason is
         # unchanged and does not depend on the count: fusing two families the adjudicators called
         # `distinct`, or never compared at all, permanently answers a question the evidence did not
         # ask. A caller told why can re-adjudicate; a reader handed a fused family never learns there
