@@ -238,7 +238,7 @@ prefer a shape a model actually produced over one you invented.
 guard fired (a stall heuristic, a host-path leak, an unanswered gate), so the exit code cannot
 tell you which. The envelope can — every `verdict.failures[]` entry carries a `kind`
 (`assertion` | `guard` | `staleness` | `cassette-format` | `coverage`). Requires
-`cowork-harness` 2.5.0, the version CI pins — the envelope itself landed in 2.3.0, but keep one
+`cowork-harness` 3.2.0, the version CI pins — the envelope itself landed in 2.3.0, but keep one
 version across the repo rather than two that need reconciling:
 
 ```bash
@@ -292,14 +292,27 @@ version's binary.** A scenario still pinning it then dies in `resolveAgentBinary
 starts, seconds after `cowork-harness doctor` reported ready — doctor validates the agent for its
 own current baseline, not for what each scenario pins.
 
-As of 2026-08-30, 11 of the 12 scenario files pin `desktop-1.37937.1`, whose binary is gone on a
-machine that has updated past it. `python3 tools/check-repo.py` warns when this is true of your
+As of 2026-09-01 all 12 scenario files pin `desktop-1.40609.0`. Until then 11 of them pinned
+`desktop-1.37937.1`, whose agent binary (2.1.246) had been pruned by a Desktop update — those eleven
+could not run at all, which is why the pin moved. `python3 tools/check-repo.py` warns when this is true of your
 machine; it never fails, because which versions are staged is a property of the machine rather than
 of the repo, and it never fires in CI, where there is no harness to resolve baselines against.
 
-**They are deliberately left pinned.** The eval scenarios are comparability artifacts: their results
-are graded against archived runs, and repinning would make every future comparison cross-platform
-against those. Upstream guidance agrees for reproducibility-bound suites — prefer a pin you move
+**They stay deliberately pinned — and the pin moved once, on 2026-09-01, for a stated reason.**
+The eval scenarios are comparability artifacts: their results are graded against archived runs, and
+repinning would ordinarily make every future comparison cross-platform against those. Three things
+made this hop the exception, and a future repin needs the same case made rather than citing this one:
+
+1. The old baseline's agent binary was **pruned**, so the pre-change configuration cannot be
+   reproduced even for comparison. The alternative to repinning was not "stay comparable", it was
+   "stay unrunnable".
+2. The hop is not cross-platform in any runtime sense. Every runtime-consumed field of the two
+   baselines is byte-identical (`spawn`, `mountLayout`, `guest`, `network`, `settings`, `bgEnvStrip`,
+   `requireFullVmSandbox`, `platform`); the only runtime delta is the agent ELF `2.1.246 -> 2.1.247`,
+   which the recorded runs had already fallen back to. The one gate that differs,
+   `subagentPromptServerOverride:124685897`, is read by `sync` and never by the runtime loop.
+3. No archived result records a baseline at all, so there was no recorded cross-platform comparison
+   to break. Upstream guidance agrees for reproducibility-bound suites — prefer a pin you move
 deliberately over `latest`, which never rots but silently drifts, so two runs weeks apart are not
 comparable. The pin and `latest` have opposite failure modes; this repo accepts the rot.
 
@@ -308,9 +321,12 @@ comparable. The pin and `latest` have opposite failure modes; this repo accepts 
 - `evals/scenarios/*.yaml` are **generated**. The baseline is a literal in
   `tools/build-eval-scenarios.py`, and CI runs `build-eval-scenarios.py --check` — hand-editing the
   five eval scenarios reds the build. Edit the generator.
-- CI installs `cowork-harness@2.5.0` (`.github/workflows/ci.yml`), which ships baseline definitions
-  up to `desktop-1.37937.1` and **not** `desktop-1.40609.0`. Repinning to a newer baseline requires
-  bumping that install in the same change.
+- CI's `cowork-harness` install (`.github/workflows/ci.yml`) must ship the baseline the scenarios
+  name. 2.5.0 shipped definitions only up to `desktop-1.37937.1`; `desktop-1.40609.0` arrived in
+  3.0.0, so the 2026-09-01 repin and the 3.2.0 bump were necessarily one change. **The coupling is
+  permanent: repinning to a newer baseline requires bumping that install in the same change.** Note
+  CI cannot catch a violation — it never runs a scenario, and `lint` does not resolve `baseline:`
+  (a scenario naming a nonexistent baseline lints clean).
 - `COWORK_HARNESS_ALLOW_AGENT_FALLBACK=1` runs the newest sibling binary instead of the pinned one
   and downgrades the sha check to advisory. It is the substitution the hard failure exists to
   prevent: use it to unblock a single local run, never in CI, and never to record a cassette.

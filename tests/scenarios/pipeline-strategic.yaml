@@ -25,7 +25,7 @@
 # gate and measures nothing. ../../evals/README.md has the worked case.
 name: pipeline-strategic
 session: ../sessions/default.yaml
-baseline: desktop-1.37937.1
+baseline: desktop-1.40609.0
 fidelity: container
 on_unanswered: first
 

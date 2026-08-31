@@ -143,16 +143,30 @@ jobs:
       # floating range hides that; an exact pin turns it into a visible bump.
       #
       # Upgrading is now a deliberate edit: run the four checks below locally against the new
-      # version first, then change this line.
+      # version first, then change this line. Bumped 2.5.0 -> 3.2.0 on 2026-09-01 that way; all four
+      # were rc=0 beforehand, and `lint --output-format json` returned the SAME 8 findings under both
+      # versions (identical rule/severity/file triples), so no check silently changed meaning.
+      #
+      # PIN AN EXACT VERSION, NOT A CARET. The bundled cowork-harness skill says "Pin @^3.2.0, never
+      # @latest" -- that guidance is for ad-hoc CLI installs. Upstream's own docs/ci.md calls an exact
+      # ref "the maximally reproducible choice" for this input, and the block above records why this
+      # repo cares: a 1.24.0 bump once moved the tests to a different baseline silently.
       #
       # Scenarios pin an exact `baseline:` too, so a harness bump does NOT silently move which
       # platform baseline they resolve against — that failure mode is closed. It was real: a
       # 1.24.0 bump moved the tests to `desktop-1.32352.0` and left the reliability table
       # describing a platform they no longer ran on (see CHANGELOG 0.2.0). Moving the baseline
-      # is now its own edit across the eleven scenarios and tools/build-eval-scenarios.py, and
-      # it invalidates any measured reliability figure taken on the old one.
+      # is now its own edit across the twelve scenarios and tools/build-eval-scenarios.py.
+      #
+      # Moved 2026-09-01: all twelve now pin `desktop-1.40609.0`, because `desktop-1.37937.1`'s agent
+      # binary (2.1.246) was pruned by a Desktop update and eleven scenarios could not run at all.
+      # This hop does NOT invalidate the measured figures: every runtime-consumed baseline field
+      # (spawn, mountLayout, guest, network, settings, bgEnvStrip, requireFullVmSandbox, platform) is
+      # byte-identical between the two, the only runtime delta is the agent ELF 2.1.246 -> 2.1.247,
+      # and the recorded runs already used 2.1.247 as a fallback. The gate that differs
+      # (subagentPromptServerOverride:124685897) is read only by `sync`, never by the runtime loop.
       - name: Install cowork-harness
-        run: npm install --global cowork-harness@2.5.0
+        run: npm install --global cowork-harness@3.2.0
 
       # --strict makes the WARN class gate, which a bare lint would only print. --min-severity
       # WARN is the other half and it is load-bearing, not decoration: `gate-needs-controlout`
@@ -175,7 +189,7 @@ jobs:
       # resolves once at step 0 (the ${CLAUDE_PLUGIN_ROOT} form was measured reaching bash empty), and
       # six pinned subagent types (still no hooks.json).
       #
-      # Their scopes differ and it matters. analyze-skill takes the PLUGIN root and scans all 10
+      # Their scopes differ and it matters. analyze-skill takes the PLUGIN root and scans all 14
       # files, commands/ideas.md and agents/*.md included — where those paths and type names
       # actually live. lint-skill takes the SKILL directory and reads SKILL.md alone; it errors
       # `no-skill` if pointed at the plugin root. So its footgun checks are aimed at a file that

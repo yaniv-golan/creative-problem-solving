@@ -22,7 +22,7 @@
 #    green here does not clear the later-turn case.
 name: deliverable-composition
 session: ../sessions/default.yaml
-baseline: desktop-1.37937.1
+baseline: desktop-1.40609.0
 fidelity: container
 # Same trade the pipeline-* pair documents: no gate here is load-bearing for what is asserted
 # (this prompt tells the model not to ask), so `first` buys re-record robustness at the price of

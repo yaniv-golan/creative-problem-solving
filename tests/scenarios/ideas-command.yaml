@@ -11,7 +11,7 @@
 # whether the pipeline then produced good options — that is an ../../evals/ question, judged.
 name: ideas-command
 session: ../sessions/default.yaml
-baseline: desktop-1.37937.1
+baseline: desktop-1.40609.0
 fidelity: container
 # The command tells the model not to ask, but mode choice can still legitimately raise one gate;
 # `first` buys re-record robustness at the price of a nonDeterministic flag, as in the pipeline-* pair.

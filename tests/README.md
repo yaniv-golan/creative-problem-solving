@@ -241,12 +241,23 @@ at three. It is recorded because it is the only measurement taken on the baselin
 currently resolve to.
 
 **The baseline is now pinned, and the numbers above predate it.** Every scenario declares
-`baseline: desktop-1.37937.1` explicitly. Pinning began on 2026-08-24, replacing `baseline:
+`baseline: desktop-1.40609.0` explicitly (moved from `desktop-1.37937.1` on 2026-09-01 — see below). Pinning began on 2026-08-24, replacing `baseline:
 latest` — a resolver over the newest baseline the installed harness ships, which moved underneath
 these numbers twice without a diff showing it. The chain is `desktop-1.30096.1` (what this table
 was measured under) → `1.32352.0` (harness 1.24.0) → `1.32885.1` → `1.34493.1` (harness 2.1.0) →
-`1.37937.1` (harness 2.3.0, adopted 2026-08-26) — **including two staged-agent changes, ELF
-`2.1.229` → `2.1.237` → `2.1.246`, which container fidelity stages and therefore runs**.
+`1.37937.1` (harness 2.3.0, adopted 2026-08-26) → `1.40609.0` (harness 3.0.0, adopted 2026-09-01) —
+**including three staged-agent changes, ELF `2.1.229` → `2.1.237` → `2.1.246` → `2.1.247`, which
+container fidelity stages and therefore runs**.
+
+**The 2026-09-01 hop is the one exception to "a baseline move invalidates the numbers."** It was
+forced: `desktop-1.37937.1`'s ELF `2.1.246` was pruned by a Desktop update, so eleven of the twelve
+scenarios could not start at all. And it moves nothing the runtime reads — every runtime-consumed
+field of the two baselines is byte-identical (`spawn`, `mountLayout`, `guest`, `network`, `settings`,
+`bgEnvStrip`, `requireFullVmSandbox`, `platform`), the sole runtime delta being the ELF
+`2.1.246` → `2.1.247`. The one gate that differs, `subagentPromptServerOverride:124685897`, is read
+by `sync` and never by the runtime loop. **The figures below were already taken on `2.1.247`** — the
+pinned `2.1.246` had been replaced and the harness fell back — so this repin makes the pin describe
+what was actually run, rather than invalidating it.
 `cowork-harness diff desktop-1.34493.1 desktop-1.37937.1 --changelog` shows the last hop
 token-free.
 
@@ -285,9 +296,12 @@ unpinned session silently tests the harness default instead of the target.
 
 **`ideas-command`, measured 2026-08-28 — n=1.** The first measurement this scenario has ever had;
 the table above says so itself. One live `container` run (`local_auz35uofjm`), `claude-opus-5`,
-under **`cowork-harness` 2.5.0, baseline `desktop-1.37937.1`** — deliberately its own block rather
-than a row in the table above, whose banner disowns every number in it. **PASS**: 95 tools, 33
-sub-agents, 1634.5 s, **$23.8071**, all four guards ok, 280 options into 113 families.
+under **`cowork-harness` 2.5.0, baseline `desktop-1.37937.1`, on the fallback agent binary
+`2.1.247`** — deliberately its own block rather than a row in the table above, whose banner disowns
+every number in it. **PASS**: 95 tools, 33 sub-agents, 1634.5 s, **$23.8071**, all four guards ok,
+280 options into 113 families. *(The fallback clause is added 2026-09-01 for consistency with the
+n=3 table below, which lists this same run — 1634.4 s, $23.8071 — as being on `2.1.247`. The two
+described one run two ways.)*
 
 **`deliverable-composition`, re-measured 2026-08-28 after the trigger fix — n=1.** PASS on all
 five assertions, under the same harness and baseline but on the **fallback agent binary**
@@ -334,7 +348,7 @@ presents as a skill defect.
 
 ## Running them
 
-Requires [`cowork-harness`](https://github.com/yaniv-golan/cowork-harness) 2.5.0 — the exact
+Requires [`cowork-harness`](https://github.com/yaniv-golan/cowork-harness) 3.2.0 — the exact
 version CI pins, so a local green means what CI's green means — plus Docker,
 and a Claude auth token. Keep the two in step: on 2026-08-28 the pin said 2.3.0 while the installed
 CLI was 2.5.0, and `doctor` reported the agent image and egress-proxy digests matching what **2.5.0**
