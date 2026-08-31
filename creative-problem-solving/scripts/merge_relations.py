@@ -31,21 +31,32 @@ from verdicts import is_id
 RECORDED_DUP = (0.006, 0.007, 0.013, 0.019, 0.022, 0.071, 0.185, 0.195)
 RECORDED_JOIN = (0.332, 0.346, 0.389, 0.401, 0.401, 0.539, 0.603, 0.617)
 
-# LOWER EDGES ONLY. The old floors of 5% and 40% fired on SIX of these eight runs, including both
+# LOWER EDGES ONLY. The old floors of 5% and 40% fired on FIVE of these eight runs, including both
 # complete preserved runs the rest of this project is calibrated against -- a warning that fires on
 # the runs it calls normal is one the reader learns to skip. They were drawn when a single 0.7% run
 # was read as the anomaly; five of the eight are now at or below 2.2%, so the low-duplicate regime
 # is the common case and the two early runs at 18.5% and 19.5% are the outliers. The ceilings are
-# untouched: nothing recorded has come within 25 points of either.
+# untouched: the nearest recorded run is 23 points below the joinable ceiling and 25 below
+# the duplicate one.
 DUP_BAND = (0.005, 0.45)
 JOIN_BAND = (0.30, 0.85)
 
-# The band must contain the evidence the messages cite for it. As an assert rather than as care,
-# because the previous version printed "outside the 5%-45% of recorded runs (18.5%, 19.5%, 0.7%)"
-# -- naming a recorded run outside the range it had just called the range of recorded runs -- and
-# nothing in the file could see it.
-assert DUP_BAND[0] <= min(RECORDED_DUP) and max(RECORDED_DUP) <= DUP_BAND[1], "cited dup outside its band"
-assert JOIN_BAND[0] <= min(RECORDED_JOIN) and max(RECORDED_JOIN) <= JOIN_BAND[1], "cited join outside its band"
+# The band must contain the evidence the messages cite for it, because the previous version printed
+# "outside the 5%-45% of recorded runs (18.5%, 19.5%, 0.7%)" -- naming a recorded run outside the
+# range it had just called the range of recorded runs -- and nothing in the file could see it.
+#
+# EXITS RATHER THAN ASSERTING, for the reason plan_groups.py:70-72 already gives about its own
+# import-time check: `python -O` strips assertions, so an assert here is the loud half of a silent
+# failure. This shipped as an assert and a run under -O imported a violating band cleanly.
+if not (DUP_BAND[0] <= min(RECORDED_DUP) and max(RECORDED_DUP) <= DUP_BAND[1]):
+    sys.exit(f"FAIL: merge_relations.py cites duplicate shares {min(RECORDED_DUP):.1%}-"
+             f"{max(RECORDED_DUP):.1%} as evidence for a band of {DUP_BAND[0]:.1%}-{DUP_BAND[1]:.0%}, "
+             f"which does not contain them. The warning would name a recorded run as being outside "
+             f"the range of recorded runs. Widen the band or drop the value from RECORDED_DUP.")
+if not (JOIN_BAND[0] <= min(RECORDED_JOIN) and max(RECORDED_JOIN) <= JOIN_BAND[1]):
+    sys.exit(f"FAIL: merge_relations.py cites joinable shares {min(RECORDED_JOIN):.1%}-"
+             f"{max(RECORDED_JOIN):.1%} as evidence for a band of {JOIN_BAND[0]:.0%}-"
+             f"{JOIN_BAND[1]:.0%}, which does not contain them. Widen the band or drop the value.")
 
 # higher = keeps the two options further apart
 SEPARATION = {"duplicate": 0, "implementation_variant": 1, "shared_component": 2, "distinct": 3}
@@ -286,11 +297,11 @@ def main(wd):
     # about where the panel's verdicts sit as a whole, and those are different failures. Across
     # three recorded runs the `duplicate` share was 18.5%, 19.5% and 0.7% -- a 25x spread that
     # decides the entire partition, since 0.7% leaves almost nothing to group -- while the
-    # agreement rates were 75%, 83% and 81%, with the outlier sitting mid-range. A run can be
+    # agreement rates stayed in a narrow band throughout. A run can be
     # perfectly self-consistent and still be calibrated somewhere the others are not.
     #
     # Warn-only, and the band is drawn from three runs: it reports "this run does not look like
-    # the ones we have seen", which is the strongest honest claim at n=3. A hard gate fitted to
+    # the ones we have seen", which is the strongest honest claim at this sample size. A hard gate fitted to
     # three points would refuse legitimate runs, and a refused legitimate run is how a check gets
     # switched off.
     if out:

@@ -27,9 +27,20 @@ CORPUS = [
     ("fence, no language tag",      f'```\n{REAL}\n```',                             "PARSE"),
     ("CRLF line endings",           f'```json\r\n{REAL}\r\n```',                     "PARSE"),
 
-    # --- ambiguous: two payloads. THE MOTIVATING SHAPE AND ITS INVERSE. ------------------------
+    # --- ambiguous: two payloads. EACH DIRECTION, AND WITH PROSE BETWEEN THEM. -----------------
+    # One representative per direction was not enough: the rule tested only the whole of `outside`
+    # and its suffix from the first brace, so ANY prose beside the second payload defeated the
+    # guard. Both motivating shapes stayed silently broken while their whitespace-only variants,
+    # the only two in this corpus, passed. A shape family needs its noisy members, not one member.
     ("stub fence THEN real",        f'```json\n{STUB}\n```\n{REAL}',                 "REFUSE"),
     ("real THEN stub fence",        f'{REAL}\n```json\n{STUB}\n```',                 "REFUSE"),
+    ("stub fence, prose, real",     f'```json\n{STUB}\n```\nAlso the pool:\n{REAL}', "REFUSE"),
+    ("real, sign-off, stub fence",  f'{REAL}\nHope that helps.\n```json\n{STUB}\n```', "REFUSE"),
+    ("prose, real, prose, fence",   f'Here:\n{REAL}\nDone.\n```json\n{STUB}\n```',  "REFUSE"),
+    ("stub fence, real, sign-off",  f'```json\n{STUB}\n```\n{REAL}\nThat is all.',   "REFUSE"),
+    # A bracket in the preamble must not cut the scan at the wrong place.
+    ("prose with a bracket",        f'Here are the options [all of them]:\n{REAL}',  "PARSE"),
+    ("markdown link then object",   f'See [the brief](x.md):\n{REAL}',              "PARSE"),
     ("two fences, both parse",      f'```json\n{STUB}\n```\n```json\n{REAL}\n```',   "REFUSE"),
     ("fence fails, later parses",   f'```json\nnot json\n```\n{REAL}',               "REFUSE"),
     ("real, fence fails",           f'{REAL}\n```json\nnot json\n```',               "REFUSE"),
@@ -64,37 +75,21 @@ def _obj(s):
 
 
 def unwrap_proposed(text):
-    """The rule. Returns the payload text, or raises Ambiguous/NoPayload.
+    """The shipped rule, imported rather than reimplemented.
 
-    SYMMETRIC BY CONSTRUCTION. A parseable fence disqualifies itself if any other parseable JSON
-    value sits beside it -- before OR after. Rev 1 of the plan guarded only "after", which left the
-    motivating defect alive mirrored.
+    An earlier version of this file carried its own copy of the rule, and the copy and the script
+    drifted: the corpus reported 27/27 while the script still lost data on three shapes, because
+    each had been fixed separately. A corpus that reimplements the thing it tests is testing the
+    reimplementation. It now calls robust_json directly and maps its refusal onto this file's
+    exception, so `--shipped` and the default mode differ only in which commit is checked out.
     """
-    text = text.lstrip("﻿").strip()
-    blocks = _fences(text)
-
-    if blocks:
-        parsed = [(b, s, e) for (b, s, e) in blocks if _obj(b) is not None]
-        if len(parsed) > 1:
-            raise Ambiguous("more than one fenced block holds JSON")
-        if len(parsed) == 1:
-            body, start, end = parsed[0]
-            # Anything outside the fence that also parses makes the file ambiguous.
-            outside = (text[:start] + "\n" + text[end:]).strip()
-            if _obj(outside) is not None:
-                raise Ambiguous("a fenced block and a second JSON value are both present")
-            cut = min([i for i in (outside.find("{"), outside.find("[")) if i != -1] or [-1])
-            if cut >= 0 and _obj(outside[cut:]) is not None:
-                raise Ambiguous("a fenced block and a second JSON value are both present")
-            return body.strip()
-        # A fence was present and none of them held JSON. Do NOT fall through to the brace-cut:
-        # the file announced where its payload was and that payload is unusable.
-        raise NoPayload("a fenced block is present but holds no JSON object")
-
-    cut = min([i for i in (text.find("{"), text.find("[")) if i != -1] or [-1])
-    if cut > 0:
-        text = text[cut:]
-    return text
+    import sys as _s
+    _s.path.insert(0, "creative-problem-solving/scripts")
+    import robust_json as _rj
+    try:
+        return _rj._unwrap(text)
+    except (getattr(_rj, "_Ambiguous", ()), getattr(_rj, "_NoPayload", ())) as e:
+        raise Ambiguous(str(e))
 
 
 class Ambiguous(Exception): pass

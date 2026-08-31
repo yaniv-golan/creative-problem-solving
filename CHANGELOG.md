@@ -214,6 +214,42 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **Two of the previous round's fixes did not work, and one made a gate worse.** Both were caught by
+  shapes that were not in the corpora written to prevent exactly this.
+
+  **The JSON ambiguity guard was not symmetric.** It tested only the whole of the text outside a
+  fence and the suffix from its first brace, never a prefix — so any prose beside the second payload
+  defeated it. `{real}\nHope that helps.\n```json\n{stub}\n```` still loaded as an empty pool, as
+  did the original motivating direction with a sentence between the two. The corpus held one
+  whitespace-only representative per direction, which were the only two variants the rule handled.
+  It now scans from every brace, and the corpus carries the noisy members of both families.
+
+  **The burial gate's "every occurrence is hidden" rule traded a false positive for a false
+  negative.** An HTML comment renders as nothing, so echoing each option into `<!-- … -->` above a
+  collapsed block made every occurrence count as visible and the gate passed — the exact attack
+  `check`'s own docstring names, reintroduced by the fix for the appendix case. Comments are now
+  hidden regions.
+
+  **Both corpora carried their own copy of the rule, and both copies drifted from the script.** They
+  reported green while the shipped code still lost data, because each had been fixed separately. A
+  corpus that reimplements what it tests is testing the reimplementation; both now import it, and
+  `--shipped` keeps a frozen copy of the *old* predicate, which is what that mode is for.
+
+- **The import-time band check was an `assert`, which `python -O` strips.** `plan_groups.py` already
+  documents this, sixteen lines explaining why its own import-time check exits rather than asserts.
+  Demonstrated: under `-O` a violating band imported cleanly. Now a `sys.exit`, and the message says
+  which value sits outside which band.
+
+- **Three more claims, and a fourth reader.** The bands fired on **five** of eight recorded runs, not
+  six — six is the *file* count, and the same commit message said "eight events, not nine files".
+  The joinable ceiling is 23 points clear of the highest recorded run, not 25. A comment 235 lines
+  from the edit still described three runs "at n=3" with agreement rates matching nothing on disk.
+  And `progress.py` was a **fourth** reader of pair records that `verdicts.is_id` was introduced to
+  unify — a list id raised `unhashable type` there, a bare string raised `AttributeError`.
+
+- **Housekeeping the same review caught:** a test insertion had displaced the file's shebang and
+  module docstring to line 43; a refusal for *zero* payloads read "holds more than one candidate
+  payload"; and an assertion hardcoded `38/38`, so adding a corpus shape would have failed it.
 - **The heartbeat claimed a second adjudicator wherever it saw a duplicate.** It reported
   `judgements - pairs` as the planted count and explained the gap as two blind adjudicators — true
   only when the duplication is *cross-shard*. A pair listed twice inside one shard gives the same
@@ -293,7 +329,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
   Also removes the retracted "roughly two thirds were load-bearing" from a test docstring — the
   fourth time in this series a correction reached two of three sites.
-- **The verdict-mix bands fired on six of the eight runs on record, including both complete ones.**
+- **The verdict-mix bands fired on five of the eight runs on record, including both complete ones.**
   They were drawn when a single 0.7% run was read as the anomaly, so the floors sat at 5% and 40%.
   Five of the eight recorded runs are at or below 2.2% duplicate: the low-duplicate regime is the
   common case and the two early runs at 18.5% and 19.5% are the outliers. A warning that fires on

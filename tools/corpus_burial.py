@@ -35,6 +35,15 @@ CORPUS = [
     ("class=open, not open",    f'<details class="open"><summary>s</summary>\n{BODY}</details>', "REFUSE",
      "`open` must be read as an attribute name, not a substring of the tag"),
 
+    ("comment echo above a block",
+     "# Answer\n\nA short summary.\n\n<!-- Option one text -->\n<!-- Option two text -->\n"
+     "<details><summary>full machine output</summary>\n%s</details>" % BODY, "REFUSE",
+     "THE REGRESSION THE `every occurrence` RULE INTRODUCED: an HTML comment renders as nothing, so "
+     "echoing the options into comments makes every occurrence 'visible' and the block passes"),
+    ("option text only in summary",
+     "<details><summary>Option one text</summary>\n%s</details>" % BODY, "REFUSE",
+     "<summary> is the visible half, but the option's OTHER occurrence is still folded away"),
+
     # --- the answer is readable: must pass -------------------------------------------------------
     ("no tag at all",           BODY, "PASS",
      "the ordinary report"),
@@ -54,53 +63,19 @@ def buried_shipped(doc, opts):
     return [o for o in opts if o in blob]
 
 
-_OPEN = re.compile(r"<details([^>]*)>", re.I | re.S)
-_CLOSE = re.compile(r"</\s*details\s*>", re.I)
-
-
-def _collapsed_spans(doc):
-    """Spans of text a reader must click to see. Nesting-aware; an unclosed block runs to EOF.
-
-    `open` is honoured only on a block that is not itself inside a collapsed one -- an open wrapper
-    around a closed block hides its content just as well as a closed wrapper does.
-    """
-    events = ([(m.start(), m.end(), "o", m.group(1)) for m in _OPEN.finditer(doc)]
-              + [(m.start(), m.end(), "c", "") for m in _CLOSE.finditer(doc)])
-    events.sort()
-    spans, stack = [], []          # stack of (is_collapsed, content_start)
-    for start, end, kind, attrs in events:
-        if kind == "o":
-            is_open_attr = re.search(r"(?:^|\s)open(?:\s|=|$)", attrs, re.I) is not None
-            collapsed = (not is_open_attr) or any(c for c, _ in stack)
-            stack.append((collapsed, end))
-        else:
-            if not stack:
-                continue
-            collapsed, content_start = stack.pop()
-            if collapsed and not any(c for c, _ in stack):
-                spans.append((content_start, start))
-    while stack:                    # unclosed: folds to end of document
-        collapsed, content_start = stack.pop()
-        if collapsed and not any(c for c, _ in stack):
-            spans.append((content_start, len(doc)))
-    return spans
-
-
 def buried_proposed(doc, opts):
-    """An option is buried when EVERY occurrence of it is inside a collapsed span.
+    """The shipped predicate, imported rather than reimplemented.
 
-    Not "appears inside one" -- that refuses a report showing its options and repeating them in a
-    collapsed appendix, where nothing is hidden at all.
+    This file used to carry its own copy. The copy and the script then drifted -- the corpus
+    reported green while the script still passed a document with the answer folded away, because
+    each had been fixed separately. A corpus that reimplements the thing it tests is testing the
+    reimplementation. `--shipped` still holds a FROZEN copy of the OLD predicate, which is the
+    point of that mode: it records what the code did before the change.
     """
-    spans = _collapsed_spans(doc)
-    if not spans:
-        return []
-    out = []
-    for o in opts:
-        hits = [m.start() for m in re.finditer(re.escape(o), doc)]
-        if hits and all(any(s <= h < e for s, e in spans) for h in hits):
-            out.append(o)
-    return out
+    import sys as _s
+    _s.path.insert(0, "creative-problem-solving/scripts")
+    import build_report as _br
+    return _br._buried(doc, opts)
 
 
 def run(fn, label):

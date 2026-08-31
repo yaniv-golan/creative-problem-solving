@@ -56,6 +56,27 @@ def die(path, problem, fix):
 _FENCE = re.compile(r"```[a-zA-Z]*[ \t]*\r?\n(.*?)\r?\n[ \t]*```", re.S)
 
 
+def _any_payload(text):
+    """True when `text` contains a parseable JSON object or array anywhere in it.
+
+    Scanning from EVERY brace, not just the first. The rule tested only the whole string and its
+    suffix from the first `{`, so a payload with any prose beside it -- a sign-off after it, a
+    sentence before it -- was invisible to the guard and the fenced stub won silently. Both
+    motivating directions of the round-10 defect stayed broken for exactly that reason.
+    """
+    dec = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch not in "{[":
+            continue
+        try:
+            val, _ = dec.raw_decode(text[i:])
+        except ValueError:
+            continue
+        if isinstance(val, (dict, list)):
+            return True
+    return False
+
+
 def _payload(s):
     """s parsed as an object or array, else None. A scalar is not a payload any stage here writes."""
     s = s.strip()
@@ -79,22 +100,37 @@ def _unwrap(text):
         if len(holding) == 1:
             body, start, end = holding[0]
             outside = (text[:start] + "\n" + text[end:]).strip()
-            cut = min([i for i in (outside.find("{"), outside.find("[")) if i != -1] or [-1])
-            if _payload(outside) is not None or (cut >= 0 and _payload(outside[cut:]) is not None):
+            if _any_payload(outside):
                 raise _Ambiguous("a fenced block and a second JSON value are both present")
             return body.strip()
         # A fence was present and none held JSON. The file announced where its payload was; do not
         # go looking elsewhere and hand back something the author did not point at.
-        raise _Ambiguous("a fenced block is present but holds no JSON object")
+        raise _NoPayload("a fenced block is present but holds no JSON object")
 
+    # SCAN FROM EVERY BRACE, not from the first. `min(find("{"), find("["))` cuts at a bracket in
+    # the prose -- "Here are the options [all of them]:" cut at the `[` and refused a file whose
+    # payload was two lines down. The wrapper noise this module exists to absorb includes brackets.
     if text[:1] not in ("{", "["):
-        cut = min([i for i in (text.find("{"), text.find("[")) if i != -1] or [-1])
-        if cut > 0: text = text[cut:]
+        dec = json.JSONDecoder()
+        for i, ch in enumerate(text):
+            if ch in "{[":
+                try:
+                    val, _ = dec.raw_decode(text[i:])
+                except ValueError:
+                    continue
+                if isinstance(val, (dict, list)):
+                    return text[i:]
     return text
 
 
 class _Ambiguous(Exception):
-    """Two candidate payloads, or a fence pointing at nothing. Refuse rather than pick."""
+    """Two candidate payloads. Refuse rather than pick one."""
+
+
+class _NoPayload(Exception):
+    """A fence that points at nothing. Distinct from _Ambiguous because the message differs:
+    reporting zero payloads as "more than one candidate payload" is a sentence that refutes
+    itself, and it shipped that way."""
 
 def _no_constants(c):
     raise ValueError(f"{c} is not valid JSON")
@@ -166,6 +202,10 @@ def load(path, key=None, kind=list):
     try:
         data = json.loads(_unwrap(raw), parse_constant=_no_constants,
                           object_pairs_hook=_no_dupe_keys)
+    except _NoPayload as e:
+        die(path, f"{e}",
+            "that stage wrapped its output in a code fence and put something other than JSON "
+            "inside it; re-run it and have it emit the file, fenced or not")
     except _Ambiguous as e:
         # Named, like every other refusal here. A traceback naming no stage is the failure this
         # module replaces, and an ambiguous file is the one case where guessing costs a wrong

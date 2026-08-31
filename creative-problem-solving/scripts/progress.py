@@ -45,6 +45,7 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, load_obj, one_line
+from verdicts import is_id
 
 SAY = "SAY: "
 
@@ -124,10 +125,21 @@ def _sharded(wd):
     # two planted pairs. shard_candidates drops in-shard duplicates before writing, so a clean run
     # should not reach the first case -- but a line that asserts the mechanism instead of observing
     # it cannot tell the reader when it did.
+    # THE FOURTH READER OF THESE RECORDS. verdicts.is_id exists because three of them disagreed
+    # about what a valid id is; this one was not counted, and it keyed a frozenset straight off
+    # `.get()` -- so a list id raised `unhashable type` and a bare string record raised
+    # AttributeError, both bare tracebacks naming no stage, in a heartbeat whose whole claim is
+    # that every figure in it was read off a file. A malformed record is skipped here rather than
+    # refused: this is a progress line, and the stage that validates these files is the next one.
     where = {}
     for i, f in enumerate(shards):
         for p in load(f, "pairs"):
-            where.setdefault(frozenset((p.get("a"), p.get("b"))), set()).add(i)
+            if not isinstance(p, dict):
+                continue
+            a, b = p.get("a"), p.get("b")
+            if not is_id(a) or not is_id(b):
+                continue
+            where.setdefault(frozenset((a, b)), set()).add(i)
     pairs = len(where)
     planted_n = sum(1 for files in where.values() if len(files) > 1)
     # Say what the gap is rather than quietly dropping it: the double-judged pairs are the run's

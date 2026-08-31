@@ -508,13 +508,23 @@ def _visible_twin(doc, line, spans):
     return False
 
 
-def _buried(doc, options):
-    """The options whose EVERY occurrence is inside a collapsed span.
+_COMMENT = re.compile(r"<!--.*?-->", re.S)
 
-    Not "appears inside one". A report that presents its options and then repeats them in a
-    collapsed raw-data appendix hides nothing, and the first version of this gate refused it.
+
+def _buried(doc, options):
+    """The options whose every occurrence is somewhere the reader cannot see.
+
+    Not "appears inside a collapsed block" -- that refused a report presenting its options and
+    repeating them in a collapsed appendix, where nothing is hidden. But "every occurrence outside
+    a block" was not the complement either: an HTML COMMENT renders as nothing, so echoing each
+    option into `<!-- ... -->` above a collapsed block made every occurrence count as visible and
+    the gate passed a document with the whole answer folded away. That is the attack this gate's
+    own docstring names, reintroduced by the fix for the false positive.
+
+    So a hidden region is a collapsed <details> span OR a comment, and an option is buried when it
+    occurs nowhere else. Shapes: tools/corpus_burial.py.
     """
-    spans = _collapsed_spans(doc)
+    spans = _collapsed_spans(doc) + [(m.start(), m.end()) for m in _COMMENT.finditer(doc)]
     if not spans:
         return []
     out = []

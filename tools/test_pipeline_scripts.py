@@ -1,46 +1,3 @@
-def t_heartbeat_counts_pairs_not_judgements():
-    """The count is distinct pairs, and the probe sentence appears only when the probe is real.
-
-    Two defects, one line. It summed `len(pairs)` across shards, so the 48 pairs planted into two
-    shards each were counted twice -- measured on both preserved runs, the line said 1,342 and 1,651
-    where the candidate sets hold 1,294 and 1,603, inflated by exactly 48 both times. Then the fix
-    for that reported `judgements - pairs` as the planted count and explained it as two blind
-    adjudicators, which is only true when the duplication is CROSS-SHARD: a pair listed twice inside
-    one shard gives the same arithmetic and one reader, and a pair in three shards was reported as
-    two planted pairs.
-
-    SKILL.md has the orchestrator repeat every SAY: line verbatim, so both were numbers handed to
-    the reader. Shapes are in tools/corpus_heartbeat.py, imported rather than restated.
-    """
-    print("\nthe heartbeat counts distinct pairs, and claims a second adjudicator only when there is one")
-    import importlib.machinery as _mach, importlib.util as _u
-    spec = _u.spec_from_file_location("corpus_heartbeat", ROOT / "tools" / "corpus_heartbeat.py")
-    corpus = _u.module_from_spec(spec); spec.loader.exec_module(corpus)
-    pg = _mach.SourceFileLoader("prog_x", str(SCRIPTS / "progress.py")).load_module()
-
-    bad = []
-    for name, shards, want_pairs, want_probe, why in corpus.CORPUS:
-        d = tempfile.mkdtemp()
-        for i, sh in enumerate(shards, 1):
-            json.dump({"pairs": sh}, open(os.path.join(d, f"cand-{i}.json"), "w"))
-        line = pg._sharded(d)
-        # The pair count is exact, not a substring: "4" matches 14 and 34 too, which the previous
-        # version of this assertion did not distinguish.
-        if f"{want_pairs:,} candidate pairs" not in line:
-            bad.append(f"{name}: wanted {want_pairs} pairs — {line[:80]}")
-        elif want_probe and f"{want_probe} of them go to two different batches" not in line:
-            bad.append(f"{name}: wanted {want_probe} planted — {line[:110]}")
-        elif not want_probe and "two different batches" in line:
-            bad.append(f"{name}: claimed a probe with none planted ({why}) — {line[:110]}")
-        shutil.rmtree(d, True)
-    check(f"all {len(corpus.CORPUS)} corpus shapes report the right pair and probe counts",
-          not bad, "; ".join(bad[:2]))
-
-    names = {n for n, _, _, _, _ in corpus.CORPUS}
-    check("...and the corpus pins the in-shard duplicate, which is the shape that reads as a probe",
-          "duplicate INSIDE one shard" in names, f"{sorted(names)}")
-
-
 #!/usr/bin/env python3
 """Regression tests for the five scripts in creative-problem-solving/scripts/.
 Run: python3 tools/test_pipeline_scripts.py
@@ -985,7 +942,13 @@ def t_id_shapes_fail_by_name():
         import subprocess as _sp
         res = _sp.run([sys.executable, str(ROOT / "tools" / "corpus_ids.py"), "--shipped"],
                       capture_output=True, text=True)
-        ok = "38/38" in res.stdout or "as specified" in res.stdout and "want" not in res.stdout
+        # Not a hardcoded count: adding a shape must not red this test. The property is that no
+        # shape disagrees. Read it off the "N/M ... as specified" line rather than grepping for
+        # "want", which also appears in the corpus's own header row -- a first attempt at this
+        # assertion did exactly that and failed on clean output.
+        import re as _re2
+        _m = _re2.search(r"(\d+)/(\d+) shape", res.stdout)
+        ok = bool(_m) and _m.group(1) == _m.group(2) and "TRACEBACK" not in res.stdout
         check("every corpus shape fails by name rather than by traceback",
               ok and "TRACEBACK" not in res.stdout,
               res.stdout.strip()[-300:])
@@ -1082,6 +1045,49 @@ def t_json_repairs_compose():
           "stub fence THEN real" in names and "real THEN stub fence" in names,
           f"missing a direction: {sorted(names)[:6]}")
     shutil.rmtree(d, True)
+
+
+def t_heartbeat_counts_pairs_not_judgements():
+    """The count is distinct pairs, and the probe sentence appears only when the probe is real.
+
+    Two defects, one line. It summed `len(pairs)` across shards, so the 48 pairs planted into two
+    shards each were counted twice -- measured on both preserved runs, the line said 1,342 and 1,651
+    where the candidate sets hold 1,294 and 1,603, inflated by exactly 48 both times. Then the fix
+    for that reported `judgements - pairs` as the planted count and explained it as two blind
+    adjudicators, which is only true when the duplication is CROSS-SHARD: a pair listed twice inside
+    one shard gives the same arithmetic and one reader, and a pair in three shards was reported as
+    two planted pairs.
+
+    SKILL.md has the orchestrator repeat every SAY: line verbatim, so both were numbers handed to
+    the reader. Shapes are in tools/corpus_heartbeat.py, imported rather than restated.
+    """
+    print("\nthe heartbeat counts distinct pairs, and claims a second adjudicator only when there is one")
+    import importlib.machinery as _mach, importlib.util as _u
+    spec = _u.spec_from_file_location("corpus_heartbeat", ROOT / "tools" / "corpus_heartbeat.py")
+    corpus = _u.module_from_spec(spec); spec.loader.exec_module(corpus)
+    pg = _mach.SourceFileLoader("prog_x", str(SCRIPTS / "progress.py")).load_module()
+
+    bad = []
+    for name, shards, want_pairs, want_probe, why in corpus.CORPUS:
+        d = tempfile.mkdtemp()
+        for i, sh in enumerate(shards, 1):
+            json.dump({"pairs": sh}, open(os.path.join(d, f"cand-{i}.json"), "w"))
+        line = pg._sharded(d)
+        # The pair count is exact, not a substring: "4" matches 14 and 34 too, which the previous
+        # version of this assertion did not distinguish.
+        if f"{want_pairs:,} candidate pairs" not in line:
+            bad.append(f"{name}: wanted {want_pairs} pairs — {line[:80]}")
+        elif want_probe and f"{want_probe} of them go to two different batches" not in line:
+            bad.append(f"{name}: wanted {want_probe} planted — {line[:110]}")
+        elif not want_probe and "two different batches" in line:
+            bad.append(f"{name}: claimed a probe with none planted ({why}) — {line[:110]}")
+        shutil.rmtree(d, True)
+    check(f"all {len(corpus.CORPUS)} corpus shapes report the right pair and probe counts",
+          not bad, "; ".join(bad[:2]))
+
+    names = {n for n, _, _, _, _ in corpus.CORPUS}
+    check("...and the corpus pins the in-shard duplicate, which is the shape that reads as a probe",
+          "duplicate INSIDE one shard" in names, f"{sorted(names)}")
 
 
 def t_dropped_pairs_are_named_by_reason():
