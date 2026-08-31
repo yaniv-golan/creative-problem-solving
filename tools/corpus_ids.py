@@ -572,6 +572,8 @@ if __name__ == "__main__":
         dirs = argv[argv.index("--real") + 1:] or [os.path.join(ROOT, "docs", "internal")]
         sys.exit(1 if real([d for d in dirs if os.path.isdir(d)]) else 0)
     if "--shipped" in argv:
-        run(shipped=True)          # a record of what already works; never a pass/fail gate
-        sys.exit(0)
+        # Exits non-zero on disagreement like every other mode. It was pinned at 0 as "a record,
+        # never a gate", which reads as modesty and means the mode cannot report anything: a
+        # baseline nobody can fail is not a baseline.
+        sys.exit(1 if run(shipped=True) else 0)
     sys.exit(1 if run() else 0)

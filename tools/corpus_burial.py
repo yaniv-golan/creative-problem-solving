@@ -79,6 +79,16 @@ CORPUS = [
     ("<!-- inside an inline code span",
      "# Answer\n\nWrite `<!--` to open one.\n\n%s" % BODY, "PASS",
      "same for a code span"),
+    ("<!-- in an indented code block",
+     "# Answer\n\nHow a comment opens:\n\n    <!-- like this\n\n%s" % BODY, "PASS",
+     "the OTHER CommonMark code form: four spaces, no fence, and the same characters are shown"),
+    ("<!-- in a four-backtick fence",
+     "# Answer\n\nHow to write a fence:\n\n````\n```html\n<!-- like this\n```\n````\n\n%s" % BODY,
+     "PASS",
+     "a fence is three OR MORE backticks; matching exactly three ends the mask at the inner fence"),
+    ("<!-- in a tilde fence",
+     "# Answer\n\nHow a comment opens:\n\n~~~html\n<!-- like this\n~~~\n\n%s" % BODY, "PASS",
+     "the third fence spelling"),
     ("<details> shown in a code block",
      "# Answer\n\nThe markup is:\n\n```html\n<details><summary>s</summary>\n```\n\n%s" % BODY,
      "PASS",
@@ -138,7 +148,13 @@ def gate_check(doc, opts):
     try:
         _br.check(rep)
     except SystemExit as e:
-        return list(opts) if e.code else []
+        # WHICH GATE FIRED, not merely that one did. `check` refuses for four reasons; scoring any
+        # non-zero exit as burial means a shape that trips the missing-options gate is recorded as
+        # the wanted verdict for the wrong reason. That has happened here once already.
+        msg = str(e.code)
+        if "only reachable inside" in msg or "sit inside a collapsed" in msg:
+            return list(opts)
+        raise AssertionError(f"refused by a gate other than burial: {msg[:120]}")
     return []
 
 

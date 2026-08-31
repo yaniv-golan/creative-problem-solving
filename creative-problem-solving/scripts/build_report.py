@@ -515,20 +515,44 @@ def _visible_twin(doc, line, spans):
 _COMMENT = re.compile(r"<!--.*?-->|<!--.*", re.S)
 
 
-_CODE = re.compile(r"```.*?(?:```|\Z)|~~~.*?(?:~~~|\Z)|`[^`\n]*`", re.S)
+# A fence is three OR MORE backticks or tildes, and its close must be at least as long -- so a
+# four-backtick fence is how you show a three-backtick one, and a regex matching exactly three ends
+# the mask at the INNER fence and leaves the rest of the document in the clear. Indented code is
+# the other CommonMark form and carries no fence at all.
+_FENCE_LINE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+_SPAN = re.compile(r"(`+)[^\n]*?\1")
+_INDENTED = re.compile(r"^(?: {4}|\t)")
 
 
 def _mask_code(doc):
-    """`doc` with every code fence and code span blanked to spaces, offsets preserved.
+    """`doc` with every code fence, indented block and code span blanked to spaces, offsets kept.
 
-    MARKUP INSIDE A CODE BLOCK IS SHOWN, NOT OBEYED, and both halves of this gate read raw text.
-    A report that documents its own syntax -- ```html<!-- like this``` , or a `<details>` example --
-    was read as a document hiding its answer and refused. That is the mirror of the hole the
-    comment rule closed: the same characters mean "hidden" in a paragraph and "look at this" in a
-    fence, and only the fence tells you which. Spaces rather than deletion so every span this
-    module returns still indexes into the real document.
+    MARKUP INSIDE CODE IS SHOWN, NOT OBEYED, and both halves of this gate read raw text. A report
+    that documents its own syntax -- a fenced `<!--`, a `<details>` example -- was read as a
+    document hiding its answer and refused. That is the mirror of the hole the comment rule closed:
+    the same characters mean "hidden" in a paragraph and "look at this" in code, and only the
+    surrounding markup says which.
+
+    Spaces rather than deletion so every span this module returns still indexes the real document.
+    Shapes, including the two surfaces a fence-only mask missed: tools/corpus_burial.py.
     """
-    return _CODE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), doc)
+    out, fence = [], None
+    for line in doc.splitlines(keepends=True):
+        blank = re.sub(r"[^\n]", " ", line)
+        m = _FENCE_LINE.match(line)
+        if fence is None:
+            if m:
+                fence = m.group(1)[0] * len(m.group(1))
+                out.append(blank)
+            elif _INDENTED.match(line):
+                out.append(blank)
+            else:
+                out.append(_SPAN.sub(lambda x: re.sub(r"[^\n]", " ", x.group(0)), line))
+        else:
+            out.append(blank)
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+                fence = None
+    return "".join(out)
 
 
 def _hidden_spans(doc):

@@ -56,16 +56,24 @@ def die(path, problem, fix):
 _FENCE = re.compile(r"```[a-zA-Z]*[ \t]*\r?\n(.*?)\r?\n[ \t]*```", re.S)
 
 
-def _at_line_start(text, i):
-    """True when nothing but whitespace precedes `text[i]` on its line.
+# Whitespace and markdown block markers -- a quote, a bullet, a heading, a numbered item. What is
+# NOT here is any letter or digit that is not part of a list marker: prose.
+_MARKUP_ONLY = re.compile(r"[\s>*+\-#]*(?:\d+[.)][\s]*)?[\s>*+\-#]*$")
 
-    THE QUESTION IS WHERE A VALUE STANDS, NOT WHAT TYPE IT IS, and getting that wrong cost two
-    rounds in opposite directions. Asking for a dict let a standalone `["a","b"]` beside a fenced
-    stub through -- the stub loaded, the pool was empty, nobody was told. Asking for any parseable
-    value refused `I weighed options [1, 2, 3] first` and blamed the generator. Neither is a type
-    question: a payload occupies its own line, and a bracket inside a sentence is punctuation.
+
+def _stands_alone(text, i):
+    """True when only whitespace or markdown markup precedes `text[i]` on its line.
+
+    THE QUESTION IS WHERE A VALUE STANDS, NOT WHAT TYPE IT IS, and getting that wrong cost three
+    rounds. Asking for a dict let a standalone `["a","b"]` beside a fenced stub through -- the stub
+    loaded, the pool was empty, nobody was told. Asking for any parseable value refused
+    `I weighed options [1, 2, 3] first` and blamed the generator. Asking whether the brace starts
+    the LINE let the same second payload through again behind `> `, `- ` or `1. `.
+
+    A payload does not stop being a payload because a markdown marker sits in front of it. What
+    disqualifies a candidate is PROSE in front of it. Shapes: tools/corpus_json.py.
     """
-    return not text[text.rfind("\n", 0, i) + 1:i].strip()
+    return _MARKUP_ONLY.fullmatch(text[text.rfind("\n", 0, i) + 1:i]) is not None
 
 
 def _any_payload(text):
@@ -77,11 +85,12 @@ def _any_payload(text):
     motivating directions of the round-10 defect stayed broken for exactly that reason.
 
     Any object or array counts, including an array of scalars: what disqualifies a candidate is
-    starting mid-line, which is where prose keeps its brackets. Shapes: tools/corpus_json.py.
+    prose in front of it, which is where brackets like `[1, 2, 3]` live. Shapes:
+    tools/corpus_json.py.
     """
     dec = json.JSONDecoder()
     for i, ch in enumerate(text):
-        if ch not in "{[" or not _at_line_start(text, i):
+        if ch not in "{[" or not _stands_alone(text, i):
             continue
         try:
             val, _ = dec.raw_decode(text[i:])
@@ -140,9 +149,9 @@ def _unwrap(text):
     # A TRUNCATED FILE HAS NO SUCH BRACE, and must not fall through to an inner fragment: a file
     # cut after a complete inner object parses from that object alone, so "first brace that parses"
     # returned ONE OPTION and called it the pool. A parse that consumed everything and still wanted
-    # more is truncation -- but only from a brace that starts a line. `Consider [` opens an array
-    # that swallows the real payload and hits end of input, which is indistinguishable from a cut
-    # file by that test alone, and refused a complete file while blaming the generator's limit.
+    # more is truncation -- but only from a brace with no prose in front of it. `Consider [` opens
+    # an array that swallows the real payload and hits end of input, which is indistinguishable
+    # from a cut file by that test alone, and refused a complete file while blaming the limit.
     if text[:1] not in ("{", "["):
         dec = json.JSONDecoder()
         for i, ch in enumerate(text):
@@ -151,7 +160,7 @@ def _unwrap(text):
             try:
                 val, end = dec.raw_decode(text[i:])
             except ValueError as e:
-                if _at_line_start(text, i) and getattr(e, "pos", -1) >= len(text) - i:
+                if _stands_alone(text, i) and getattr(e, "pos", -1) >= len(text) - i:
                     return text[i:]
                 continue
             if isinstance(val, (dict, list)) and not text[i + end:].strip():
@@ -250,6 +259,13 @@ def load(path, key=None, kind=list):
             "that stage must write exactly one JSON value; if it wrote a summary and then the "
             "real output, or wrapped one copy in a code fence, re-run it and have it emit only "
             "the file")
+    except RecursionError:
+        # NAMED, like everything else here. Deeply nested brackets exhaust the decoder's stack and
+        # raise outside the ValueError family, so this one corruption escaped as a bare traceback
+        # -- the exact failure the module exists to replace.
+        die(path, "nests JSON too deeply to parse",
+            "that stage wrote thousands of nested brackets; re-run it and have it emit the flat "
+            "object the stage is specified to write")
     except ValueError as e:
         msg = str(e)
         if "Unterminated" in msg or "Expecting ',' delimiter" in msg or "Expecting value" in msg and len(raw) > 2000:

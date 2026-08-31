@@ -68,6 +68,19 @@ CORPUS = [
     ("stub fence then a list of numbers", f'```json\n{STUB}\n```\n[1, 2, 3]',               "REFUSE"),
     ("stub fence then an empty array",    f'```json\n{STUB}\n```\n[]',                      "REFUSE"),
 
+    # THE INVERSE OF "STARTS A LINE". A payload does not stop being a payload because a markdown
+    # marker sits in front of it -- a blockquote, a bullet, a heading, a numbered item. Reading the
+    # test literally, `> {real pool}` after a fenced stub was mid-line, invisible to the guard, and
+    # the stub loaded. Round 10, arrived at a third way. What disqualifies a candidate is PROSE in
+    # front of it, not markup.
+    ("stub fence then a quoted payload",  f'```json\n{STUB}\n```\n> {REAL}',    "REFUSE"),
+    ("stub fence then a bulleted payload", f'```json\n{STUB}\n```\n- {REAL}',   "REFUSE"),
+    ("stub fence then a numbered payload", f'```json\n{STUB}\n```\n1. {REAL}',  "REFUSE"),
+    ("stub fence then a headed payload",  f'```json\n{STUB}\n```\n## {REAL}',   "REFUSE"),
+    ("stub fence then an indented payload", f'```json\n{STUB}\n```\n  {REAL}',  "REFUSE"),
+    # ...and the inverse of THAT: a marker does not make prose into markup.
+    ("bulleted sentence with a bracket",  f'- I weighed [1, 2, 3] first:\n```json\n{REAL}\n```', "PARSE"),
+
     # THE INVERSE OF THE TIGHTENING. A bracket left open in the preamble starts a parse that eats
     # the real payload and hits end of input -- which is what truncation looks like -- so a
     # complete file was refused, and the message blamed the generator's output limit.

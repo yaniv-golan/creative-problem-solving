@@ -8,6 +8,37 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **A payload does not stop being a payload because a markdown marker sits in front of it.** The
+  previous fix replaced a type test with a position test — does this brace start its line — and a
+  second payload written as `> {real pool}`, `- {real pool}` or `1. {real pool}` after a fenced
+  stub was mid-line, invisible to the guard, and the stub loaded on an empty pool. That is the same
+  silent loss, reached a third way. What disqualifies a candidate is **prose** in front of it, not
+  markup: `I weighed options [1, 2, 3] first` is punctuation inside a sentence, `- {…}` is a list
+  item. Both the ambiguity guard and the truncation test now ask that question.
+
+- **A fence is three *or more* backticks, and indented code carries no fence at all.** The mask
+  that stopped the gate refusing a report for documenting `<!--` matched exactly three backticks,
+  so a four-backtick fence — which is how you show a three-backtick one — ended the mask at the
+  inner fence and left the rest of the document in the clear. Four-space indented code, the other
+  CommonMark form, was never masked. The mask now walks lines, tracks the opening fence's length
+  and character, and covers indented blocks and code spans of any backtick run.
+
+- **`corpus_burial.py`'s gate runner scored any refusal as burial.** `check` refuses for four
+  reasons; a shape that tripped the missing-options gate would have been recorded as the wanted
+  verdict for the wrong reason — which had already happened here once. It now asserts which gate
+  fired and raises if the answer is a different one.
+
+- **`corpus_ids.py --shipped` exited 0 unconditionally**, described in its own comment as "never a
+  pass/fail gate". A baseline nobody can fail is not a baseline; it exits non-zero on disagreement
+  like the other three.
+
+- **A deeply nested file escaped as a bare `RecursionError`**, with no stage named — the failure
+  `robust_json` exists to replace, in the one corruption whose exception is outside the
+  `ValueError` family. And `check-repo.py` normalised a manifest path with `lstrip("./")`, which
+  strips a character set, so `../creative-problem-solving/agents/x.md` read as a path inside the
+  repo.
+
+### Fixed
 - **The JSON guard was asking what type a value is, when the question is where it stands.** Both
   answers were wrong, in opposite directions, at two call sites. Narrowing the ambiguity guard to
   "an object, or an array holding one" let a standalone `["opt one", "opt two"]` beside a fenced

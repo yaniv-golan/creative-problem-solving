@@ -309,7 +309,9 @@ if os.path.isdir(agents_dir):
         # `./creative-problem-solving/agents/verifier.md` have the same basename and only one of
         # them resolves -- the same "manifest is valid, nothing is offered" failure, one level in.
         want = {"./%s/agents/%s" % (plugin_name, f) for f in defs}
-        named = {"./" + os.path.normpath(x).lstrip("./") for x in listed}
+        # normpath, not lstrip("./") -- that strips a CHARACTER SET, so "../agents/x.md" became
+        # "agents/x.md" and a path escaping the repo read as one inside it.
+        named = {"./" + os.path.normpath(x) if not x.startswith("..") else x for x in listed}
         broken = sorted(x for x in named if not os.path.isfile(os.path.join(REPO, x[2:])))
         if broken:
             fail("%s lists agent path(s) that resolve to no file: %s. The manifest validates and "
