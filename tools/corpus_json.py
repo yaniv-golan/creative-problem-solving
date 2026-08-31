@@ -7,9 +7,17 @@ Round 11 found that the FIX for it left the mirror of that shape alive, because 
 shape at once, including the inverse of the one that motivated it.
 
 Run: python3 tools/corpus_json.py [--shipped]
-  --shipped  run the corpus against the CURRENT robust_json, to record what already works
+  --shipped [REV]  run the corpus against robust_json as of a git revision (default HEAD),
+                   to record the baseline the change is measured against
 """
 import json, os, re, sys
+
+# ABSOLUTE, so this runs from any working directory. A relative path made the import
+# fail wherever the corpus was invoked from outside the repo root -- and in one file it
+# surfaced as a bare traceback naming no stage, which is the failure this codebase is
+# built to eliminate.
+SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                       "creative-problem-solving", "scripts")
 
 REAL = '{"items":[{"id":"p1-001","text":"the real option"}]}'
 STUB = '{"items":[]}'
@@ -51,6 +59,21 @@ CORPUS = [
     ("number list in prose, fence", f'I weighed options [1, 2, 3] first:\n```json\n{REAL}\n```', "PARSE"),
     ("fence then a ranking aside",  f'```json\n{REAL}\n```\nI ranked [4, 7] highest.',           "PARSE"),
     ("markdown link beside fence",  f'See [the brief](x.md):\n```json\n{REAL}\n```',             "PARSE"),
+    # THE INVERSE OF THE LOOSENING. Narrowing the guard to "dict, or list holding a dict" let a
+    # standalone array of scalars beside a fenced stub through: the stub loaded and the run
+    # continued on an empty pool. That is the round-10 defect for the fourth time, arrived at from
+    # the opposite side. The question was never what TYPE the second value is -- it is whether the
+    # value stands where a payload stands or is punctuation inside a sentence.
+    ("stub fence then a list of strings", f'```json\n{STUB}\n```\n["opt one", "opt two"]',  "REFUSE"),
+    ("stub fence then a list of numbers", f'```json\n{STUB}\n```\n[1, 2, 3]',               "REFUSE"),
+    ("stub fence then an empty array",    f'```json\n{STUB}\n```\n[]',                      "REFUSE"),
+
+    # THE INVERSE OF THE TIGHTENING. A bracket left open in the preamble starts a parse that eats
+    # the real payload and hits end of input -- which is what truncation looks like -- so a
+    # complete file was refused, and the message blamed the generator's output limit.
+    ("unclosed bracket, then payload",  f'Consider [\n{REAL}',                               "PARSE"),
+    ("unfenced number list in prose",   f'I weighed options [1, 2, 3] first:\n{REAL}',       "PARSE"),
+    ("prose on the payload's own line", f'Here you go: {REAL}',                               "PARSE"),
     ("brace inside a string value",
      'Note:\n{"items":[{"id":"p1-001","text":"use the {placeholder} form"}]}',                    "PARSE"),
     ("nested object in the pool",
@@ -107,7 +130,7 @@ def unwrap_proposed(text):
     exception, so `--shipped` and the default mode differ only in which commit is checked out.
     """
     import sys as _s
-    _s.path.insert(0, "creative-problem-solving/scripts")
+    _s.path.insert(0, SCRIPTS)
     import robust_json as _rj
     try:
         return _rj._unwrap(text)
@@ -129,7 +152,7 @@ def _strict(text):
     corpus now runs unwrap + parse and asks the question that matters: is the file refused.
     """
     import sys as _s
-    _s.path.insert(0, "creative-problem-solving/scripts")
+    _s.path.insert(0, SCRIPTS)
     import robust_json as _rj
     return json.loads(text, parse_constant=_rj._no_constants,
                       object_pairs_hook=_rj._no_dupe_keys)
@@ -158,17 +181,39 @@ def run(fn, label):
     return bad
 
 
+def _at_revision(rev):
+    """robust_json as it stood at a git revision, loaded from the object store.
+
+    `--shipped` USED TO IMPORT THE LIVE MODULE, which the default mode also does, so the two
+    differed in nothing and the mode could not record a baseline -- the number CONTRIBUTING.md
+    quotes was unreproducible by the flag that supposedly produced it. Freezing a hand copy here
+    is the other way to get it wrong: that is what drifted from the script and reported green
+    while the code lost data. A revision cannot drift and cannot be copied wrong.
+    """
+    import subprocess, types
+    src = subprocess.run(["git", "show", f"{rev}:creative-problem-solving/scripts/robust_json.py"],
+                         capture_output=True, text=True,
+                         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if src.returncode:
+        sys.exit(f"cannot read robust_json.py at {rev}: {src.stderr.strip()}")
+    mod = types.ModuleType(f"robust_json_{rev}")
+    mod.__dict__["__file__"] = f"<{rev}>"
+    exec(compile(src.stdout, f"<robust_json@{rev}>", "exec"), mod.__dict__)
+    return mod
+
+
 if __name__ == "__main__":
     if "--shipped" in sys.argv:
-        sys.path.insert(0, "creative-problem-solving/scripts")
-        import robust_json as rj
+        i = sys.argv.index("--shipped")
+        rev = sys.argv[i + 1] if len(sys.argv) > i + 1 else "HEAD"
+        rj = _at_revision(rev)
 
         def shipped(text):
             import tempfile
             d = tempfile.mkdtemp(); p = os.path.join(d, "x.json")
             open(p, "w").write(text)
             return json.dumps(rj.load_obj(p))     # raises SystemExit on refusal; re-parsed by _strict
-        sys.exit(1 if run(shipped, "SHIPPED robust_json") else 0)
+        sys.exit(1 if run(shipped, f"robust_json at {rev}") else 0)
     else:
         bad = run(unwrap_proposed, "PROPOSED rule")
         sys.exit(1 if bad else 0)

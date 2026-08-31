@@ -329,12 +329,23 @@ did. So when you change a gate or a parser:
    outcome and a sentence saying why. Include the **inverse of the shape that motivated the fix**.
    That single omission produced the worst defect in the series: a rule guarding "JSON after a
    fence" left "JSON before a fence" silently broken.
-2. **Implement the rule in that file first**, as a plain function.
-3. **Run it against the shipped code** before changing anything. That number is the baseline and it
-   is usually worse than expected — the four corpora scored 18/21, 6/12, 14/38 and 4/7 against code
+2. **Point the corpus at the real code, not a copy of it.** Two corpora carried their own
+   implementation of the rule; the copies drifted from the scripts and reported green while the
+   scripts still lost data. A corpus that reimplements what it tests is testing the
+   reimplementation.
+3. **Run it against the shipped code** before changing anything — `--shipped [REV]` loads the
+   module from a git revision, so the baseline is reproducible later and cannot drift. That number
+   is usually worse than expected: the four corpora scored 18/21, 6/12, 14/38 and 4/7 against code
    that was passing its whole test suite. Two shapes revealed fixes that would have *regressed*
    behaviour the shipped code got right.
-4. Only when the corpus is green does the rule move into the script, and the corpus becomes the
+4. **Aim at the gate, not the predicate underneath it.** A gate is a caller and a condition. A
+   corpus that exercises only the predicate reports green while the caller decides never to ask
+   it — which is how a report hiding its whole answer passed a gate whose predicate refused it.
+5. **Move one boundary, write both sides.** Every fix in this series that overshot did so because
+   the corpus held the shapes the change was meant to catch and none of the shapes it might start
+   refusing. And when the same predicate appears at two call sites, the corpus needs both: a
+   correction that reached one of them shipped three times.
+6. Only when the corpus is green does the rule move into the script, and the corpus becomes the
    test.
 
 Corpora live in `tools/`, not `docs/internal/` — that directory is gitignored, so a test importing

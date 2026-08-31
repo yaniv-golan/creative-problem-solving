@@ -9,7 +9,14 @@ goes near the script.
 
 Run: python3 tools/corpus_burial.py [--shipped]
 """
-import re, sys
+import os, re, sys
+
+# ABSOLUTE, so this runs from any working directory. A relative path made the import
+# fail wherever the corpus was invoked from outside the repo root -- and in one file it
+# surfaced as a bare traceback naming no stage, which is the failure this codebase is
+# built to eliminate.
+SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                       "creative-problem-solving", "scripts")
 
 OPTS = ["Option one text", "Option two text"]
 BODY = "### 1. Fam A\n\nOption one text\n\n### 2. Fam B\n\nOption two text\n"
@@ -62,6 +69,20 @@ CORPUS = [
      "non-greedy `<!--.*?-->` matches nothing at all when there is no close"),
 
     # --- the answer is readable: must pass -------------------------------------------------------
+    # THE INVERSE OF TREATING AN UNCLOSED COMMENT AS HIDDEN. Inside a code fence or a code span the
+    # markup is shown, not obeyed, so a report that DOCUMENTS this syntax is fully readable. The
+    # gate scanned raw text and refused it. Note what is deliberately NOT here: a bare `<!--` in a
+    # paragraph stays a REFUSE, because a renderer really does swallow the rest of the page.
+    ("<!-- inside a fenced code block",
+     "# Answer\n\nHow a comment opens:\n\n```html\n<!-- like this\n```\n\n%s" % BODY, "PASS",
+     "a fenced block shows the characters; nothing after it is hidden from the reader"),
+    ("<!-- inside an inline code span",
+     "# Answer\n\nWrite `<!--` to open one.\n\n%s" % BODY, "PASS",
+     "same for a code span"),
+    ("<details> shown in a code block",
+     "# Answer\n\nThe markup is:\n\n```html\n<details><summary>s</summary>\n```\n\n%s" % BODY,
+     "PASS",
+     "the same false positive on the older half of the gate: a documented tag is not a folded block"),
     ("no tag at all",           BODY, "PASS",
      "the ordinary report"),
     ("details open alone",      f"<details open><summary>s</summary>\n{BODY}</details>", "PASS",
@@ -90,7 +111,7 @@ def buried_proposed(doc, opts):
     point of that mode: it records what the code did before the change.
     """
     import sys as _s
-    _s.path.insert(0, "creative-problem-solving/scripts")
+    _s.path.insert(0, SCRIPTS)
     import build_report as _br
     return _br._buried(doc, opts)
 
@@ -105,7 +126,7 @@ def gate_check(doc, opts):
     hole in the gate.
     """
     import json as _j, os as _o, sys as _s, tempfile
-    _s.path.insert(0, "creative-problem-solving/scripts")
+    _s.path.insert(0, SCRIPTS)
     import build_report as _br
     d = tempfile.mkdtemp()
     rep = _o.path.join(d, "report.md")

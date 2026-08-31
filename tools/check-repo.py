@@ -304,17 +304,24 @@ if os.path.isdir(agents_dir):
         listed = load_json(rel).get("agents")
         if not isinstance(listed, list):
             continue
-        named = {os.path.basename(x) for x in listed}
-        missing = sorted(set(defs) - named)
+        # PATHS, NOT BASENAMES. Comparing basenames answers "is there a line mentioning this
+        # file" when the question is "does this line point at it". `./agents/verifier.md` and
+        # `./creative-problem-solving/agents/verifier.md` have the same basename and only one of
+        # them resolves -- the same "manifest is valid, nothing is offered" failure, one level in.
+        want = {"./%s/agents/%s" % (plugin_name, f) for f in defs}
+        named = {"./" + os.path.normpath(x).lstrip("./") for x in listed}
+        broken = sorted(x for x in named if not os.path.isfile(os.path.join(REPO, x[2:])))
+        if broken:
+            fail("%s lists agent path(s) that resolve to no file: %s. The manifest validates and "
+                 "the agent is never offered." % (rel, ", ".join(broken)))
+        missing = sorted(os.path.basename(x) for x in want - named)
         if missing:
-            fail("%s lists %d agents by hand but %s/agents/ holds %d; %s would never be offered "
-                 "to a user of that host. Add them to the array, or drop the key and let the "
-                 "agents be auto-discovered."
-                 % (rel, len(named), plugin_name, len(defs), ", ".join(missing)))
-        elif sorted(named - set(defs)):
-            fail("%s lists agent file(s) that do not exist: %s"
-                 % (rel, ", ".join(sorted(named - set(defs)))))
-        else:
+            fail("%s points at none of %s in %s/agents/, so %s would never be offered to a user "
+                 "of that host. Add the path to the array, or drop the key and let the agents be "
+                 "auto-discovered."
+                 % (rel, ", ".join(missing), plugin_name,
+                    "it" if len(missing) == 1 else "they"))
+        elif not broken:
             ok("%s: agents array names all %d definitions" % (rel, len(defs)))
 
 

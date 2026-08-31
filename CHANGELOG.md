@@ -8,6 +8,50 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **The JSON guard was asking what type a value is, when the question is where it stands.** Both
+  answers were wrong, in opposite directions, at two call sites. Narrowing the ambiguity guard to
+  "an object, or an array holding one" let a standalone `["opt one", "opt two"]` beside a fenced
+  stub through — the stub loaded, the pool was empty, and nothing said so, which is the same silent
+  loss the guard was built for. Widening the unfenced scan to accept any parseable value made
+  `I weighed options [1, 2, 3] first:` fatal, and a bracket left open in a preamble — `Consider [`
+  — starts a parse that swallows the real payload and hits end of input, so a complete file was
+  refused with a message blaming the generator's output limit.
+
+  A payload occupies its own line; a bracket inside a sentence is punctuation. The ambiguity guard
+  now counts any object or array that starts a line, so the type narrowing is gone and arrays of
+  scalars are caught again. The unfenced scan takes the brace whose value consumes the rest of the
+  file, which is what the caller demands anyway, and treats "consumed everything and still wanted
+  more" as truncation only from a brace that starts a line.
+
+- **Markup inside a code block is shown, not obeyed.** Both halves of the burial gate read raw
+  text, so a report documenting its own syntax — a ```` ```html ```` block containing `<!--`, or a
+  `<details>` example — was read as a document hiding its answer and refused. Code fences and code
+  spans are now blanked before the scan, with offsets preserved so every span still indexes the
+  real document. A bare `<!--` in a paragraph stays a refusal: a renderer really does swallow the
+  rest of the page.
+
+- **`corpus_json.py --shipped` imported the live module, so it measured the same code as the
+  default mode.** The baseline number `CONTRIBUTING.md` quotes was not reproducible by the flag
+  that supposedly produced it. It now loads the module from a git revision (`--shipped [REV]`,
+  default `HEAD`), which cannot drift the way a frozen hand copy did and cannot be silently
+  identical to the working tree.
+
+- **Two corpora only ran from the repo root**, inserting a relative path on `sys.path`; from
+  anywhere else one reported every shape as an import error and the other emitted a bare traceback
+  naming no stage. Both resolve the scripts directory from `__file__`.
+
+- **The Cursor agents check compared basenames.** `./agents/verifier.md` and
+  `./creative-problem-solving/agents/verifier.md` have the same basename and only one resolves, so
+  a manifest pointing at nothing passed — the failure the check exists to catch, one level in. It
+  now compares paths and refuses a listed path that resolves to no file.
+
+- **Three stale statements of what the code does.** `references/pipeline.md` described `--check` as
+  refusing options collapsed inside `<details>`, after it also began refusing options buried in
+  comments; `conftest.py` said `check-repo.py` asserts 32 things, where the count is derived and now
+  reads 35; and `CONTRIBUTING.md` still told a contributor to implement the rule in the corpus as a
+  plain function, which is the practice that let two corpora drift from their scripts.
+
+### Fixed
 - **Two guards were tightened in the accept direction and one in the refuse direction, and each
   overshot.** The JSON ambiguity guard now scans from every brace, so every bracket an English
   sentence contains gets parsed too: `I weighed options [1, 2, 3] first` beside a fenced payload is

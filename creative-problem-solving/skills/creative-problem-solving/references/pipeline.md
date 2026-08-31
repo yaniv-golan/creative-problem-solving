@@ -881,7 +881,7 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     `python3 "$CPS/scripts/build_report.py" --check "$BASE/$RUN/report.md"`
 
     It refuses a report with a placeholder left, with its family headings removed, or with the
-    options collapsed inside a `<details>` block — every option still in the file and none of
+    options collapsed inside a `<details>` block or buried in an HTML comment — every option still in the file and none of
     them readable is the failure a presence check cannot see. It also refuses a report with
     families missing, comparing against a manifest the build step wrote beside the report, and
     fails if that manifest is absent rather than passing without it.

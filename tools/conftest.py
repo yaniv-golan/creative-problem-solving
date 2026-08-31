@@ -19,7 +19,8 @@ import pytest
 HERE = Path(__file__).resolve().parent
 SUITES = ["test_pipeline_scripts.py", "test_hooks.py", "test_diversity.py"]
 
-# check-repo.py is a suite too -- it asserts 32 things about the tree and exits non-zero -- but its
+# check-repo.py is a suite too -- it asserts several dozen things about the tree and exits
+# non-zero -- but its
 # name matches no discovery pattern, so `pytest tools/` ran everything EXCEPT the repo checks. CI
 # calls it directly, so nothing was broken; what was wrong is that the one command a contributor
 # reaches for was a subset of the gate without saying so.

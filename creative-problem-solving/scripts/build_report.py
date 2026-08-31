@@ -515,6 +515,22 @@ def _visible_twin(doc, line, spans):
 _COMMENT = re.compile(r"<!--.*?-->|<!--.*", re.S)
 
 
+_CODE = re.compile(r"```.*?(?:```|\Z)|~~~.*?(?:~~~|\Z)|`[^`\n]*`", re.S)
+
+
+def _mask_code(doc):
+    """`doc` with every code fence and code span blanked to spaces, offsets preserved.
+
+    MARKUP INSIDE A CODE BLOCK IS SHOWN, NOT OBEYED, and both halves of this gate read raw text.
+    A report that documents its own syntax -- ```html<!-- like this``` , or a `<details>` example --
+    was read as a document hiding its answer and refused. That is the mirror of the hole the
+    comment rule closed: the same characters mean "hidden" in a paragraph and "look at this" in a
+    fence, and only the fence tells you which. Spaces rather than deletion so every span this
+    module returns still indexes into the real document.
+    """
+    return _CODE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), doc)
+
+
 def _hidden_spans(doc):
     """Every span of `doc` a reader does not see: collapsed <details> content, and comments.
 
@@ -523,7 +539,8 @@ def _hidden_spans(doc):
     report that hid its whole answer in comments and carried no <details> tag at all was never
     handed to the predicate that would have refused it.
     """
-    return _collapsed_spans(doc) + [(m.start(), m.end()) for m in _COMMENT.finditer(doc)]
+    masked = _mask_code(doc)
+    return _collapsed_spans(masked) + [(m.start(), m.end()) for m in _COMMENT.finditer(masked)]
 
 
 def _buried(doc, options):

@@ -56,31 +56,38 @@ def die(path, problem, fix):
 _FENCE = re.compile(r"```[a-zA-Z]*[ \t]*\r?\n(.*?)\r?\n[ \t]*```", re.S)
 
 
+def _at_line_start(text, i):
+    """True when nothing but whitespace precedes `text[i]` on its line.
+
+    THE QUESTION IS WHERE A VALUE STANDS, NOT WHAT TYPE IT IS, and getting that wrong cost two
+    rounds in opposite directions. Asking for a dict let a standalone `["a","b"]` beside a fenced
+    stub through -- the stub loaded, the pool was empty, nobody was told. Asking for any parseable
+    value refused `I weighed options [1, 2, 3] first` and blamed the generator. Neither is a type
+    question: a payload occupies its own line, and a bracket inside a sentence is punctuation.
+    """
+    return not text[text.rfind("\n", 0, i) + 1:i].strip()
+
+
 def _any_payload(text):
-    """True when `text` holds a second thing shaped like a stage payload.
+    """True when `text` holds a second value standing where a payload stands.
 
     Scanning from EVERY brace, not just the first. The rule tested only the whole string and its
     suffix from the first `{`, so a payload with any prose beside it -- a sign-off after it, a
     sentence before it -- was invisible to the guard and the fenced stub won silently. Both
     motivating directions of the round-10 defect stayed broken for exactly that reason.
 
-    PAYLOAD-SHAPED, NOT MERELY PARSEABLE, and that is the correction to the correction. Scanning
-    from every brace means every bracket an English sentence contains gets parsed too: "I weighed
-    options [1, 2, 3] first" holds a valid JSON array, so an ordinary sentence beside a fence was
-    read as a second payload and hard-failed a stage whose file was never ambiguous. Every stage
-    here writes an object, or an array of objects; a list of bare numbers is prose. The shape that
-    motivated the guard -- a real pool beside a fenced stub -- is an object, so it is still caught.
+    Any object or array counts, including an array of scalars: what disqualifies a candidate is
+    starting mid-line, which is where prose keeps its brackets. Shapes: tools/corpus_json.py.
     """
     dec = json.JSONDecoder()
     for i, ch in enumerate(text):
-        if ch not in "{[":
+        if ch not in "{[" or not _at_line_start(text, i):
             continue
         try:
             val, _ = dec.raw_decode(text[i:])
         except ValueError:
             continue
-        if isinstance(val, dict) or (isinstance(val, list)
-                                     and any(isinstance(x, dict) for x in val)):
+        if isinstance(val, (dict, list)):
             return True
     return False
 
@@ -124,18 +131,31 @@ def _unwrap(text):
     # it the pool -- silent partial loss, on the shape the whole-file parse used to name. A parse
     # that consumed everything and still wanted more is truncation, not prose: hand that brace to
     # the caller's strict parse, which says where the file stops.
+    # A CANDIDATE MUST ACCOUNT FOR EVERYTHING AFTER IT. `[1, 2, 3]` in a sentence parses, so the
+    # scan cut there and the file died as "Extra data" two characters in -- the same prose aside
+    # the fenced path had just been taught to ignore, still fatal one call site away. The payload
+    # is the brace whose value consumes the rest of the file, which is what the caller demands
+    # anyway; anything that leaves a tail behind was punctuation.
+    #
+    # A TRUNCATED FILE HAS NO SUCH BRACE, and must not fall through to an inner fragment: a file
+    # cut after a complete inner object parses from that object alone, so "first brace that parses"
+    # returned ONE OPTION and called it the pool. A parse that consumed everything and still wanted
+    # more is truncation -- but only from a brace that starts a line. `Consider [` opens an array
+    # that swallows the real payload and hits end of input, which is indistinguishable from a cut
+    # file by that test alone, and refused a complete file while blaming the generator's limit.
     if text[:1] not in ("{", "["):
         dec = json.JSONDecoder()
         for i, ch in enumerate(text):
-            if ch in "{[":
-                try:
-                    val, _ = dec.raw_decode(text[i:])
-                except ValueError as e:
-                    if getattr(e, "pos", -1) >= len(text) - i:
-                        return text[i:]
-                    continue
-                if isinstance(val, (dict, list)):
+            if ch not in "{[":
+                continue
+            try:
+                val, end = dec.raw_decode(text[i:])
+            except ValueError as e:
+                if _at_line_start(text, i) and getattr(e, "pos", -1) >= len(text) - i:
                     return text[i:]
+                continue
+            if isinstance(val, (dict, list)) and not text[i + end:].strip():
+                return text[i:]
     return text
 
 
