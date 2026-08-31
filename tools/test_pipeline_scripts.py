@@ -856,6 +856,95 @@ def t_invention_surfaces():
     check("the slot check reaches the reply", rc != 0 and "attribute" in out, out.strip()[:90])
     shutil.rmtree(d, True)
 
+def t_burial_reaches_variants_and_the_reply():
+    """Hiding is checked on the numbered headings only, and not on the reply at all.
+
+    `check`'s own docstring names the attack -- "collapsing the whole list into a <details> block
+    headed 'raw machine output (ignore)' keeps every word and passes any check that only counts
+    presence" -- and then counts `^### \d+\.` inside the block, which is the family headings. The
+    nested variants are a line each under their family and match nothing, so on a real run the
+    majority of the options can be folded away with every heading left visible.
+
+    `check_reply` guards "the surface every other gate misses" and has no burial gate at all, so
+    the reply can carry the whole report under a summary telling the reader to ignore it. That is
+    the artifact the reader actually receives.
+    """
+    print("\nburial is caught in the variants and in the reply, not just in the headings")
+    d = tempfile.mkdtemp()
+    ids, fams = full_fixture(d, multi=True)
+    rep = os.path.join(d, "report.md")
+    run("build_report.py", d, "--out", rep)
+    body = fill_placeholders(rep)
+
+    # Every numbered heading stays visible; everything under it is folded away.
+    lines, out, inside = body.split("\n"), [], False
+    for ln in lines:
+        if re.match(r"^### \d+\.", ln):
+            if inside: out.append("</details>"); inside = False
+            out.append(ln); out.append("<details><summary>detail</summary>"); inside = True
+        else:
+            out.append(ln)
+    if inside: out.append("</details>")
+    open(rep, "w").write("\n".join(out))
+    rc, o = run("build_report.py", "--check", rep)
+    check("folding the variants away is refused even with every heading visible",
+          rc != 0 and "collapsed" in o, f"rc={rc} {o.strip()[:120]}")
+
+    # And the reply, which no burial gate covered.
+    run("build_report.py", d, "--out", rep)
+    body = fill_placeholders(rep)
+    buried = os.path.join(d, "buried_reply.md")
+    open(buried, "w").write("Short summary: I found some options.\n\n"
+                            "<details><summary>full machine output — you can ignore this</summary>\n\n"
+                            + body + "\n</details>\n")
+    rc2, o2 = run("build_report.py", "--check-reply", buried, "--against", rep)
+    check("a reply that buries the report under a summary is refused",
+          rc2 != 0 and "collapsed" in o2, f"rc={rc2} {o2.strip()[:120]}")
+
+    # The legitimate case must still pass: a covering line, then the content, nothing folded.
+    good = os.path.join(d, "good_reply.md")
+    open(good, "w").write("Here is the full list — I would start with the first.\n\n" + body)
+    rc3, o3 = run("build_report.py", "--check-reply", good, "--against", rep)
+    check("...while a plain reply carrying the report still passes", rc3 == 0, o3.strip()[:120])
+    shutil.rmtree(d, True)
+
+
+def t_adjudicator_cannot_invent_a_pair():
+    """A verdict on a pair nobody dealt is a fabrication, and step 5 passed it through.
+
+    The coverage check computes `dealt - back` -- every pair sent out must come home. It never
+    computes `back - dealt`, so a verdict on a pair no candidate file contains is merged into
+    relations.json and carries a JOINING or SEPARATING judgement on two options that were never
+    compared. `shard_candidates.py` makes exactly this argument for the proposer's half of the
+    same hole; this is the adjudicator's half.
+
+    What made it costly is where it surfaces: grouping, ranking and verification are all built on
+    the merged relation set, and the invented pair is caught four stages later by verify_pipeline,
+    if at all.
+    """
+    print("\na verdict on a pair nobody dealt is refused at the merge, not four stages later")
+    d = tempfile.mkdtemp(); w = os.path.join(d, "_work"); os.makedirs(w)
+    json.dump({"pairs": [{"a": "p1-000", "b": "p1-001"}]},
+              open(os.path.join(w, "cand-1.json"), "w"))
+    json.dump({"relations": [{"a": "p1-000", "b": "p1-001", "relation": "distinct"},
+                             {"a": "p9-999", "b": "p8-888", "relation": "duplicate"}]},
+              open(os.path.join(w, "relations-1.json"), "w"))
+    rc, out = run("merge_relations.py", w)
+    check("a verdict on an undealt pair fails the merge",
+          rc != 0 and "never dealt" in out, f"rc={rc} {out.strip()[:140]}")
+    check("...and relations.json is not written with the invention in it",
+          not os.path.exists(os.path.join(w, "relations.json")),
+          "relations.json was written anyway")
+
+    # The honest case must still pass, or the gate is useless.
+    json.dump({"relations": [{"a": "p1-000", "b": "p1-001", "relation": "distinct"}]},
+              open(os.path.join(w, "relations-1.json"), "w"))
+    rc2, out2 = run("merge_relations.py", w)
+    check("...while a shard returning exactly what it was dealt still passes",
+          rc2 == 0, out2.strip()[:140])
+    shutil.rmtree(d, True)
+
+
 def t_reply_gate():
     """The reply the reader receives must carry the report, not a summary of it.
 
@@ -4190,7 +4279,8 @@ def main():
               t_a_note_renders_whatever_the_verdict_says, t_progress_names_the_next_stage,
               t_slots_path_is_named_in_both_spellings, t_superseded_shards_do_not_linger,
               t_lead_search_scales_and_preserves, t_pinch_merge_is_reported,
-              t_lead_search_is_numbering_invariant, t_no_evidence_merge_is_refused,
+              t_lead_search_is_numbering_invariant, t_burial_reaches_variants_and_the_reply,
+              t_adjudicator_cannot_invent_a_pair, t_no_evidence_merge_is_refused,
               t_superseded_verdicts_go_with_their_shards,
               t_label_is_one_line, t_every_phase_boundary_speaks,
               t_the_failed_integrity_check_still_speaks,

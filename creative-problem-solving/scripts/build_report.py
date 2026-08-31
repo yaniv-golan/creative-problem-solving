@@ -491,6 +491,25 @@ def check_reply(reply_path, report_path):
             f"the families checked, the claims labelled — prose composed on top of it was "
             f"none of those things, and it is what the reader gets instead.\n"
             f"      A covering line above the content is fine. Replacing the content is not.")
+    # THE SAME BURIAL GATE, ON THE SURFACE THAT REACHES THE READER. `check` refuses a report that
+    # folds its options into a <details> block; this function checked only that the options were
+    # PRESENT, so a reply could carry the whole report under "full machine output -- you can ignore
+    # this" and pass. Presence was never the property worth having; readability is.
+    import re as _re
+    hidden_r = _re.findall(r"<details[^>]*>(.*?)</details>", reply, _re.S)
+    if hidden_r:
+        blob_r = "\n".join(hidden_r)
+        opts_r = man.get("options") or []
+        gone_r = [o for o in opts_r if o in blob_r]
+        if gone_r:
+            sys.exit(
+                f"FAIL: {len(gone_r)} of {len(opts_r)} options sit inside a collapsed <details> "
+                f"block in {os.path.basename(reply_path)}. The reader is shown a summary and told "
+                f"the answer is machine output they can skip. Every gate before this one counted "
+                f"the options and found them present -- presence was never the property worth "
+                f"having.\n"
+                f"      A covering line above the content is fine. Folding the content away is not.")
+
     _slot_check(reply, man, reply_path)
     brief = _find_brief(report_path)
     if brief: _echo_scan(reply, man, brief, os.path.basename(reply_path))
@@ -662,12 +681,32 @@ def check(path, skeleton_words=None):
     if not heads:
         sys.exit(f"FAIL: {path} has no family headings left — the structure was removed")
 
+    # COUNT OPTIONS, NOT HEADINGS. This counted `### N.` inside the block -- the family headings --
+    # so folding away everything BENEATH them passed with the structure left standing. On a recorded
+    # run the nested variants are 160 of 266 options, each a line under its family and matching no
+    # heading pattern, so the majority of the answer could be hidden while this reported nothing.
+    # The manifest is the list of what has to be readable, so ask it rather than the markup.
     hidden = re.findall(r"<details[^>]*>(.*?)</details>", body, re.S)
-    buried = sum(len(re.findall(r"^### \d+\.", h, re.M)) for h in hidden)
-    if buried:
-        sys.exit(f"FAIL: {buried} of {len(heads)} families sit inside a collapsed <details> "
-                 f"block. Every option is still in the file and none of them is readable; "
-                 f"present the list rather than hiding it behind a summary.")
+    if hidden:
+        blob = "\n".join(hidden)
+        man_path = path + ".manifest.json"
+        opts = []
+        if os.path.exists(man_path):
+            try:
+                opts = load_obj(man_path).get("options") or []
+            except Exception:
+                opts = []
+        if opts:
+            gone = [o for o in opts if o in blob]
+            if gone:
+                sys.exit(f"FAIL: {len(gone)} of {len(opts)} options sit inside a collapsed "
+                         f"<details> block. Every one is still in the file and none of them is "
+                         f"readable; present the list rather than hiding it behind a summary.")
+        buried = sum(len(re.findall(r"^### \d+\.", h, re.M)) for h in hidden)
+        if buried:
+            sys.exit(f"FAIL: {buried} of {len(heads)} families sit inside a collapsed <details> "
+                     f"block. Every option is still in the file and none of them is readable; "
+                     f"present the list rather than hiding it behind a summary.")
 
     words = len(body.split())
     man_path = path + ".manifest.json"

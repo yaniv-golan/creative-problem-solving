@@ -214,6 +214,33 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **The burial gate counted family headings, so the majority of the answer could be folded away.**
+  `build_report.py`'s own docstring names the attack — collapsing the list into a `<details>` block
+  headed "raw machine output (ignore)" keeps every word and passes any check that only counts
+  presence — and then counted `### N.` headings inside the block. Nested variants are a line each
+  under their family and match no heading, and on a recorded run they are 160 of 266 options. A
+  report with every heading visible and everything beneath them folded away passed. It now asks the
+  manifest which options are hidden rather than asking the markup.
+
+- **The reply had no burial gate at all.** `check_reply` guards "the surface every other gate
+  misses" and checked only that the options were present, so a reply could carry the entire report
+  under "full machine output — you can ignore this" and pass. That is the artifact the reader
+  actually receives. Same gate, same manifest.
+
+- **An adjudicator could return a verdict on a pair nobody dealt it.** `merge_relations.py` computed
+  `dealt - back` — every pair sent out must come home — and never `back - dealt`. So a judgement on
+  two options that were never compared merged into `relations.json` and grouping, ranking and
+  verification were built on it, with `verify_pipeline` catching it four stages later if at all.
+  `shard_candidates.py` already makes this argument for the proposer's half of the same hole. The
+  check is skipped when no `cand-*.json` exists, since with no baseline "cannot tell" must not read
+  as "fabricated".
+
+- **A partition check could not fail.** `verify_pipeline.py` asserted
+  `len(placed) - len(rejected) + len(rejected) != len(ids)`, which cancels to the line directly
+  above it — the module's headline invariant spelled by a check with no independent term. Replaced
+  with one that has: `rejected` is read from the verifiers' verdicts and `placed` from the grouper's
+  families, so a refuted option no family holds means those stages disagree about which options
+  exist. Also made the two readers of a relations record agree about whether an id is optional.
 - **`ruff` was red at HEAD, and CI has never run on any of it.** Three `F401`/`F841` errors against
   the pinned `ruff==0.15.0` the workflow installs, one of them added by the previous commit's own
   test. The branch is far enough ahead of `origin/main` that the lint gate had not been exercised

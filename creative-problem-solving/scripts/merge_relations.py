@@ -69,11 +69,35 @@ def main(wd):
     # every returned relation rather than against the shard's own file: the remedy this error
     # names -- re-adjudicate into a new relations-<n>.json -- still clears it.
     missing = []
+    all_dealt = set()
     for c in sorted(glob.glob(os.path.join(wd, "cand-*.json"))):
         k = os.path.basename(c)[5:-5]
         dealt = {frozenset((p.get("a"), p.get("b"))) for p in load(c, "pairs")}
+        all_dealt |= dealt
         gap = dealt - back
         if gap: missing.append((k, sorted(tuple(sorted(g)) for g in gap), len(dealt)))
+
+    # AND THE OTHER DIRECTION. `dealt - back` catches a pair that went out and never came home.
+    # `back - dealt` catches a verdict on a pair nobody sent -- an adjudicator judging two options
+    # it was never asked to compare, which is a fabrication rather than an omission. Only the first
+    # was computed, so an invented pair merged into relations.json carrying a real JOINING or
+    # SEPARATING verdict, and grouping, ranking and verification were all built on it before
+    # verify_pipeline noticed four stages later. shard_candidates.py argues the same for the
+    # proposer's half of this hole; this is the adjudicator's.
+    # Only when there ARE candidate files: with none on disk nothing was dealt, so there is no
+    # baseline to call a verdict invented against, and "cannot tell" must not read as "fabricated".
+    # The coverage loop above is silent in that state for the same reason.
+    invented = sorted(tuple(sorted(x)) for x in (back - all_dealt)) if all_dealt else []
+    if invented:
+        sys.exit(
+            f"FAIL: {len(invented)} verdict(s) name a pair that was never dealt to any "
+            f"adjudicator: " + ", ".join(f"{a}~{b}" for a, b in invented[:6])
+            + (f", and {len(invented) - 6} more" if len(invented) > 6 else "")
+            + "\n      No cand-*.json contains these, so nothing asked for them and nothing can "
+              "check them. A verdict on two options that were never compared is an invention, not "
+              "an omission, and it would otherwise be merged and grouped on."
+            + "\n      Re-dispatch the adjudicator against cand-<k>.json IN FULL and have it judge "
+              "only the pairs in that file. Do not hand-edit relations.json.")
     if missing:
         lines = [f"FAIL: {sum(len(g) for _, g, _ in missing)} pair(s) dealt to an adjudicator never came back."]
         # A shard that returned NOTHING and one that returned all but a pair want different
@@ -121,7 +145,11 @@ def main(wd):
             # adjudicator repeating a pair inside its own shard counts as two adjudicators
             # agreeing -- self-agreement is near-certain, so it inflates the figure and,
             # worse, measures nothing. Observed in real runs: 2 of 38 and 1 of 41.
-            seen[frozenset((e["a"], e["b"]))].append(dict(e, _shard=os.path.basename(s)))
+            # `.get`, matching the coverage reader above. A record missing an id cannot reach here
+            # today -- it fails the coverage comparison first, since a pair keyed on None matches no
+            # candidate -- but the two readers of this same file disagreeing about whether an id is
+            # optional is how a bare KeyError at step 5 of a forty-minute run gets one reorder away.
+            seen[frozenset((e.get("a"), e.get("b")))].append(dict(e, _shard=os.path.basename(s)))
 
     # The probe is only the pairs two DIFFERENT adjudicators judged blind.
     probe = {k: v for k, v in seen.items() if len({e["_shard"] for e in v}) > 1}

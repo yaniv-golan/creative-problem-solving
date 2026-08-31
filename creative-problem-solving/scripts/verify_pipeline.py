@@ -652,8 +652,19 @@ def main(wd):
     print(f"generated={len(ids)} presented={len(placed) - len(rejected)} "
           f"rejected={len(rejected)} families={n} variants_nested={len(placed)-n}")
     if len(placed) != len(ids): die("every generated option must sit in exactly one family")
-    if len(placed) - len(rejected) + len(rejected) != len(ids):
-        die("generated != presented + rejected")
+    # This used to read `len(placed) - len(rejected) + len(rejected) != len(ids)`, which cancels to
+    # the line above and so could never fire on its own -- the module's headline invariant, spelled
+    # by a check with no independent term in it. `presented` is DEFINED as placed minus rejected, so
+    # no arithmetic over those two can test it. What is independent is where the two sets come from:
+    # `rejected` is read from the verifiers' verdicts, `placed` from the grouper's families. A
+    # refuted id that no family holds means those stages disagree about which options exist, and the
+    # rejected band would name an option the report cannot place.
+    _stray = sorted(set(rejected) - set(placed))
+    if _stray:
+        die(f"{len(_stray)} option(s) were refuted by search but sit in no family: "
+            + ", ".join(_stray[:6]) + (f", and {len(_stray) - 6} more" if len(_stray) > 6 else "")
+            + " — the verdicts and the grouping disagree about which options exist, so the rejected "
+              "band would name an option the report cannot place")
     if rejected:
         print(f"rejected (refuted by search, present these in their own band with the source): "
               f"{rejected}")
