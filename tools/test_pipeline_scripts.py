@@ -1,3 +1,46 @@
+def t_heartbeat_counts_pairs_not_judgements():
+    """The count is distinct pairs, and the probe sentence appears only when the probe is real.
+
+    Two defects, one line. It summed `len(pairs)` across shards, so the 48 pairs planted into two
+    shards each were counted twice -- measured on both preserved runs, the line said 1,342 and 1,651
+    where the candidate sets hold 1,294 and 1,603, inflated by exactly 48 both times. Then the fix
+    for that reported `judgements - pairs` as the planted count and explained it as two blind
+    adjudicators, which is only true when the duplication is CROSS-SHARD: a pair listed twice inside
+    one shard gives the same arithmetic and one reader, and a pair in three shards was reported as
+    two planted pairs.
+
+    SKILL.md has the orchestrator repeat every SAY: line verbatim, so both were numbers handed to
+    the reader. Shapes are in tools/corpus_heartbeat.py, imported rather than restated.
+    """
+    print("\nthe heartbeat counts distinct pairs, and claims a second adjudicator only when there is one")
+    import importlib.machinery as _mach, importlib.util as _u
+    spec = _u.spec_from_file_location("corpus_heartbeat", ROOT / "tools" / "corpus_heartbeat.py")
+    corpus = _u.module_from_spec(spec); spec.loader.exec_module(corpus)
+    pg = _mach.SourceFileLoader("prog_x", str(SCRIPTS / "progress.py")).load_module()
+
+    bad = []
+    for name, shards, want_pairs, want_probe, why in corpus.CORPUS:
+        d = tempfile.mkdtemp()
+        for i, sh in enumerate(shards, 1):
+            json.dump({"pairs": sh}, open(os.path.join(d, f"cand-{i}.json"), "w"))
+        line = pg._sharded(d)
+        # The pair count is exact, not a substring: "4" matches 14 and 34 too, which the previous
+        # version of this assertion did not distinguish.
+        if f"{want_pairs:,} candidate pairs" not in line:
+            bad.append(f"{name}: wanted {want_pairs} pairs — {line[:80]}")
+        elif want_probe and f"{want_probe} of them go to two different batches" not in line:
+            bad.append(f"{name}: wanted {want_probe} planted — {line[:110]}")
+        elif not want_probe and "two different batches" in line:
+            bad.append(f"{name}: claimed a probe with none planted ({why}) — {line[:110]}")
+        shutil.rmtree(d, True)
+    check(f"all {len(corpus.CORPUS)} corpus shapes report the right pair and probe counts",
+          not bad, "; ".join(bad[:2]))
+
+    names = {n for n, _, _, _, _ in corpus.CORPUS}
+    check("...and the corpus pins the in-shard duplicate, which is the shape that reads as a probe",
+          "duplicate INSIDE one shard" in names, f"{sorted(names)}")
+
+
 #!/usr/bin/env python3
 """Regression tests for the five scripts in creative-problem-solving/scripts/.
 Run: python3 tools/test_pipeline_scripts.py
@@ -1063,34 +1106,6 @@ def t_dropped_pairs_are_named_by_reason():
           "missing an id" in out, out.strip()[:160])
     check("...and a self-pair is named as one", "self-pair" in out, out.strip()[:160])
     check("...and a real duplicate is still named", "duplicate proposal" in out, out.strip()[:160])
-    shutil.rmtree(d, True)
-
-
-def t_heartbeat_counts_pairs_not_judgements():
-    """The pair count the reader is told is the sum over shards, which double-counts the probe.
-
-    48 pairs are deliberately planted into two shards each so two adjudicators judge them blind --
-    that is how the run reports its own grouping reliability. Summing `len(pairs)` across shards
-    therefore counts each of those twice. Measured on both preserved runs: the line said 1,342 and
-    1,651 where the candidate sets hold 1,294 and 1,603, inflated by exactly 48 in both.
-
-    SKILL.md tells the orchestrator to repeat every `SAY:` line verbatim, so this is a number the
-    reader is given, not an internal log.
-    """
-    print("\nthe heartbeat counts distinct pairs, and says what the planted ones are")
-    import importlib.machinery as _m
-    pg = _m.SourceFileLoader("prog_x", str(SCRIPTS / "progress.py")).load_module()
-    d = tempfile.mkdtemp()
-    # Two shards, one pair planted in both -- the probe's shape in miniature.
-    json.dump({"pairs": [{"a": "p1-000", "b": "p1-001"}, {"a": "p1-002", "b": "p1-003"}]},
-              open(os.path.join(d, "cand-1.json"), "w"))
-    json.dump({"pairs": [{"a": "p1-004", "b": "p1-005"}, {"a": "p1-000", "b": "p1-001"}]},
-              open(os.path.join(d, "cand-2.json"), "w"))
-    line = pg._sharded(d)
-    check("the count is of distinct pairs, not of judgements",
-          "3 candidate pairs" in line, f"got: {line}")
-    check("...and the line says the planted pairs are judged twice, rather than hiding them",
-          "twice" in line and "4" in line, f"got: {line}")
     shutil.rmtree(d, True)
 
 

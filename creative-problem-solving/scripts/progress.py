@@ -116,16 +116,25 @@ def _sharded(wd):
     # candidate sets hold 1,294 and 1,603, inflated by exactly 48 both times. SKILL.md tells the
     # orchestrator to repeat every SAY: line verbatim, so this is a number the reader is handed.
     judgements = sum(len(load(f, "pairs")) for f in shards)
-    seen = set()
-    for f in shards:
+    # WHICH SHARDS a pair appears in, not how many times it appears. The probe plants a pair into
+    # two DIFFERENT shards so two adjudicators judge it blind, and that -- not duplication as such
+    # -- is what the sentence below claims. `judgements - pairs` counts extra copies, so a pair
+    # listed twice inside ONE shard produced the same arithmetic and got described as two blind
+    # adjudicators when there is only one, and a pair planted across three shards was reported as
+    # two planted pairs. shard_candidates drops in-shard duplicates before writing, so a clean run
+    # should not reach the first case -- but a line that asserts the mechanism instead of observing
+    # it cannot tell the reader when it did.
+    where = {}
+    for i, f in enumerate(shards):
         for p in load(f, "pairs"):
-            seen.add(frozenset((p.get("a"), p.get("b"))))
-    pairs = len(seen)
+            where.setdefault(frozenset((p.get("a"), p.get("b"))), set()).add(i)
+    pairs = len(where)
+    planted_n = sum(1 for files in where.values() if len(files) > 1)
     # Say what the gap is rather than quietly dropping it: the double-judged pairs are the run's
     # own reliability probe, and naming them is more useful than either number alone.
-    planted = (f" {judgements - pairs} of them are judged twice, by two adjudicators who cannot see "
-               f"each other, so the run can report how much its grouping is worth — "
-               f"{judgements:,} judgements in all." if judgements > pairs else "")
+    planted = (f" {planted_n} of them go to two different batches, so two adjudicators who cannot "
+               f"see each other judge the same pair and the run can report how much its grouping is "
+               f"worth — {judgements:,} judgements in all." if planted_n else "")
     # Nothing here reads families.json, which is what makes a stale one from an earlier run
     # unable to turn the sharding line into a grouping line. That used to need a guard; now the
     # stage simply does not look at the file it would have misread.

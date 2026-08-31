@@ -42,9 +42,14 @@ from verdicts import relation_of
 #   - SENSITIVITY DEPENDS ON THE RUN. One-notch perturbations move co-residence Jaccard to
 #     0.35-0.69 on `dense-frozen` (five of eight; the other three leave it at 0.99-1.00), but only
 #     to 0.80-1.00 on `realrun`. The densest run is the sensitive one.
-#   - implementation_variant = 0 DOES NOT RE-PARTITION, IT FAILS THE RUN: 38 unassignable lead
-#     pairs on `realrun`, 242 on `dense-frozen`. That is the zero-crossing at `w <= 1e-9` below,
-#     and it is the floor under any retuning, not a value in the range.
+#   - implementation_variant = 0 DOES NOT RE-PARTITION, IT COLLAPSES THE GROUPING BY MERGE: 27
+#     lead pairs on `realrun` and 225 on `dense-frozen` survive the complete search, and every one
+#     is a proven pinch -- so the run does not stop, it fuses. Measured end to end: 20 pinch merges
+#     on `realrun`, 83 on `dense-frozen`, both exiting 0. This comment used to say "IT FAILS THE
+#     RUN" and cite 38 and 242; those are the GREEDY stall counts, before the complete search, and
+#     the failure they describe stopped happening when the pinch-merge path was added. The floor
+#     under any retuning is now a silent one, which is worse: the zero-crossing at `w <= 1e-9`
+#     below turns a weight change into 83 irreversible merges rather than into a refusal.
 #
 # THEY CANNOT BE FITTED BY HELD-OUT PREDICTION, and that dead end is recorded so it is not retried:
 # scoring a weight vector by how well its partition predicts verdicts it did not see gives a

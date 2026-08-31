@@ -214,6 +214,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
   times, and a reader counting against a promise learns the wrong thing from that.
 
 ### Fixed
+- **The heartbeat claimed a second adjudicator wherever it saw a duplicate.** It reported
+  `judgements - pairs` as the planted count and explained the gap as two blind adjudicators — true
+  only when the duplication is *cross-shard*. A pair listed twice inside one shard gives the same
+  arithmetic and one reader; a pair planted across three shards was reported as two planted pairs.
+  It now counts pairs appearing in two **different** shard files, and the sentence appears only when
+  one does. Both preserved runs still report 48, now for the reason stated.
+
+- **A comment said zeroing `implementation_variant` fails the run. It does not — it fuses.** 27 lead
+  pairs survive the complete search on `realrun` and 225 on `dense-frozen`, every one a proven
+  pinch, so the run completes with **20 and 83 irreversible merges** rather than stopping. The
+  cited 38 and 242 are the *greedy* stall counts, from before the complete search, and the failure
+  they described stopped happening when the pinch-merge path was added. Renumbering while keeping
+  "fails the run" would have corrected a figure and left a false claim — the floor under any
+  retuning is now silent, which is worse than the one the comment warned about.
+
+- **A test definition was shadowed by a second copy of itself.** Two functions named
+  `t_heartbeat_counts_pairs_not_judgements` existed; Python bound the later one and the earlier was
+  dead. Both were in the runner list, so the suite reported it twice and ran it once.
 - **Three readers of the same record disagreed about what a valid option id is, so one predicate now
   serves all three.** `verdicts.relation_of` tested `not entry.get(side)` — truthiness, so `5`,
   `true` and `[]` all count as present. `shard_candidates.py` tested the same way and **dealt an
