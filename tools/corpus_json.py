@@ -130,6 +130,16 @@ CORPUS = [
     ("fence fails, later parses",   f'```json\nnot json\n```\n{REAL}',               "REFUSE"),
     ("real, fence fails",           f'{REAL}\n```json\nnot json\n```',               "REFUSE"),
 
+    # THE ACCEPT SIDE OF "AN OBJECT IS A PAYLOAD WHEREVER IT STANDS", WRITTEN DOWN AS WHAT IT IS.
+    # These files are refused, and a reader of this corpus should see the cost rather than infer
+    # it: a generator that illustrates the shape in a sentence and then emits the file stops the
+    # run. That is the trade the module's own premise picks -- forty minutes against a wrong
+    # answer -- but it is a trade, not a free win, and Rule 5 is that both sides get written.
+    ("inline example object beside a fence",
+     f'For example {{"id": "x"}} is the shape.\n```json\n{REAL}\n```',                "REFUSE"),
+    ("empty object in a sign-off",
+     f'```json\n{REAL}\n```\nAn empty object looks like {{}}.',                       "REFUSE"),
+
     # --- corrupt: must keep failing loudly ------------------------------------------------------
     ("truncated",                   '{"a":1',                                        "REFUSE"),
     # TRUNCATION AFTER PROSE. A cut-off file whose LAST complete inner object happens to end at the

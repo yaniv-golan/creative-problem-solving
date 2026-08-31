@@ -334,7 +334,9 @@ did. So when you change a gate or a parser:
    scripts still lost data. A corpus that reimplements what it tests is testing the
    reimplementation.
 3. **Run it against the shipped code** before changing anything — `--shipped [REV]` loads the
-   module from a git revision, so the baseline is reproducible later and cannot drift. That number
+   module from a git revision (`tools/at_revision.py`), so the baseline is reproducible later and
+   cannot drift. Three of the four corpora do this; `corpus_ids.py --shipped` still holds a frozen
+   copy of the old predicate and says so, which is the weaker form. That number
    is usually worse than expected: the four corpora scored 18/21, 6/12, 14/38 and 4/7 against code
    that was passing its whole test suite. Two shapes revealed fixes that would have *regressed*
    behaviour the shipped code got right.

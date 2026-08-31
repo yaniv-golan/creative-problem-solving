@@ -7,9 +7,9 @@ would have refused a correct report (options visible AND repeated in a collapsed
 live in shapes the plan's own list omitted, which is why the rule is written and run here before it
 goes near the script.
 
-Run: python3 tools/corpus_burial.py [--shipped]
+Run: python3 tools/corpus_burial.py [--shipped [REV]]
 """
-import os, re, sys
+import os, sys
 
 # ABSOLUTE, so this runs from any working directory. A relative path made the import
 # fail wherever the corpus was invoked from outside the repo root -- and in one file it
@@ -68,6 +68,25 @@ CORPUS = [
      "an unclosed comment hides to end of document exactly as an unclosed <details> does, and the "
      "non-greedy `<!--.*?-->` matches nothing at all when there is no close"),
 
+    # HTML ELEMENTS WHOSE CONTENT IS NEVER RENDERED. <details> and <!-- --> were the two ways to
+    # hide a page that anyone had thought of; the notation offers more. A browser paints nothing
+    # for <script>, <style>, <template> or an <iframe>'s fallback, and GitHub strips the first two
+    # outright -- so an answer living only inside one is as gone as one inside a comment, and this
+    # gate had never been asked about them in seventeen rounds. <textarea> is deliberately absent:
+    # its content IS shown, in a box.
+    ("answer only inside <script>",
+     "# Answer\n\nA short summary.\n\n<script>\n%s\n</script>\n" % BODY, "REFUSE",
+     "a browser paints nothing for script content, and GitHub removes the element"),
+    ("answer only inside <style>",
+     "# Answer\n\nA short summary.\n\n<style>\n%s\n</style>\n" % BODY, "REFUSE",
+     "same"),
+    ("answer only inside <template>",
+     "# Answer\n\nA short summary.\n\n<template>\n%s\n</template>\n" % BODY, "REFUSE",
+     "template content is inert until cloned by script; nothing renders"),
+    ("unclosed <script> swallows the rest",
+     "# Answer\n\nA short summary.\n\n<script>\n%s" % BODY, "REFUSE",
+     "an unclosed raw-text element runs to end of document, exactly as <details> and <!-- do"),
+
     # --- the answer is readable: must pass -------------------------------------------------------
     # THE INVERSE OF TREATING AN UNCLOSED COMMENT AS HIDDEN. Inside a code fence or a code span the
     # markup is shown, not obeyed, so a report that DOCUMENTS this syntax is fully readable. The
@@ -112,6 +131,12 @@ CORPUS = [
      "# Answer\n\n```html\n<pre><!-- x\n```\n\n<details><summary>s</summary>\n%s</details>\n" % BODY,
      "REFUSE",
      "the HTML mask ran BEFORE the fence mask, so a documented <pre> poisoned everything after it"),
+    ("<script> shown in a code block",
+     "# Answer\n\nThe markup is:\n\n```html\n<script>alert(1)</script>\n```\n\n%s" % BODY, "PASS",
+     "THE REFUSE-SIDE TWIN'S TWIN: documenting a raw-text element is not hiding in one"),
+    ("<textarea> holding the answer",
+     "# Answer\n\n<textarea>\n%s\n</textarea>\n" % BODY, "PASS",
+     "the one raw-text element a browser DOES show; its content is the field's value"),
     ("<details> shown in a code block",
      "# Answer\n\nThe markup is:\n\n```html\n<details><summary>s</summary>\n```\n\n%s" % BODY,
      "PASS",
@@ -127,11 +152,21 @@ CORPUS = [
 ]
 
 
-def buried_shipped(doc, opts):
-    """The predicate as it ships: option appears anywhere inside a <details>…</details>."""
-    hidden = re.findall(r"<details[^>]*>(.*?)</details>", doc, re.S)
-    blob = "\n".join(hidden)
-    return [o for o in opts if o in blob]
+def buried_at(rev):
+    """The gate's predicate as it stood at `rev`, loaded from git rather than transcribed here.
+
+    This used to be a hand-frozen copy of the pre-7a8dced regex. A copy is a second implementation
+    of the thing under test, which is the defect this method exists to catch: the copy and the
+    script drifted, and the corpus reported green while the code still folded the answer away.
+    """
+    import sys as _s
+    _s.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from at_revision import module_at
+    br = module_at(rev, "build_report", "robust_json", "verdicts")
+    if not hasattr(br, "_buried"):
+        sys.exit(f"build_report.py at {rev} has no _buried: the predicate did not exist yet, so "
+                 f"there is no baseline to read there. Pick a revision at or after it was added.")
+    return br._buried
 
 
 def buried_proposed(doc, opts):
@@ -194,8 +229,11 @@ def run(fn, label):
 
 
 if __name__ == "__main__":
-    if "--shipped" in sys.argv:
-        sys.exit(1 if run(buried_shipped, "SHIPPED (frozen pre-7a8dced predicate)") else 0)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from at_revision import rev_from_argv
+    rev = rev_from_argv(sys.argv)
+    if rev:
+        sys.exit(1 if run(buried_at(rev), f"build_report._buried at {rev}") else 0)
     bad = run(buried_proposed, "PREDICATE build_report._buried")
     bad += run(gate_check, "GATE      build_report.check")
     sys.exit(1 if bad else 0)

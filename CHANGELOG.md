@@ -8,6 +8,28 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **An answer hidden inside `<script>`, `<style>`, `<template>` or an `<iframe>` passed both burial
+  gates.** A browser paints none of those, and GitHub strips the first two outright, so an option
+  whose only copy lives in one is as gone as one inside a comment — but `<details>` and `<!-- -->`
+  were the only two hiding places anyone here had thought of, and this surface had not been asked
+  about in seventeen rounds. They are hidden regions now, unclosed ones running to end of document
+  like the rest. `<textarea>` is deliberately excluded: its content *is* shown.
+
+- **Three of the four corpora now read their baseline from a git revision** rather than a frozen
+  copy pasted into the file. Two such copies had already drifted from their scripts and reported
+  green while the code still lost data — a copy is a second implementation of the thing under test,
+  committed by the tool meant to catch exactly that. `tools/at_revision.py` materialises every file
+  a corpus needs from one revision, so a module never imports its neighbour from the working tree
+  and reports a mixture of two commits as one. `corpus_heartbeat.py` also stopped reimplementing
+  the arithmetic: it writes shard files, calls the shipped `_sharded`, and reads the numbers back
+  out of the sentence the reader is handed.
+
+- **The accept side of "an object is a payload wherever it stands" is written down.** That rule
+  refuses `For example {"id": "x"} is the shape.` beside a real payload. It is the trade this
+  module's premise picks — forty minutes against a wrong answer — but it is a trade, and a reader
+  of the corpus should see its cost rather than infer it.
+
+### Fixed
 - **A pool that disagreed with its own filename silently switched off the concentration check.**
   `references/pipeline.md` binds three surfaces to one number — the file (`pool-<k>.json`), the
   field (`"pool": k`) and every option id (`p<k>-001`) — and nothing compared them.

@@ -557,8 +557,16 @@ def _mask_code(doc):
                    for ln in masked.splitlines(keepends=True))
 
 
+# ELEMENTS WHOSE CONTENT A BROWSER NEVER PAINTS. <details> and <!-- --> were the two ways to hide
+# a page that anyone here had thought of; the notation offers more, and this gate had not been
+# asked about them in seventeen rounds. GitHub strips <script> and <style> outright. <textarea> is
+# deliberately not in this list: its content IS shown, as the field's value. Unclosed runs to the
+# end of the document, like every other hiding place here.
+_INERT = re.compile(r"<(script|style|template|iframe)\b[^>]*>(?:.*?</\1\s*>|.*)", re.S | re.I)
+
+
 def _hidden_spans(doc):
-    """Every span of `doc` a reader does not see: collapsed <details> content, and comments.
+    """Every span of `doc` a reader does not see: collapsed <details>, comments, inert elements.
 
     ONE FUNCTION BECAUSE THE GATE AND ITS PREDICATE DISAGREED. `_buried` learned that a comment
     is a hidden region; `check` still decided WHETHER TO LOOK by asking `_collapsed_spans`. A
@@ -566,7 +574,9 @@ def _hidden_spans(doc):
     handed to the predicate that would have refused it.
     """
     masked = _mask_code(doc)
-    return _collapsed_spans(masked) + [(m.start(), m.end()) for m in _COMMENT.finditer(masked)]
+    return (_collapsed_spans(masked)
+            + [(m.start(), m.end()) for m in _COMMENT.finditer(masked)]
+            + [(m.start(), m.end()) for m in _INERT.finditer(masked)])
 
 
 def _buried(doc, options):
