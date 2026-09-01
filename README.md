@@ -116,7 +116,7 @@ You give it the problem in your own words. It restates that as the job to be don
 obvious answer, and bans it. Then it sends the problem to nine lenses at once — inversion, first
 principles, biomimicry and six more. Each is worked by an agent that cannot see what the others
 are writing: what a pass cannot see, it cannot drift toward. Everything generated is kept, paired
-off, judged blind, grouped by script, and ranked.
+off, judged blind, grouped by script and agent, and ranked.
 
 ```mermaid
 %% Source of truth for these stages is
