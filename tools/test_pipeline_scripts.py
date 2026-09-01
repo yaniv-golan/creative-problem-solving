@@ -3385,8 +3385,14 @@ def t_cps_resolver():
     """
     print("\nStep 0's $CPS resolver runs, and refuses rather than degrading")
     import re as _re
-    md = (ROOT / "creative-problem-solving" / "skills" / "creative-problem-solving"
-          / "references" / "pipeline.md").read_text(encoding="utf-8")
+    # BOTH halves of the split pipeline reference. The CPS-RESOLVER block is in step 0 and so
+    # stays in pipeline.md, but the assertion below is "exactly one across the reference set" --
+    # reading the union is what makes a second copy appearing in pipeline-report.md a failure
+    # rather than an invisible divergence. Two copies of a resolver is the shape verdicts.py
+    # exists to prevent one directory over.
+    _refs = ROOT / "creative-problem-solving" / "skills" / "creative-problem-solving" / "references"
+    md = "\n".join((_refs / _f).read_text(encoding="utf-8")
+                   for _f in ("pipeline.md", "pipeline-report.md"))
     blocks = [b for b in _re.findall(r"```sh\n(.*?)```", md, _re.S) if "CPS-RESOLVER" in b]
     check("exactly one CPS-RESOLVER block in pipeline.md", len(blocks) == 1, f"found {len(blocks)}")
     if len(blocks) != 1: return
@@ -3750,8 +3756,12 @@ def t_slots_path_is_named_in_both_spellings():
     `allow_undelivered_deliverables`, which would silence it.
     """
     print("\nthe slots.json path is named, in both spellings")
-    md = (ROOT / "creative-problem-solving" / "skills" / "creative-problem-solving"
-          / "references" / "pipeline.md").read_text(encoding="utf-8")
+    # BOTH halves: step 10 moved into pipeline-report.md when the reference was split for length,
+    # and reading only pipeline.md reds all three checks below against a correct tree. The union
+    # is right because the assertion is about the procedure, not about which file holds it.
+    _refs = ROOT / "creative-problem-solving" / "skills" / "creative-problem-solving" / "references"
+    md = "\n".join((_refs / _f).read_text(encoding="utf-8")
+                   for _f in ("pipeline.md", "pipeline-report.md"))
     check("the shell form is passed to --fill", '--slots-json "$BASE/$RUN/_work/slots.json"' in md,
           "the script is handed a path the shell can resolve")
     # NOT `"$RUN/_work/slots.json" in md` — that is a substring of the --slots-json line checked
@@ -4399,16 +4409,36 @@ def t_every_phase_boundary_speaks():
 
         # 3. A misspelled stage fails loudly. Silently printing the wrong boundary's line, or
         #    nothing at all, is the failure this whole file exists to prevent.
-        rc, out = run("progress.py", d, "grouped")
+        # `grouped` used to be the exemplar here. It is a real boundary now -- printed by
+        # merge_families.py, which progress.py still correctly refuses -- so the test passed while
+        # reading as a contradiction. Use a name that is not a boundary in either tuple.
+        rc, out = run("progress.py", d, "gruoped")
         check("an unknown stage FAILS rather than printing the wrong line",
               rc != 0 and "unknown stage" in out, f"rc={rc} {out[:90]}")
 
+        # A REAL boundary that this script cannot render is refused too, and says who does print
+        # it. Accepting it would fall through to _furthest and print some other boundary's line
+        # under the caller's name -- the silent-wrong-line failure this whole test exists for.
+        rc, out = run("progress.py", d, "grouped")
+        check("a non-printable boundary is refused, naming the script that owns it",
+              rc != 0 and "merge_families.py" in out, f"rc={rc} {out[:120]}")
+
         # 4. Announcing is recorded, and step 9 names what never spoke.
-        check("all four are recorded as announced",
-              announced(d) == {"generated", "sharded", "ranked", "verified"}, str(announced(d)))
+        _seen = announced(d)
+        check("the four printable boundaries are recorded as announced",
+              {"generated", "sharded", "ranked", "verified"} <= _seen, str(_seen))
+        # This fixture runs merge_relations.py (so `adjudicated` records) but not
+        # merge_families.py, so exactly one of the six boundaries legitimately never spoke.
+        # Asserting total silence again -- as this did before 0.4.2 -- would re-blind the check
+        # to the two boundaries the audit was just extended to cover.
+        check("merge_relations.py records its own boundary", "adjudicated" in _seen, str(_seen))
+        check("the boundary this fixture never ran is absent", "grouped" not in _seen, str(_seen))
         rc, out = run("verify_pipeline.py", d)
-        check("a fully-narrated run draws no boundary warning",
-              "never printed a line" not in out, out[:160])
+        check("step 9 names the boundary that never spoke, and only that one",
+              "never printed a line" in out and "1 phase boundar" in out and "grouped" in out,
+              out[:200])
+        check("and names the script that owns it, not a progress.py call it would refuse",
+              "merge_families.py" in out, out[:240])
     finally:
         shutil.rmtree(d, True)
 

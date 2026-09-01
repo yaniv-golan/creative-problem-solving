@@ -136,11 +136,12 @@ Download [`creative-problem-solving.zip`](https://github.com/yaniv-golan/creativ
 
 Two payloads, depending on the path you took above.
 
-**The zip, and the `.agents/skills/` mirror — nine files, all prose:** `SKILL.md`, six
+**The zip, and the `.agents/skills/` mirror — ten files, all prose:** `SKILL.md`, seven
 `references/` documents, `LICENSE`, `VERSION`. No executable code at all. The two are held to
 the same payload by `tools/sync-mirrors.py`. Any host on the Agent Skills standard gets this,
-and it is the whole method *and* the whole pipeline — `references/pipeline.md` carries the
-stages. What it cannot carry is the executable half: the scripts that check the stages ship with
+and it is the whole method *and* the whole pipeline — `references/pipeline.md` and
+`references/pipeline-report.md` carry the stages between them, split for length rather than by
+concern. What it cannot carry is the executable half: the scripts that check the stages ship with
 the plugin, not the zip. A host with sub-agent dispatch runs the same fan-out either way; a host
 without one runs it as sequential passes in a single context and says so in a line.
 

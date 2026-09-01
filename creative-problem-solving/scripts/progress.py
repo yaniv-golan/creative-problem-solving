@@ -53,7 +53,20 @@ SAY = "SAY: "
 # file cannot say which stage is CURRENT -- a work dir holding families.json is a run that has
 # grouped, or a re-run that is still sharding beside last time's output. The caller knows; the
 # files do not.
-BOUNDARIES = ("generated", "sharded", "ranked", "verified")
+# TWO SETS, NOT ONE. This name used to carry both meanings and that is why two boundaries were
+# unauditable: verify_pipeline.py reads it as "must have spoken", while main() below reads it as
+# "stages this CLI can render". Adjudication and grouping are announced by merge_relations.py and
+# merge_families.py -- scripts the pipeline has to run anyway -- so they can never be renderable
+# here, and while the two meanings shared a tuple they could not be audited either. Measured on
+# run 20260901-100305: progress-announced.txt held five lines for six pre-gate boundaries and
+# verify_pipeline printed no warning, because the two that stayed silent were not ones it looked
+# for. They are also the two a run under pressure would most want to claim without doing.
+PRINTABLE = ("generated", "sharded", "ranked", "verified")
+
+# Every pre-gate boundary that must tell the reader something. The integrity check is the seventh
+# boundary in references/pipeline-report.md's table and is deliberately absent: it is the auditor,
+# and a stage cannot record its own attendance to itself.
+BOUNDARIES = PRINTABLE + ("adjudicated", "grouped")
 
 # Three of the four boundaries have no script that must run there anyway -- `generated`, `ranked`
 # and `verified` are calls whose only job is to print, and a command whose only job is to print is
@@ -66,9 +79,14 @@ BOUNDARIES = ("generated", "sharded", "ranked", "verified")
 ANNOUNCED = "progress-announced.txt"
 
 
-def _record(wd, stage):
+def record(wd, stage):
+    """Note that `stage` printed its line. Public: merge_relations.py and merge_families.py call
+    it directly, because they print their own SAY: line rather than routing through line()."""
     with open(os.path.join(wd, ANNOUNCED), "a", encoding="utf-8") as fh:
         fh.write(stage + "\n")
+
+
+_record = record  # the pre-0.4.2 spelling, kept so an in-flight caller does not break
 
 
 def announced(wd):
@@ -240,14 +258,20 @@ def line(wd, stage=None):
     if not os.path.isdir(wd):
         sys.exit(f"FAIL: {wd} is not a directory — progress.py was given the wrong path. "
                  f"It wants the _work directory, the same one verify_pipeline.py takes.")
-    if stage is not None and stage not in BOUNDARIES:
-        sys.exit(f"FAIL: unknown stage {stage!r} — progress.py knows {', '.join(BOUNDARIES)}. "
-                 f"A misspelled stage would otherwise print the wrong boundary's line, or none.")
+    # PRINTABLE, not BOUNDARIES: `adjudicated` and `grouped` are real boundaries that this script
+    # cannot render -- the scripts that own those stages print them. Validating against BOUNDARIES
+    # here would accept `progress.py <wd> grouped` and then fall through to _furthest, printing
+    # some other boundary's line under the caller's name.
+    if stage is not None and stage not in PRINTABLE:
+        sys.exit(f"FAIL: unknown stage {stage!r} — progress.py prints {', '.join(PRINTABLE)}. "
+                 f"(`adjudicated` and `grouped` are boundaries too, but merge_relations.py and "
+                 f"merge_families.py print and record those.) A misspelled stage would otherwise "
+                 f"print the wrong boundary's line, or none.")
     out = {"generated": _generated, "sharded": _sharded,
            "ranked": _ranked, "verified": _verified}.get(stage, _furthest)(wd)
     # Only a boundary that actually printed is recorded. A stage called too early returns None,
     # and recording that would report a line the reader never got.
-    if out and stage: _record(wd, stage)
+    if out and stage: record(wd, stage)
     return out
 
 

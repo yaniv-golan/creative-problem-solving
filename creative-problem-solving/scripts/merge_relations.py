@@ -23,6 +23,7 @@ from collections import defaultdict, Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load
 from verdicts import is_id
+from progress import record
 
 # The verdict mix of every run whose relations.json is still held: `duplicate` share and joinable
 # share, ascending. Transcribed from run records kept outside this repository, so these are figures
@@ -321,6 +322,12 @@ def main(wd):
         # so plainly rather than being softened into something reassuring.
         say = ("SAY: No pair was judged by two adjudicators, so this run has no cross-check on "
                "their verdicts at all.")
+    # Record that this boundary spoke, so step 9 can name the ones that did not. Mirrors what
+    # shard_candidates.py already does via progress.line(). This script prints its own SAY: line
+    # rather than routing through progress.py, so without this call the boundary is invisible to
+    # verify_pipeline.py's audit -- which is how adjudication -- 1,836 verdicts on one recorded run -- went unaudited while
+    # references/pipeline-report.md promised every boundary was covered.
+    record(wd, "adjudicated")
     print(say + " Next I group what they connected into families, each named for the one "
                 "mechanism behind it.")
 

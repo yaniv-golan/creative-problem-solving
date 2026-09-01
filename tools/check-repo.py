@@ -445,8 +445,18 @@ for sname in skill_names:
 # fails and the run looks normal. That is why this is a build check and not a runtime one.
 print("\nthe run directory's two spellings")
 
+# SCOPED PER CHECK, not globally. references/pipeline.md was split in two for length (steps 0-6
+# here, 7-10 in pipeline-report.md), and the two checks below want different files. Reading a
+# union for both looks tidy and breaks one of them: RUN= is assigned once, in step 0b, so the
+# report half legitimately has no assignment and `fail("no RUN= assignment found")` would fire on
+# a correct tree. The invocation check is the opposite -- it must span BOTH halves, because five
+# of the twelve `$CPS/scripts/` calls moved across the seam and a single-file read would drop
+# them while still printing [ok]. That silent 12 -> 5 coverage loss is the failure this comment
+# exists to prevent; it was measured on the split before it shipped.
 _pipeline_rel = "%s/skills/%s/references/pipeline.md" % (plugin_name, skill_names[0])
-_pipe = read_text(_pipeline_rel)
+_report_rel = "%s/skills/%s/references/pipeline-report.md" % (plugin_name, skill_names[0])
+_pipe = read_text(_pipeline_rel)                      # step 0b lives here: RUN=, BASE=
+_pipe_all = _pipe + "\n" + read_text(_report_rel)     # every script invocation, both halves
 
 # RUN= must carry no base. `RUN="outputs/$(date …)"` is the original defect: correct for neither
 # family, and silently wrong for both in opposite directions.
@@ -462,13 +472,14 @@ else:
 
 # Every bundled-script invocation takes "$BASE/$RUN". A bare "$RUN" here writes where the shell is,
 # which on a split host is not where the reader looks.
-_script_calls = re.findall(r'python3 "\$CPS/scripts/[a-z_]+\.py"([^`\n]*)', _pipe)
+_script_calls = re.findall(r'python3 "\$CPS/scripts/[a-z_]+\.py"([^`\n]*)', _pipe_all)
 _bare = [c.strip() for c in _script_calls if "$RUN" in c and "$BASE/$RUN" not in c]
 if _bare:
     fail("%s: %d script invocation(s) pass $RUN without $BASE — %s. A script runs under the shell "
          "and needs the shell's spelling." % (_pipeline_rel, len(_bare), "; ".join(_bare[:3])))
 else:
-    ok("%s: all %d script invocation(s) use \"$BASE/$RUN\"" % (_pipeline_rel, len(_script_calls)))
+    ok("pipeline.md + pipeline-report.md: all %d script invocation(s) use \"$BASE/$RUN\""
+       % len(_script_calls))
 
 # And the branch must be printed, or a wrong resolution is invisible.
 if "BASE=$BASE" in _pipe:
@@ -887,8 +898,11 @@ on_disk = {f for f in os.listdir(scripts_dir) if f.endswith(".py")}
 # `python3 "/scripts/shard_candidates.py"` as a NEGATIVE example of an unset $CPS. Matching the
 # literal `$CPS/scripts/<name>.py` form is what separates "the pipeline runs this" from "the
 # pipeline talks about this".
-pipeline_md = read_text(os.path.join(plugin_name, "skills", skill_names[0],
-                                     "references", "pipeline.md"))
+# Both halves of the split pipeline: SECURITY.md's list and INSTALL.md's count are about the
+# whole procedure, and step 8's families.json example moved into the report half.
+pipeline_md = "\n".join(read_text(os.path.join(plugin_name, "skills", skill_names[0],
+                                               "references", _f))
+                        for _f in ("pipeline.md", "pipeline-report.md"))
 invoked = set(re.findall(r'python3 "\$CPS/scripts/([a-z_]+\.py)"', pipeline_md))
 imported = on_disk - invoked
 

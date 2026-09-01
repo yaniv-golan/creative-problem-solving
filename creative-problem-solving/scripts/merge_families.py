@@ -19,6 +19,7 @@ from robust_json import load, one_line
 from verdicts import JOINING, SHARE_MAX, share_breach
 from verdicts import relation_of
 from verdicts import share_ok as _share_ok
+from progress import record
 
 
 
@@ -612,6 +613,12 @@ def main(wd, expect):
         say += (f" {nested} option{'' if nested == 1 else 's'} "
                 f"{'sits nested as a variant' if nested == 1 else 'sit nested as variants'} "
                 f"of another.")
+    # Record that this boundary spoke, so step 9 can name the ones that did not. Mirrors what
+    # shard_candidates.py already does via progress.line(). This script prints its own SAY: line
+    # rather than routing through progress.py, so without this call the boundary is invisible to
+    # verify_pipeline.py's audit -- which is how grouping -- the step that decides every heading the reader sees -- went unaudited while
+    # references/pipeline-report.md promised every boundary was covered.
+    record(wd, "grouped")
     print(say + " Next a ranker orders the families by which would survive a skeptical room — "
                 "not by which is most unusual.")
 

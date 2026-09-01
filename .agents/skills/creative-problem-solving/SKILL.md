@@ -29,19 +29,19 @@ two should I pick" is the same mistake in the opposite direction.
 
 ## Reference files
 
-- `references/pipeline.md` — the operative stages: sub-agent per stage, the file each writes,
-  the scripts that check them. **Required reading before Phase 1**, not optional depth.
+- `references/pipeline.md` (steps 0-6) and `references/pipeline-report.md` (steps 7-10) — the
+  operative stages: sub-agent per stage, the file each writes, the scripts that check them. One
+  procedure split for length; step numbers continue across the two. **Both required before Phase
+  1** — the second carries the progress lines you say during the first.
 - `references/report.md` — the whole of Phase 4. **Required before you write anything the user
   sees.**
 - `references/pruning.md` — the Phase 3 steps. **Required before you prune.**
-- `references/gotchas.md` — the failure modes this pipeline actually produces (framework theater,
-  temperature, premature convergence and the rest), with what each one costs. Read it when
-  something is going wrong, or once before your first run.
-- `references/lenses.md` — longer worked prompts per lens, plus the demoted ones (SCAMPER, Six
-  Thinking Hats) and why. **Optional**: the Phase 1 table carries both moves for every lens. Read
-  it when a lens isn't landing, not as routine.
+- `references/gotchas.md` — the failure modes this pipeline produces, and what each costs. Read
+  it when something is going wrong, or once before your first run.
+- `references/lenses.md` — longer worked prompts per lens, and the demoted ones. **Optional**:
+  the Phase 1 table carries both moves for every lens.
 - `references/evidence.md` — what the research supports, and how strongly. Read if the user
-  challenges the approach, or before skipping or changing a phase.
+  challenges the approach, or before skipping a phase.
 
 **If this file appears to end early, it did — re-read it from disk before continuing.** A long
 conversation truncates a skill body and leaves a marker where it cut; a phase named above being

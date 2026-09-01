@@ -718,10 +718,24 @@ def main(wd):
     # failure here would refuse a good answer over its narration.
     _missed = [b for b in BOUNDARIES if b not in announced(wd)]
     if _missed:
+        # Name the RIGHT remedy per boundary. `adjudicated` and `grouped` are printed by
+        # merge_relations.py and merge_families.py, not by progress.py -- which refuses them --
+        # so the old blanket "each is one progress.py call" sent the caller at a command that
+        # exits with FAIL. A WARN that names an unusable remedy is the defect this run's field
+        # report filed as ISSUE 3, one script over.
+        _owner = {"adjudicated": "merge_relations.py", "grouped": "merge_families.py"}
+        _script = [b for b in _missed if b in _owner]
+        _prog = [b for b in _missed if b not in _owner]
+        _how = []
+        if _prog:
+            _how.append(f"{', '.join(_prog)} — one `progress.py <work-dir> <stage>` call at the "
+                        f"end of that phase")
+        if _script:
+            _how.append(", ".join(f"{b} — printed by {_owner[b]}, so that script did not run "
+                                  f"(or its output was not repeated)" for b in _script))
         warn(f"{len(_missed)} phase boundar(ies) never printed a line for the reader: "
              f"{', '.join(_missed)}. The run is fine; the reader was told less than the steps "
-             f"say to tell them. Each is one `progress.py <work-dir> <stage>` call at the end of "
-             f"that phase.")
+             f"say to tell them. " + "; ".join(_how) + ".")
 
     # THE READER'S LINE FOR THE LAST BOUNDARY, and the only in-channel check on every line before
     # it. These counts are recomputed here from the files at the end of the run, so a mid-run

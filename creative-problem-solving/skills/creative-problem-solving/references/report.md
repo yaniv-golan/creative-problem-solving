@@ -17,7 +17,7 @@ rather than reconstructing them.
 ---
 
 The reader ends with a file they can open and keep, not only a long message. On the scripted path
-`build_report.py` writes it and step 10 presents it; on the no-script fallback you write it
+`build_report.py` writes it and `references/pipeline-report.md` step 10 presents it; on the no-script fallback you write it
 yourself. This is not conditional on the user asking.
 
 **Phases 0-3 are working state, not deliverable.** The user gets the ideas and the
