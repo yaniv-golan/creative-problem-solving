@@ -50,6 +50,30 @@ def where(path):
     return path if a == path else f"{path} (resolved: {a}, cwd: {os.getcwd()})"
 
 
+BRIEF_TEXT_KEYS = ("verbatim_prompt", "reading", "actor", "decision")
+
+
+def brief_str(brief, key, path="brief.json"):
+    """One string from brief.json, or "" — refusing a wrong type rather than crashing on it.
+
+    brief.json is written by the orchestrating model, so every value in it is model-authored and
+    can arrive as a list, a number or an object. `(b.get(k) or "").strip()` on any of those is a
+    bare AttributeError with no stage named — three scripts each did exactly that, and on
+    verify_pipeline it meant the integrity check died without the SAY: line it is required to
+    print when it refuses. Absent and null are ordinary (the key is optional or the run predates
+    it); a wrong type is a refusal that says which key and what shape.
+    """
+    if not isinstance(brief, dict):
+        return ""
+    v = brief.get(key)
+    if v is None:
+        return ""
+    if not isinstance(v, str):
+        die(path, f"`{key}` is a {type(v).__name__}, not a string",
+            f"{key} is one line of text; write it as a string or leave it out")
+    return v.strip()
+
+
 def die(path, problem, fix):
     # The BASENAME names which artifact is wrong, which is what the reader needs first; the
     # resolved path answers "wrong where", which is the question a relative argument raises and

@@ -20,7 +20,7 @@ import json, sys, glob, os, re, time
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from robust_json import load, load_obj
+from robust_json import load, load_obj, brief_str
 from robust_json import where as _where
 from build_report import effective_lead
 from progress import announced, BOUNDARIES
@@ -125,7 +125,7 @@ def main(wd):
     if "invented" not in brief:
         die("brief.json has no `invented` list. If Phase 0 added nothing to the brief, say so "
             "with an empty list; an absent key cannot be told apart from a forgotten one.")
-    # Phase 0 step 1b, gated because an un-gated step is one that stops happening. Both are one
+    # Phase 0 step 1, gated because an un-gated step is one that stops happening. Both are one
     # line each and the run cannot proceed without an answer -- which is the point: on the run
     # this came from, a brief that named a state of use rather than an actor drew roughly a third
     # of its options into improving the artifact instead of changing anyone's behaviour, and no
@@ -133,14 +133,16 @@ def main(wd):
     # step 0c; this is the first script that opens the file.
     for _k, _what in (("actor", "whose behaviour has to change"),
                       ("decision", "what they are deciding at the moment they would")):
-        if not (brief.get(_k) or "").strip():
+        if not brief_str(brief, _k, bpath):
             # The example deliberately avoids the words "on their own": check-repo's
             # independence-claim fingerprint matches that phrase near "passes", and this message
             # would have tripped it while asserting nothing of the kind.
-            die(f"brief.json has no `{_k}` — Phase 0 step 1b names {_what}. A problem stated as "
+            die(f"brief.json has no `{_k}` — Phase 0 step 1 names {_what}. A problem stated as "
                 f"a state of use ('get them to run X against live material') rather than as an "
                 f"actor and a decision pulls generation toward improving the artifact, and "
-                f"nothing later in the run can tell that happened.")
+                f"nothing later in the run can tell that happened. Add `{_k}` to "
+                f"{os.path.basename(bpath)} from Phase 0 step 1 and re-run this check; a run "
+                f"archived before this key existed needs it filled in from its own brief.")
 
     rpath = os.path.join(wd, "relations.json")
     if not os.path.exists(rpath): die("relations.json missing")

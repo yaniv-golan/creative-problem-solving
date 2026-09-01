@@ -60,14 +60,15 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
 
    ```json
    {"families": [{"id": "f001", "label": "...", "members": ["p3-011", "p8-004"],
-                  "merged_labels": [], "pools": 2}]}
+                  "merged_labels": [], "pools": 2,
+                  "risk": "<ABSENT unless a grouper marked this family>",
+                  "merged_risks": ["<ABSENT unless a marked family was merged into this one>"]}]}
    ```
 
-   Two keys are **absent unless a grouper marked the family**: `risk`, a one-line note that the
-   mechanism costs someone who is not choosing it, and `merged_risks`, a list carrying the same
-   from any family merged into this one. They are omitted rather than set to null, so read them
-   with `.get()`. `build_report.py` renders each as its own italic line under the option, at any
-   rank.
+   **`risk` and `merged_risks` are omitted, not nulled**, when nothing was marked — read them
+   with `.get()`. `risk` is a one-line note that the mechanism costs someone who is not choosing
+   it; `merged_risks` carries the same from any family merged into this one. `build_report.py`
+   renders each as its own italic line under the option, at any rank.
 
    `cid` became `id`, and **there is no `lead` key** — the grouper's choice was spent into
    *position*, so the lead is `members[0]`. Reading `lead` here gets a `KeyError`, and reading

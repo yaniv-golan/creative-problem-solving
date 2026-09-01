@@ -1566,7 +1566,8 @@ def t_plan_groups():
     # partition that depends on input order will visibly move.
     d3 = tempfile.mkdtemp()
     ids3 = _make_pools(d3, 3, 8)
-    json.dump({"verbatim_prompt": "x", "reading": "y", "invented": []},
+    json.dump({"verbatim_prompt": "x", "reading": "y", "invented": [],
+               "actor": "a reader", "decision": "whether to act"},
               open(os.path.join(d3, "brief.json"), "w"))
     rels = []
     for k in range(0, 24, 3):
@@ -2613,21 +2614,35 @@ def t_risk_mark_survives_to_the_report():
         # Mark two families, with DISTINCT text: identical strings cannot distinguish a merge
         # that carried both from one that dropped one -- the first run of this test planted the
         # same string twice and could not tell the two apart.
-        marked = 0
+        marked, split_done = 0, False
         tasks = sorted(glob.glob(os.path.join(d, "group-task-*.json")))
         for t in tasks:
             td = json.load(open(t))
             fams = []
             for c in td["clusters"]:
-                fam = {"cid": c["cid"], "label": f"Mechanism {c['cid']}",
-                       "lead": c["lead"], "members": [o["id"] for o in c["options"]]}
-                if marked < 2:
-                    fam["risk"] = f"RISK-{marked}: withholds from the person it targets."
-                    marked += 1
-                fams.append(fam)
+                ids = [o["id"] for o in c["options"]]
+                # SPLIT THE FIRST MULTI-MEMBER CLUSTER IN TWO, marking both halves with DISTINCT
+                # text. merge_families rejoins over-split families whose leads were adjudicated
+                # the same move, which is the merge path `origin_risk` exists for -- and which
+                # the first version of this test never exercised: it produced 27 clusters and 27
+                # families, zero merges, while its docstring claimed the mark survived "through a
+                # merge" and merged_risks was None on every family.
+                if not split_done and len(ids) >= 2:
+                    fams.append({"cid": c["cid"], "label": f"Mechanism {c['cid']} A",
+                                 "lead": ids[0], "members": ids[:1],
+                                 "risk": "RISK-A: withholds from the person it targets."})
+                    fams.append({"cid": c["cid"], "label": f"Mechanism {c['cid']} B",
+                                 "lead": ids[1], "members": ids[1:],
+                                 "risk": "RISK-B: degrades the experience deliberately."})
+                    marked += 2
+                    split_done = True
+                    continue
+                fams.append({"cid": c["cid"], "label": f"Mechanism {c['cid']}",
+                             "lead": c["lead"], "members": ids})
             json.dump({"families": fams},
                       open(os.path.join(d, f"group-result-{td['task']}.json"), "w"))
-        check("the fixture marked two families", marked == 2, str(marked))
+        check("the fixture split a cluster and marked both halves", marked == 2 and split_done,
+              f"marked={marked} split={split_done}")
         check("and the task file carried the actor to the grouper",
               json.load(open(tasks[0])).get("actor", "").startswith("a person choosing"),
               str(json.load(open(tasks[0])).get("actor"))[:60])
@@ -2638,6 +2653,11 @@ def t_risk_mark_survives_to_the_report():
                      for x in ([f["risk"]] if f.get("risk") else []) + (f.get("merged_risks") or [])}
         check("both distinct risk lines survive the merge", len(surviving) == 2,
               f"{len(surviving)}: {sorted(surviving)}")
+        # The merge actually happened -- assert it, so this cannot quietly become a no-merge test
+        # again. One of the two must have been carried as `merged_risks`, not as its own family.
+        check("and one arrived via merged_risks, so a merge really occurred",
+              any(f.get("merged_risks") for f in fams_out),
+              str([f.get("merged_risks") for f in fams_out if f.get("merged_risks")]))
 
         # ranked.json and verified-*.json, over the families merge_families actually emitted.
         make_tail(d, fams_out)

@@ -1123,6 +1123,33 @@ for _node in ast.walk(ast.parse(read_text(os.path.join(plugin_name, "scripts", "
     if {"id", "members"} <= _keys:
         _emitted = _keys
         break
+# ...plus keys attached by subscript AFTER the literal. `risk` and `merged_risks` are set with
+# `_rec["risk"] = ...` because they are omitted when absent rather than nulled, and an AST scan
+# that reads only the dict literal reported five emitted keys while seven can ship -- printing an
+# [ok] that asserted something untrue about the two newest keys. This check's own failure branch
+# says "this check has failed open before; fix the reader rather than removing the check", and
+# routing around it with a subscript is failing it open by a different door.
+if _emitted:
+    # Scoped to the variable the record literal was bound to. An unscoped subscript scan picks up
+    # every `SOMETHING["key"] = ...` in the file -- it reported LEAD_NODES as a families.json key.
+    _mf_ast = ast.parse(read_text(os.path.join(plugin_name, "scripts", "merge_families.py")))
+    _rec_names = set()
+    for _node in ast.walk(_mf_ast):
+        if isinstance(_node, ast.Assign) and isinstance(_node.value, ast.Dict):
+            _k = {k.value for k in _node.value.keys
+                  if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+            if {"id", "members"} <= _k:
+                _rec_names |= {t.id for t in _node.targets if isinstance(t, ast.Name)}
+    for _node in ast.walk(_mf_ast):
+        if not isinstance(_node, ast.Assign):
+            continue
+        for _t in _node.targets:
+            if (isinstance(_t, ast.Subscript) and isinstance(_t.value, ast.Name)
+                    and _t.value.id in _rec_names
+                    and isinstance(_t.slice, ast.Constant)
+                    and isinstance(_t.slice.value, str)):
+                _emitted.add(_t.slice.value)
+
 if not _emitted:
     fail("check-repo.py could not find the families.json output record in merge_families.py, so "
          "it cannot compare it with references/pipeline.md. This check has failed open before; "

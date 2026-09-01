@@ -107,6 +107,15 @@ mechanism and a one-line risk and nothing else — a compact entry the reader ca
 few seconds. An option worth one line is worth more than an option that isn't there; an option
 padded to four lines to look like the others is the failure above, wearing a new hat.
 
+**Mark an option that costs the people it acts on.** On the scripted path a grouper sets a
+`risk` field and `build_report.py` renders it. Writing the report yourself, do the same by hand:
+one italic line under any option whose mechanism works by withholding, degrading, coercing or
+deceiving someone — or whose use would damage the reader's standing with the people they serve.
+A note, not a veto: the option still ships, and the reader decides. This is a different axis from
+the one-line risk above, which is feasibility cost to the *asker*; this one is cost to somebody
+else, and the pipeline had no instrument for it until a run shipped nine such options rendered
+identically to everything around them.
+
 **Present only live options.** This is narrower than it sounds, and it does not conflict with
 Phase 3 step 3. That step says an option needing people the asker doesn't have is still worth
 presenting *with that named* — "you'd need to hire someone who has run this" is useful.

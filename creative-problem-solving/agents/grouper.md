@@ -80,8 +80,12 @@ Write the file named in your prompt, in exactly this shape:
   {"cid": "c007",
    "label": "Auto-publish a credit notice when a change merges",
    "lead": "p3-011",
-   "members": ["p3-011", "p8-004"],
-   "risk": "<one line, ONLY when the mechanism has a cost borne by someone else — else omit>"}
+   "members": ["p3-011", "p8-004"]},
+  {"cid": "c008",
+   "label": "Withhold half the findings for thirty days",
+   "lead": "p2-014",
+   "members": ["p2-014"],
+   "risk": "Works by withholding something the reader already asked for, to force a return visit."}
 ]}
 ```
 
@@ -90,8 +94,11 @@ Write the file named in your prompt, in exactly this shape:
   given apart from reaching outside it, and it refuses a family that omits it.
 - **`lead`** — one of `members`. It is printed in full under the heading; the rest appear beneath it.
 - **`members`** — ids only. Every id in your task appears in exactly one family across the file.
-- **`risk`** — optional. One line, present only when the mechanism costs someone who is not
-  choosing it. It renders under the option in the report, the way a verifier's note does.
+- **`risk`** — optional, and **most families do not have one**: the first example above omits
+  the key entirely, which is the ordinary case. One line, present only when the mechanism costs
+  someone who is not choosing it. It renders under the option in the report, the way a verifier's
+  note does. Write a real sentence about this family — a description of when to use the field is
+  not a risk, and it will be printed to the reader as though it were.
 
 Splitting a cluster means returning several families that share its `cid`. Do not renumber, invent
 ids, or merge two clusters into one family.

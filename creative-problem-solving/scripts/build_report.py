@@ -25,7 +25,7 @@ that it would otherwise copy out by hand.
 import json, os, re, sys, glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from robust_json import fence_spans, load, load_obj, one_line
+from robust_json import brief_str, fence_spans, load, load_obj, one_line
 
 def source_link(url):
     """A source rendered as its domain, linking to the full URL.
@@ -113,8 +113,8 @@ def main(wd, out):
             _b = load_obj(brief_p)
             prompt = (_b.get("verbatim_prompt") or "").strip()
             invented = _b.get("invented")
-            actor = (_b.get("actor") or "").strip()
-            decision = (_b.get("decision") or "").strip()
+            actor = brief_str(_b, "actor", brief_p)
+            decision = brief_str(_b, "decision", brief_p)
         except SystemExit: prompt, invented, actor, decision = "", None, "", ""
 
     L = []
@@ -136,8 +136,12 @@ def main(wd, out):
     _actor, _decision = one_line(actor), one_line(decision)
     if _actor or _decision:
         L += ["## Whose behaviour this is about", ""]
-        if _actor: L += [f"**Actor:** {_actor}"]
-        if _decision: L += [f"**Decision:** {_decision}"]
+        # BULLETS, not two adjacent lines. CommonMark joins adjacent lines into one paragraph,
+        # so `**Actor:** x` / `**Decision:** y` rendered as "Actor: x Decision: y" on one line.
+        # Every other two-line construct in this file separates with a blank line or a bullet;
+        # this matches the Top-3 slot block.
+        if _actor: L += [f"- **Actor:** {_actor}"]
+        if _decision: L += [f"- **Decision:** {_decision}"]
         L += ["", "Every option below is meant to change what that person does at that moment. "
                   "One that only changes the artifact may still be worth doing — but it is "
                   "answering a different question, and it is worth noticing how many do.", ""]

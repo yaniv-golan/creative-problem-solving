@@ -279,6 +279,7 @@ def main(wd, expect):
     if not shards: die(f"no group-result-*.json in {_where(wd)}")
 
     fams, seen, claimed, grouper_labels = [], Counter(), set(), set()
+    _marked_at_ingest = set()
     for s in shards:
         for f in (load(s, "families") or []):
             mem = f.get("members") or []
@@ -323,7 +324,27 @@ def main(wd, expect):
             # line has to follow. A single field on the family would be silently dropped by the
             # absorbed side of every merge -- this dict is rebuilt from an explicit key set, so
             # anything not named here is discarded without a word.
-            _risk = (f.get("risk") or "").strip()
+            # TYPE-CHECKED HERE, with label/lead/members/cid, because this is a model-written
+            # field and `(x or "").strip()` on a list is a bare AttributeError with no stage in
+            # it. A list is the plausible wrong shape: the grouper is asked for a judgement about
+            # harms and models return arrays. verify_pipeline.py refuses a non-string `note` for
+            # exactly this reason and records that `str(["a","b"])` is truthy, so coercing hides
+            # it until something further downstream crashes.
+            if "risk" in f and f["risk"] is not None and not isinstance(f["risk"], str):
+                die(f"{os.path.basename(s)}: family {f.get('cid')} has a `risk` of type "
+                    f"{type(f['risk']).__name__}. It is one sentence for the reader; a list or "
+                    f"object cannot be rendered. Write one line, or omit the field.")
+            _risk = one_line((f.get("risk") or "")).strip()
+            if _risk:
+                _marked_at_ingest.update(mem)
+            if _risk.startswith("<") and _risk.endswith(">"):
+                die(f"{os.path.basename(s)}: family {f.get('cid')} returned the `risk` "
+                    f"placeholder from the shape block instead of a sentence about the family. "
+                    f"Omit the key when the mechanism costs nobody.")
+            if "risk" in f and f["risk"] is not None and not _risk:
+                die(f"{os.path.basename(s)}: family {f.get('cid')} has an empty `risk`. "
+                    f"Omit the field rather than sending a blank one — a present-but-empty mark "
+                    f"is indistinguishable from a family nobody assessed.")
             fams.append({"members": [lead] + [m for m in mem if m != lead],
                          "label": lab, "cid": src,
                          "origin": {m: lab for m in mem},
@@ -602,11 +623,14 @@ def main(wd, expect):
     # risk line discarded here is invisible to it -- and this function rebuilds every family from
     # an explicit key set, which is exactly how an unknown key vanishes without a word. Compare
     # the ids a grouper marked against the ids that survived to the emitted file.
-    # AGAINST THE EMITTED RECORDS, not against what is derivable from fams. The first draft
-    # recomputed _risk_of() here and compared that to itself, so breaking the emission changed
-    # nothing and the gate stayed green -- a gate that reports more than it checked, which is the
-    # exact failure it was written to prevent one field over.
-    _marked = {m for f in fams for m, v in (f.get("origin_risk") or {}).items() if v}
+    # AGAINST A SNAPSHOT TAKEN BEFORE ANY MERGE. Two earlier drafts of this gate could not fire:
+    # the first recomputed the risk from `fams` and compared it to itself; the second read
+    # `fams` at the end, which is AFTER `fams.pop(j)` has taken the absorbed family -- and its
+    # origin_risk -- out of the list. So the loss it exists to catch, a merge dropping the
+    # absorbed side, erased its own evidence before the comparison. `_marked_at_ingest` is
+    # captured in the shard loop above, so a risk that a merge drops is a risk that is in the
+    # snapshot and not in the output.
+    _marked = _marked_at_ingest
     _kept = set()
     for _rec, _i in zip(out, order):
         if _rec.get("risk") or _rec.get("merged_risks"):

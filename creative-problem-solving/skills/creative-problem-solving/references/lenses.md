@@ -1,9 +1,8 @@
 # Constraint lenses
 
-Longer worked prompts for the nine lenses, and the routing table for picking them.
-**`SKILL.md`'s Phase 1 table is the operative version of what each lens *does*** — it carries
-every lens's move and second move. Read this file when choosing lenses, and again when one
-isn't landing.
+Longer worked prompts for the nine lenses. **`SKILL.md`'s Phase 1 table is the operative
+version** — it carries each lens's move and second move, and the problem→lens routing. Read this
+file when a lens isn't landing, not as routine.
 
 ## Contents
 
@@ -11,7 +10,7 @@ isn't landing.
 - [The lenses](#the-lenses) — contradiction, first principles, inversion, constraint
   extremity, time-shift, analogical transfer, biomimicry, morphological, actor reversal
 - [Demoted lenses](#demoted-lenses) — SCAMPER, Six Thinking Hats
-- [Choosing lenses](#choosing-lenses-for-a-problem) — the routing table, and how many to take
+- [Choosing lenses](#choosing-lenses-for-a-problem) — how many to take, and spotting a mis-chosen one
 
 ---
 
@@ -196,14 +195,6 @@ it, but over an option set this engine produced: as a review structure, not the 
 ---
 
 ## Choosing lenses for a problem
-
-**Routing, by what the problem smells like:** business model → first principles, actor
-reversal, time-shift, morphological · technical bottleneck → contradiction, first principles,
-analogical transfer · "everything sounds the same" → inversion, analogical transfer,
-constraint extremity · cost structure → constraint extremity, actor reversal, contradiction ·
-improving an existing product → contradiction, constraint extremity · fast-moving tech →
-time-shift, first principles, actor reversal · organisational → actor reversal, inversion,
-constraint extremity.
 
 **Pick for separation, not for a number.** Adding a lens costs budget, not diversity: measured
 across four lenses against seven on the same problem, the duplicate rate stayed flat at 44% and

@@ -24,7 +24,7 @@ import json, sys, os, glob, itertools
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from robust_json import load, load_obj
+from robust_json import load, load_obj, brief_str, one_line
 from robust_json import where as _where
 # The share rule and the verdict vocabulary, defined once in verdicts.py. This file used to
 # carry its own copy of both plus its own share_ok, mirroring verify_pipeline.py by hand.
@@ -537,17 +537,35 @@ def main(wd, max_task, split_over):
     json.dump({"clusters": out}, open(os.path.join(wd, "clusters.json"), "w", encoding="utf-8"),
               separators=(",", ":"))
 
-    # Absent brief.json, or a run predating step 1b, yields an empty string rather than a
-    # refusal: this script's job is the partition, and verify_pipeline already gates the key.
+    # Absent brief.json, a syntactically broken one, or a run predating step 1 yields an empty
+    # string rather than a refusal: this script's job is the partition. A key of the WRONG TYPE
+    # is a refusal, via brief_str -- that is a malformed record, not a missing one, and coercing
+    # it produced a bare AttributeError with no stage named in three scripts at once.
     actor = ""
     _bp = os.path.join(wd, "brief.json")
     if os.path.exists(_bp):
         try:
             _b = load_obj(_bp)
-            actor = " / ".join(x for x in ((_b.get("actor") or "").strip(),
-                                           (_b.get("decision") or "").strip()) if x)
+            # one_line, like every other model-authored string that crosses a file boundary:
+            # a raw newline in the actor lands verbatim in every task file and the "actor line"
+            # stops being one line.
+            actor = one_line(" / ".join(x for x in (brief_str(_b, "actor", _bp),
+                                                    brief_str(_b, "decision", _bp)) if x))
         except SystemExit:
             actor = ""
+
+    # REFUSE HERE, not only at step 9. This is the first script that reads the key, and the
+    # groupers dispatched from these task files are asked for a judgement the commit adding them
+    # says is not decidable from option text alone. Discovering the brief was incomplete at the
+    # last gate means paying for generation, adjudication and grouping first -- roughly forty
+    # minutes -- and then being told. verify_pipeline keeps its own check as a backstop for a
+    # brief edited after this ran.
+    if not actor and os.path.exists(_bp):
+        die("brief.json has no `actor`/`decision` — Phase 0 step 1 names whose behaviour has to "
+            "change and what they are deciding. The groupers dispatched from these task files are "
+            "asked what an option costs the people it acts on, which needs to know who they are. "
+            f"Add both to {os.path.basename(_bp)} and re-run this script; nothing downstream has "
+            "been spent yet.")
 
     by_cid = {c["cid"]: c for c in out}
     packed = pack([c["members"] for c in out], max_task)
