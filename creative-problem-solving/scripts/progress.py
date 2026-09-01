@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Say what has actually happened so far, from the files, not from anyone's memory of them.
 
-A run takes about forty minutes across eighteen sub-agents. Saying nothing for that long is
+A run takes about half an hour across eighteen sub-agents. Saying nothing for that long is
 unkind, but the obvious fix -- have the model narrate -- is the one thing this pipeline cannot
 audit. A model that skipped a stage narrates having done it exactly as fluently as one that did
 it, and a reader watching has no way to tell. That failure has happened here before.

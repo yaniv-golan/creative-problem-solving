@@ -1,5 +1,5 @@
 ---
-description: Run the creative-problem-solving pipeline on a problem — one isolated sub-agent per lens, every option presented inside a ranked family, the leading options' borrowed mechanisms checked by search. Takes about forty minutes.
+description: Run the creative-problem-solving pipeline on a problem — one isolated sub-agent per lens, every option presented inside a ranked family, the leading options' borrowed mechanisms checked by search. Takes about half an hour.
 argument-hint: "[the problem, in your own words]"
 ---
 

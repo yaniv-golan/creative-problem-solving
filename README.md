@@ -10,7 +10,7 @@
 
 **Gets you options you hadn't already thought of.** You describe a problem you're stuck on. It
 comes back with structurally different things you could do — not five variations on the obvious
-answer with different headings. A run takes about forty minutes and hands back one long document:
+answer with different headings. A run takes about half an hour and hands back one long document:
 hundreds of options across nine lenses, grouped into families, ranked, the leading ones
 fact-checked.
 
@@ -75,7 +75,7 @@ with [what the run measured about itself](evals/transcripts/capture-2026-09-01-r
 
 ## When it runs, and when it refuses
 
-**Ask for it directly. That is the only way in.** A full run takes about forty minutes and
+**Ask for it directly. That is the only way in.** A full run takes about half an hour and
 returns a long document, so the run is yours to start — never something a phrasing triggers.
 In Claude Code and Claude Desktop that decision is a command:
 
@@ -214,7 +214,7 @@ rather than forcing a different starting point. The reasoning is in
 
 ## What you don't
 
-Three limits worth knowing before you spend forty minutes.
+Three limits worth knowing before you spend half an hour.
 
 **The same problem does not group the same way twice.** Run it twice and you get a different
 number of families, each grouping individually coherent — about what two editors organising the
@@ -254,7 +254,7 @@ get it as a file to keep. [Where a run writes its files →](INSTALL.md#where-a-
 
 ## Does it actually work?
 
-Well enough to be worth forty minutes on an open strategic problem — on evidence thin enough
+Well enough to be worth half an hour on an open strategic problem — on evidence thin enough
 that you should know its shape before you trust it.
 
 **One measurement covers the pipeline you would install.** Two full runs have completed end to
@@ -269,7 +269,7 @@ The run shown at the top of this page was graded against two claims and met both
 a ruled-out premise instead of obeying it, and that at least one option questions the framing.
 One run is not a rate.
 
-**On bounded questions a plain answer beats it** — 17/18 to 14/18. The forty minutes is the
+**On bounded questions a plain answer beats it** — 17/18 to 14/18. The half hour is the
 whole cost, and on a question that deserved five it is a bad trade.
 
 **The graded evals measure the 0.1.0 pipeline, not this one.** Re-running them is sequenced

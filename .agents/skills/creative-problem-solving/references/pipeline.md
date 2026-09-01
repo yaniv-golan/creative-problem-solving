@@ -1041,7 +1041,7 @@ is the deliverable and the script builds it.
 
 ## Progress
 
-This run takes about forty minutes across roughly eighteen dispatches, and the reader sees none of
+This run takes about half an hour across roughly eighteen dispatches, and the reader sees none of
 them: a client that renders tool calls as collapsed cards shows *"ran 4 commands"* where the
 terminal shows four lines of output. So at every phase boundary a script prints one `SAY:` line
 saying what the phase produced and what happens next, and you repeat it. Seven boundaries:
@@ -1119,7 +1119,7 @@ cannot survive.
 ### Opening — after Phase 0, before the first dispatch
 
 > Reading this as <the reading you picked, in a clause>. If that is not the question, say so now.
-> Otherwise this takes about forty minutes, and I will tell you what each stage produced as it
+> Otherwise this takes about half an hour, and I will tell you what each stage produced as it
 > finishes.
 
 Do not promise a number of updates. A run that fails its integrity check takes a repair round and
