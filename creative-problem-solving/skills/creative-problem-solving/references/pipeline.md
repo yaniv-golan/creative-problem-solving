@@ -335,7 +335,9 @@ and which one is correct depends on who is doing the writing:
 
 - **Scripts, under Bash** — `"$BASE/$RUN/_work"`. Always. Every `python3 "$CPS/scripts/…"` call
   below takes this form.
-- **Sub-agents, through their file tools** — `$RUN/_work/pool-3.json`, bare, with no base at all.
+- **Sub-agents, through their file tools** — `$RUN/_work/pool-3.json`, bare, with no base at all,
+  **on hosts where that is what their file tools accept.** Which spelling they want is
+  host-dependent; the stagger below settles it before the batch rather than asserting it here.
 
 **They are not interchangeable, and neither is a shortcut for the other.** On some hosts the shell
 and the file tools do not share a working directory: the shell starts at the session root while the
@@ -349,17 +351,37 @@ that can answer where the shell is.
 
 **Never carry `$BASE` into a dispatch prompt.** Which spelling a sub-agent's file tools want is
 host-dependent — on some hosts a bare relative path is required, on others an absolute one is — so
-do not assert either. **Check instead of assuming:** after the first dispatch that writes, confirm
-the files landed under `$BASE/$RUN/_work` before continuing. A `Write` result echoes the path it was
-handed rather than a resolved one, so the result tells you nothing; only looking does.
+do not assert either.
+
+**Settle it with the first generator, before the other eight.** This used to say to check after the
+first dispatch that writes. That dispatch is the batch of *nine*, so by the time the check was
+possible nine prompts had already committed to a spelling — and on a host whose `Write` contract
+demands an absolute path, the bare spelling is a documented failure the run has already made nine
+times. Instead:
+
+1. Dispatch **generator 1 only**, with the bare spelling.
+2. In Bash, `ls "$BASE/$RUN/_work/pool-1.json"`.
+3. If it is there, the bare spelling is right — dispatch the remaining eight with it.
+4. If it is missing or the write was refused, your sub-agents' file tools want the absolute path.
+   Dispatch all nine — generator 1 again among them — with `$BASE/$RUN/_work/…`, and say in one
+   line that you did.
+
+This costs one generator's latency, not a stage, and it uses a write the run was going to make
+anyway. Do **not** probe with a throwaway file instead: it would have to live in `_work`, where the
+step 0b emptiness guard sees it, and removing it afterwards breaks the rule below that nothing under
+`outputs/` is ever deleted.
+
+A `Write` result echoes the path it was handed rather than a resolved one, so the result tells you
+nothing; only the `ls` does.
 
 **Echo the line above and keep it.** `BASE=…` in the record is the only thing that makes a wrong
 branch visible; without it a misresolved run looks exactly like a run that wrote nothing.
 
 **Then write the concrete path out in full everywhere it is used**, exactly as with `$CPS`. A
 sub-agent inherits no shell, so a generator told to write `$RUN/_work/pool-3.json` literally writes
-a file named `$RUN` in the wrong place, or nothing at all. Give agents the resolved bare path:
-`20260824-171304/_work/pool-3.json`.
+a file named `$RUN` in the wrong place, or nothing at all. Give agents the resolved path in
+**whichever spelling the stagger above established** — bare, `20260824-171304/_work/pool-3.json`,
+or absolute, `<base>/20260824-171304/_work/pool-3.json`. Resolved either way; never a `$`.
 
 Why per-run rather than a single fixed `outputs/_work`: every stage file has a fixed name — `pool-*.json`,
 `cand-*.json`, `verified-*.json` — and every validator globs for them. Two runs in one working
