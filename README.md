@@ -160,6 +160,31 @@ unverified; and the gate can refuse to produce a report at all. Some steps are o
 readability; the stages as the model runs them are in
 [`references/pipeline.md`](creative-problem-solving/skills/creative-problem-solving/references/pipeline.md).
 
+<details>
+<summary><strong>The nine lenses, in one line each</strong></summary>
+
+Which nine are used depends on the problem. Each is worked by its own agent that cannot see the
+others, which is why they come back with different kinds of answer rather than nine wordings of
+one. `SKILL.md`'s Phase 1 table is the operative version; this is the plain-language summary.
+
+| Lens | What it does |
+|---|---|
+| **Contradiction (TRIZ)** | Finds the trade-off everyone treats as a law — "fast or cheap, pick one" — and refuses it. Usually the law turns out to be a habit. |
+| **First principles** | Strips the problem to what is actually true, labels each assumption *law*, *regulation* or *convention*, bins every convention, and rebuilds. |
+| **Inversion** | Solves the opposite problem and flips the answer. "How would we make this worse?" is often the easier question. |
+| **Constraint extremity** | Does it with a hundredth of the money, in a week, or with nobody. Whatever replaces the impossible approach is the idea. |
+| **Time-shift** | Assumes today's bottleneck is free and unlimited, then asks what becomes scarce because of that. The new bottleneck is where the value moves. |
+| **Analogical transfer** | Finds a distant field that solved the same *function* and ports its mechanism. A comfortable analogy is too close to be worth much. |
+| **Biomimicry** | The same, from biology, naming organism and mechanism — then strips the biology off before applying it. |
+| **Morphological** | Builds a grid of dimensions and options and combines them. Cutting the self-contradictory combinations is the method; without that it is a filler machine. |
+| **Actor reversal** | Makes the customer the supplier, or the reverse, and describes the business from that side. |
+
+SCAMPER and Six Thinking Hats are deliberately demoted — they decorate a single pass with headings
+rather than forcing a different starting point. The reasoning is in
+[`references/lenses.md`](creative-problem-solving/skills/creative-problem-solving/references/lenses.md).
+
+</details>
+
 ## What you get
 
 - **Your brief gets attacked before the solution space does.** It restates your problem as the

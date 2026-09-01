@@ -1302,6 +1302,30 @@ print()
 # SKILL.md, the always-loaded one, under a green check. That is the false-green this repo exists to
 # refuse, committed by the tool meant to catch it. So this reads the LIST, and grows when a third
 # surface appears.
+# THE LENS LIST NOW HAS THREE MOUTHS, AND THIS REPO'S RECURRING DEFECT IS THAT EVERY ROUND FINDS
+# ANOTHER ONE. SKILL.md's Phase 1 table is operative; references/lenses.md carries the long form;
+# README.md now carries a plain-language summary for someone deciding whether to install. A lens
+# renamed or added in the table and not in the README leaves a reader with a list that is quietly
+# wrong -- so derive the names from the table and require the README to carry all of them, rather
+# than checking a hand-written list here that would itself become a fourth mouth.
+print("the README's lens summary matches SKILL.md's operative table")
+_skill = read_text("creative-problem-solving/skills/creative-problem-solving/SKILL.md")
+_readme = read_text("README.md")
+_rows = re.findall(r"^\| ([A-Z][^|]*?) \| .*? \*\*Then:\*\* .*? \|$", _skill, re.M)
+_names = [r.strip() for r in _rows]
+if len(_names) != 9:
+    fail("could not read nine lens rows from SKILL.md's Phase 1 table (found %d: %s) — the table's "
+         "shape changed, so this check is not looking at what it thinks it is"
+         % (len(_names), ", ".join(_names) or "none"))
+else:
+    _missing = [n for n in _names if n.split(" (")[0] not in _readme]
+    if _missing:
+        fail("README.md's lens summary is missing %d of the nine lenses in SKILL.md's table: %s. "
+             "A reader deciding whether to install sees a list that is quietly wrong."
+             % (len(_missing), ", ".join(_missing)))
+    else:
+        ok("README.md names all nine lenses from SKILL.md's Phase 1 table")
+
 print("no shipped skill text offers a chat-only default for the answer")
 _chat_only = [p for p in ("creative-problem-solving/skills/creative-problem-solving/SKILL.md",
                           "creative-problem-solving/skills/creative-problem-solving"
