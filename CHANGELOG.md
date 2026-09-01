@@ -7,1248 +7,227 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+Almost all of this release is one thing: the checks that decide whether an answer can be trusted
+were themselves untrustworthy. Gates passed while the defect they were written for was present,
+refused input that was correct, or named a remedy the reader could not act on. Nothing below
+changes what the pipeline generates; it changes what it will let you be told.
+
+### Added
+
+- **`bin/cps`, so the shell can find the plugin by name.** Every script was previously invoked
+  through a path the model had to derive, and on hosts where the file tools and the shell see
+  different filesystems there is no single string correct for both. Claude Code puts a plugin's
+  `bin/` on the Bash tool's `PATH`, so a bare `cps verify_pipeline …` is looked up by the shell in
+  its own namespace and no path crosses the boundary. It is an optimisation, not the mechanism:
+  the resolver still runs and still verifies, because a staged local plugin's `bin/` is not always
+  on `PATH`. `cps --where`, `cps --list`, and exit 127 for a bad name or a skills-only install.
+
+- **The run tells you what each phase produced, as it happens.** Seven phase boundaries now print
+  a line in the one channel every reader sees: options generated, pairs proposed and sharded,
+  families formed, ranked, claims checked. A long run previously went quiet for tens of minutes
+  with no way to tell work from a stall. The numbers come from the files on disk rather than from
+  the model's memory of them, and a boundary that printed nothing is reported at the end — so a
+  run that skipped telling you is visible rather than merely quiet.
+
+- **A refused integrity check says it is being fixed.** `verify_pipeline.py` is a gate, so a run
+  it refuses would otherwise fall silent mid-pipeline while the model repairs and re-runs.
+
+- **A stop condition for retrying a refused stage.** Several checks say to re-dispatch the stage
+  they name; none said when to give up. A recorded run had a gate fail, then fail again
+  byte-for-byte identically seconds later. The rule now carries the failure's own correction into
+  the retry and stops after a second identical failure, handing you what the run has and naming
+  what is missing — with the two costs that decide whether retrying is cheap: a refused pool is
+  caught before any later stage exists, while re-running `merge_families.py` invalidates ranking
+  and verification.
+
+- **`docs/INCIDENTS.md`** — the runs behind the rules that read as unusually specific, in full.
+  Not loaded at runtime; it is for deciding whether a rule can be relaxed, and the answer is
+  usually no for a reason easier to see in the narrative than in the rule.
+
+- **`build_report.py --slots` and `--fill`**, so the depth fields on leading options are filled
+  through a checked path rather than by hand-editing the generated document.
+
+- **A pinch merge says so.** When the grouping merges two families because no lead assignment
+  exists rather than because the verdicts joined them, that is now named in the summary instead of
+  counted silently.
+
+### Changed
+
+- **The published adjudicator agreement range is 70-90%**, not 77-90%. Seven runs with an
+  `agreement.json` on record span 71.9% to 89.6%; the bound is rounded outward so it holds every
+  run without implying a precision seven runs cannot support. The previous figure was scoped to
+  the two runs preserved during development — both 89.6% — so it stayed true while excluding more
+  recent ones. **No gate is added in either direction.** The rate is reported for you to judge; a
+  threshold over an 18-point spread would refuse runs that are fine, which is why the verdict-mix
+  bands were widened in this release rather than tightened. They had been drawn around one early
+  run and fired on five of the eight on record.
+
+- **The generator quota is described as what it is: a target with a licensed early stop.** It had
+  been glossed as *"a floor to push past the obvious, not a target"*, which contradicts the
+  instruction it describes — a floor a generator may stop below is not a floor. Realised pools
+  across recorded runs run roughly 15 to 35. **No pool-size gate is added in either direction**,
+  because none is derivable from the instruction: stopping short is licensed and overshoot is not
+  prohibited.
+
+- **The README states what is true rather than how it changed.** It had been explaining why each
+  design decision was made and staging its caveats at the front door; it now leads with what the
+  reader gets and puts each caveat where it applies. The worked example is a run of the pipeline
+  you would actually install — the previous one was captured on an architecture that pruned to a
+  shortlist and no longer exists, so its caption had to argue with the demo beneath it. A
+  "roughly 21 useful ideas against 18" figure is gone: it named a population that was not the one
+  measured. The skill is nine files, not six.
+
+- **`ideas-command` is bounded in time and cost** — 120 minutes and $60, set at twice the worst
+  observed rather than a fraction above the best. Duration and cost move independently: across
+  runs of the same prompt the spread is 1634-3688 s against a cost range of only $23.81-$30.10,
+  and the most expensive run was among the shortest.
+
+- **CI pins `cowork-harness` 3.2.0 and every scenario pins `baseline: desktop-1.40609.0`**,
+  exactly rather than by range. A floating version silently moves which platform baseline the
+  tests resolve against, so a green describes a platform the numbers were never measured on.
+
 ### Fixed
-- **Two warnings told you to do something and withheld what you needed to do it.** Both are
-  correct code emitting a sentence a reader cannot act on, and both surfaced in a live run
-  (`sess-crit-6d4b9a47`).
 
-  `plan_groups.py`'s over-budget warning said *"Check its result first"* while reporting only how
-  many tasks were over and how large the biggest was — never which one. "Its" had no referent, and
-  the run guessed, guessed wrong, and sent a splitting instruction to a grouping task holding
-  forty-one single-option clusters. The tasks are packed largest-first, so the over-budget one is
-  near the front while the natural guess is the last. **The warning now names every task file that
-  is over, and which to read first.**
+- **An answer could be hidden from the reader while every check passed.** The burial gate existed
+  to refuse a report whose options are folded away, and it saw one spelling of one tag. It now
+  measures readability rather than markup: `<details>` in any case or spacing, unclosed tags that
+  run to end of document, HTML comments, and `<script>`, `<style>`, `<template>` and `<iframe>` —
+  which a browser paints as nothing and GitHub strips outright. Two attacks the gate had itself
+  introduced are closed: masking `<pre>`/`<code>` to stop false refusals became three ways to fold
+  an entire answer past both checks, and an "every occurrence is hidden" rule let each option be
+  echoed into an HTML comment above a collapsed block so that every copy counted as visible. The
+  gate also counted family *headings*, so the majority of an answer — the nested variants, 157 of
+  270 on a recorded run — could be hidden with the structure left standing. **The reply had no
+  burial gate at all**; it has the same one now.
 
-  `verify_pipeline.py`'s separated-pairs warning said *"split them if not"* without saying that
-  splitting means re-running `merge_families.py` — which invalidates steps 7 and 8, costing a full
-  re-rank and fresh verification searches. A run read the family, judged it coherent, and had no
-  way to weigh the alternative. **It now says the price, and says plainly that this is a warning
-  rather than a gate**: a coherent family may legitimately hold a pair that does not join.
+  The same gate had the opposite failure. Naming those four elements as hiding places was
+  implemented as `<tag>.*`, which does not match a tag — it matches the rest of the document. One
+  `<script>` mentioned in ordinary prose hid everything after it, and the shape that would have
+  shipped is an *option* about web development. A tag is now recognised where CommonMark begins an
+  HTML block, and a tag inside a paragraph is inline HTML that every renderer sanitises. Its
+  message also named whichever hiding place it recited rather than the one that fired.
+
+- **A stage's output file could be silently half-read.** Sub-agents return JSON wrapped in prose,
+  fences, or both. The parser could accept a file holding **two** payloads and resolve to whichever
+  it found first — so a stub `{"items":[]}` beside a real pool loaded as an empty pool and the run
+  continued. A file with two payloads is now refused by name, in both directions and with prose
+  between them. A fence is three *or more* backticks and may be tildes; indented code carries no
+  fence; markup inside a code block is shown rather than obeyed; and a deeply nested file fails
+  naming the stage instead of escaping as a bare `RecursionError`.
+
+- **The run could report a cross-check that never happened.** The agreement probe plants pairs into
+  two different shards so two adjudicators judge them blind, and it is the only cross-check you are
+  handed. It counted a pair appearing in two different result *files* — which a repair that
+  re-judges a shard produces for every pair in that shard, none of them planted. A true probe of 12
+  read 38 at 100% agreement, because a shard re-judged against itself agrees with itself, and the
+  floor gate was made *easier* to clear by the repair. It is now keyed on what was dealt. The
+  progress line had the same defect from the other side: it claimed a second adjudicator wherever
+  it saw a duplicate, including a pair listed twice inside one shard, where there is no second
+  reader. The pair count it reports also counted judgements rather than pairs.
+
+- **A saturated pool could switch the concentration check off silently.** Three surfaces carry one
+  number — the filename, the `"pool"` field and every option id — and nothing compared them. When
+  they disagreed the denominator went missing, the check reported nothing for exactly the pool that
+  needed it, and the run exited 0. One recorded run wrote the item count into the field of all nine
+  pools, disabling the check for the whole run. The three are now compared where the index is first
+  consumed, **as digit strings rather than numbers**: `pool-1.json` carrying `"pool": 1` with ids
+  `p01-001` satisfies every numeric comparison and still splits the lookup.
+
+- **Grouping could stall the run, fuse unrelated ideas, or hand you an unreadable heading.** Lead
+  assignment could not prove a genuinely infeasible instance infeasible: a run raised the budget a
+  thousandfold, exhausted it, and finished only by **writing its own solver**. The search now
+  decomposes into conflict components, propagates forced leads to a fixpoint, and prunes as it
+  assigns — the incident instance is proven infeasible in 6 ms against 20,000,000 nodes and
+  *unknown* before. Its exhaustion message no longer advises a flag that cannot affect it.
+  `merge_families.py` no longer fuses two families the verdicts do not connect, no longer carries
+  the two lead-search defects `plan_groups.py` had, and a repair merges only inside the component
+  its proof is about. Merged headings joined every absorbed label with `"; "`, compounding: a
+  recorded run ended with 38 of 99 labels over 200 characters, **the longest 537** — three
+  mechanisms in one heading. The surviving heading is now one label, with the rest printed in the
+  body, and a label carrying a newline can no longer reach the reader.
+
+- **A stage that returned nothing could go unnoticed for four more stages.** An adjudicator can now
+  only return verdicts on pairs it was actually dealt; a wholly missing shard is caught at the
+  merge rather than at the final gate; a superseded shard's verdicts are superseded with it; and a
+  repeated option id is refused instead of shipping in two clusters.
+
+- **The reply could be a summary of the checked answer rather than the answer.** Everything in the
+  report has been through the checks; prose written afterwards has been through none of them. On
+  one run the reply was 1,282 characters of fresh text carrying two invented premises to the reader
+  as statements about *them* — which the checked file never does. A `cp report.md reply.md`
+  satisfied the old check while a 2,155-character summary was sent. The reply is now gated against
+  the report, an edit after `--check` requires running it again, `slots.json` has a named home in
+  both path spellings, and `--fill` no longer deletes a slot when handed an empty value.
+
+- **The verifier's qualification now reaches you.** A source often confirms that a mechanism exists
+  without supporting the strength an option claims for it. That is the most useful thing the check
+  produces, and it had no reliable home; a verdict may now carry a `note` on any outcome, and it is
+  rendered under the option.
 
 - **Nine generators could write their pools where nothing reads them, each reporting success.**
   Sub-agent file tools want a bare path on some hosts and an absolute one on others. Step 0b
   documented the bare form and said to confirm the files landed *"after the first dispatch that
-  writes"* — but that dispatch is the batch of **nine**, so on a host wanting absolute paths the
-  check came after nine pools had already gone astray. A write that lands outside the run directory
-  still reports success, so nothing downstream notices until a later stage finds no pools.
+  writes"* — but that dispatch is the batch of **nine**. A write that lands outside the run
+  directory still reports success. Step 0b now dispatches generator 1 alone, checks where its pool
+  actually landed, and sends the other eight with whichever spelling that settled. On a host
+  needing absolute paths you will see **ten generator dispatches for nine lenses** — the first
+  re-sent — and a one-line note saying so; that is the recovery working, not a fault.
 
-  **Step 0b now dispatches generator 1 alone, checks where its pool actually landed, and sends the
-  other eight with whichever spelling that settled.** Cost is one generator's latency. On a host
-  that needs absolute paths you will see **ten generator dispatches for nine lenses** — the first
-  one re-sent — and a one-line note in the answer saying so; that is the recovery working, not a
-  fault. Two neighbouring paragraphs that stated the bare form unconditionally now agree with it.
+  Separately, `$CPS` resolution no longer does path arithmetic in one filesystem and uses the
+  answer in another. A run that concluded the scripts were absent from a failed `ls` dropped to six
+  lenses with no adjudication and no grouping, and described that as a legitimate fallback. The
+  step now searches for a sentinel file, verifies every branch rather than trusting it, prints
+  which branch answered, and **refuses** rather than guessing when it cannot tell a missing install
+  from an invisible one.
+
+- **Phase 0 banned the subject of the question.** *"List the loaded nouns and ban them"* named a
+  source of words rather than a function, and its only worked example showed the form side. A run
+  banned the noun naming the thing being asked about, and nine generators produced 270 options
+  about nothing in particular — a whole generation cycle. The rule now bans nouns naming a **shape
+  of answer** and never those naming the **thing the answer is about**, with the test that
+  separates them: strike it from the brief and read the brief back.
+
+- **Two warnings told you to do something and withheld what you needed to do it.**
+  `plan_groups.py`'s over-budget warning said *"Check its result first"* while reporting only how
+  many tasks were over and how large the biggest was — never which one. A run guessed, guessed
+  wrong, and sent a splitting instruction to a task holding forty-one single-option clusters; the
+  tasks are packed largest-first, so the over-budget one is near the front while the natural guess
+  is the last. It now names every task file that is over, and which to read first.
+  `verify_pipeline.py`'s separated-pairs warning said *"split them if not"* without saying that
+  splitting means re-running `merge_families.py`, invalidating steps 7 and 8 — a full re-rank and
+  fresh verification searches. It now says the price, and says plainly that this is a warning
+  rather than a gate: a coherent family may legitimately hold a pair that does not join.
+  The over-budget *shard* warning is the one addressed to the model rather than to you, and the
+  pipeline now tells it to act on the remedy the warning names instead of passing it onward.
 
 - **Two files told you the answer arrives in chat; the pipeline always produces a file.**
   *"Output in chat unless the user asks for a file."* appeared in both `SKILL.md` and
   `references/report.md`, while step 10 unconditionally presents the report file. Both now describe
-  what you actually get: **the reader ends with a file they can open and keep**, written by
-  `build_report.py` on the scripted path and by hand on the no-script install — which
-  `references/pipeline.md` treats as the normal case on the zip and `.agents/` routes, so
-  "the pipeline writes one for you" would have been false there. `tools/check-repo.py` now checks
-  both files, so the sentence cannot come back in one of them.
-
-### Changed
-- **The published adjudicator agreement range is 70-90%**, not 77-90%. Seven runs with an
-  `agreement.json` on record span 71.9% to 89.6%; the bound is rounded outward so it holds every
-  run without implying a precision seven runs cannot support. The previous figure was scoped to the
-  two runs preserved during development — both 89.6% — so it stayed true while excluding more
-  recent ones. **No gate is added in either direction.** The rate is reported for the reader to
-  judge; a threshold over an 18-point spread would refuse runs that are fine, which is why the
-  verdict-mix bands were widened earlier in this release rather than tightened.
-
-### Added
-- **A stop condition for retrying a refused stage.** Several checks say to re-dispatch only the
-  stage they name; none said when to give up, and a recorded run has a structural gate failing and
-  then failing again byte-for-byte identically, seconds apart. `references/pipeline.md` now says to
-  carry the failure's own correction into the retry — a bare re-run with the prompt that produced
-  the file is the least likely thing to work — and to stop after a second identical failure, handing
-  the reader what the run has and naming what is missing. It also states the two costs that decide
-  whether a retry is cheap: a refused pool is caught at step 4 before any later stage exists, while
-  re-running `merge_families.py` after ranking invalidates steps 7 and 8.
-
-### Fixed
-- **A repair that re-judged a whole shard inflated the agreement probe, loosening the gate that
-  reads it.** The probe reports how many pairs two adjudicators judged blind, and it counted a pair
-  appearing in two different `relations-*.json` files — the mechanism's consequence, not the
-  mechanism. Re-judging a shard into a new index puts every pair of that shard in two files while
-  none of them was planted, so the count rose, `verify_pipeline.py`'s `probe_pairs < floor` gate was
-  made *easier* to clear by the repair, and the reader was handed a cross-check that had not
-  happened: a true probe of 12 read 38, at 100% agreement, because a shard re-judged against itself
-  agrees with itself. The count is now keyed on the deal — a pair must have been dealt to two
-  different `cand-*.json` and come back from two different files. Keying it on the file index
-  instead would have been wrong in the other direction: when a shard's adjudicator returns nothing
-  and a repair supplies that shard in full, the planted pair really was judged blind by two
-  adjudicators and must still count. Both directions are pinned in `tools/corpus_probe.py`, which
-  scored 7 of 10 against the shipped code. A pair re-judged without having been planted now falls
-  out of the probe and out of the self-judged count, so it is named to the operator rather than
-  disappearing — otherwise a repair that changes nothing looks exactly like a repair that never ran.
-  No preserved run contains a repair file, so both complete ones merge byte-identically.
-
-- **Naming four elements as hiding places refused every report that mentions one.** The pattern was
-  `<tag[^>]*>.*` with `re.S`, which does not match a tag — it matches the rest of the document, so
-  one `<script>` in ordinary prose hid everything after it. The shape that would have shipped is
-  an *option* about web development: `Inject a <script> tag to isolate the widget.` buried every
-  option below it and stopped the run. This is the same unclosed-to-EOF mechanism that had turned
-  `<pre>` into a hiding place one commit earlier, reattached to a new tag list. The match is now
-  anchored where CommonMark actually begins an HTML block — a tag at the start of a line — and a
-  tag inside a paragraph is inline HTML, which every renderer this report reaches sanitises.
-
-- **The burial message named a hiding place that was not the one that fired.** It recited "a
-  collapsed `<details>` block or an HTML comment" whichever region had swallowed the answer, so a
-  report folded into a `<script>` was refused for a reason untrue of it. It now names the region
-  the buried options actually sit in.
-
-- **The gitignored-citation check matched inside URLs.** `https://example.com/docs/internal/foo.md`
-  is a link to someone else's site, not a pointer at this repo's unpublished tree.
-
-### Fixed
-- **An answer hidden inside `<script>`, `<style>`, `<template>` or an `<iframe>` passed both burial
-  gates.** A browser paints none of those, and GitHub strips the first two outright, so an option
-  whose only copy lives in one is as gone as one inside a comment — but `<details>` and `<!-- -->`
-  were the only two hiding places anyone here had thought of, and this surface had not been asked
-  about in seventeen rounds. They are hidden regions now, unclosed ones running to end of document
-  like the rest. `<textarea>` is deliberately excluded: its content *is* shown.
-
-- **Three of the four corpora now read their baseline from a git revision** rather than a frozen
-  copy pasted into the file. Two such copies had already drifted from their scripts and reported
-  green while the code still lost data — a copy is a second implementation of the thing under test,
-  committed by the tool meant to catch exactly that. `tools/at_revision.py` materialises every file
-  a corpus needs from one revision, so a module never imports its neighbour from the working tree
-  and reports a mixture of two commits as one. `corpus_heartbeat.py` also stopped reimplementing
-  the arithmetic: it writes shard files, calls the shipped `_sharded`, and reads the numbers back
-  out of the sentence the reader is handed.
-
-- **The accept side of "an object is a payload wherever it stands" is written down.** That rule
-  refuses `For example {"id": "x"} is the shape.` beside a real payload. It is the trade this
-  module's premise picks — forty minutes against a wrong answer — but it is a trade, and a reader
-  of the corpus should see its cost rather than infer it.
-
-### Fixed
-- **A pool that disagreed with its own filename silently switched off the concentration check.**
-  `references/pipeline.md` binds three surfaces to one number — the file (`pool-<k>.json`), the
-  field (`"pool": k`) and every option id (`p<k>-001`) — and nothing compared them.
-  `shard_candidates.py` reads two of the three against each other: it keys pool sizes off the
-  field and counts proposed pair endpoints off the id prefix. When those disagree the denominator
-  for a pool is missing, `sizes.get(k, 0) / total` is `0`, and `if exp and …` skips that pool
-  without a word, so the check reports nothing for exactly the pool that needed it and the run
-  exits 0. One recorded run wrote the item count into the field of all nine pools, which collapsed
-  the size map to two keys and disabled the check for the whole run.
-
-  The index is now checked where it is first consumed, with the last gate keeping it as a
-  backstop, and **compared as digit strings rather than as numbers**. That distinction is the
-  whole check: a file named `pool-1.json` carrying `"pool": 1` with ids `p01-001` satisfies every
-  numeric comparison and still splits the two lookups — the sizes get the key `"1"`, the endpoints
-  get `"01"`. On a witness built that way the genuinely saturated pool was the one pool skipped,
-  and the warning that did fire named an innocent neighbour. The field is also type-checked, since
-  `true` and `1.0` both compare equal to `1` and then produce keys no id can match.
-
-- **The pool template read two ways, and only the orchestrator ever read it.** Step 2 defines `N`
-  as the number of lenses; the example beneath it then showed `"pool": N` and ids `pN-001`, which
-  taken literally makes every pool in a nine-lens run `"pool": 9`. Generators never see it — they
-  are dispatched with a composed prompt, and the sole reader is the orchestrator, which has always
-  interpolated the per-pool index correctly. So no recorded run is affected and nothing was
-  broken; what is fixed is that a check on the index cannot rest on a contract with two readings.
-  It now uses `k`, the letter the line above already binds.
-
-### Changed
-- **The generator quota is described as what it is: a target with a licensed early stop.** It had
-  been glossed as *"a floor to push past the obvious, not a target"*, which contradicts the
-  instruction it describes — a floor a generator may stop below is not a floor — and the same
-  sentence gave a realised range that later runs left. Nothing forbids overshoot, nothing requires
-  reaching the number, and realised pools across recorded runs run roughly 15 to 35. **No
-  pool-size gate is added in either direction**, because none is derivable from the instruction:
-  stopping short is licensed and overshoot is not prohibited. The check added above constrains the
-  pool *index*, never its size. Whether a different quota would be better is an open question that
-  the runs recorded so far cannot answer.
-
-- **The mask added to stop the burial gate refusing documented syntax became a way to hide the
-  answer from it.** HTML `<pre>` and `<code>` were masked on the claim that a renderer displays
-  `<pre><!-- like this</pre>`. It does not: `<pre>` is ordinary element content, so a comment
-  inside it is still a comment and the text is dropped — unterminated, it takes the rest of the
-  page. The original refusal was correct. Masking it opened three ways to fold an entire answer
-  past both `check` and `check_reply`, the worst being a `<pre>` mentioned inside an ordinary
-  fenced example, which blanked everything after it. Only CommonMark's code forms are masked now,
-  because only those are shown rather than obeyed.
-
-- **One fence scanner, shared.** `robust_json` and `build_report` each carried their own and had
-  disagreed three times — tildes, three-versus-four backticks, and now the info string, where
-  `[a-zA-Z]*` meant ` ```json5 `, ` ```c++ `, ` ```.json ` and a single leading space were not
-  fences at all, so a payload inside one was invisible and a trailing stub loaded silently. The
-  scanner lives in `robust_json`, follows CommonMark on info strings and on a close at least as
-  long as its open, and `build_report` imports it.
-
-- **The last position exemption is gone.** Sparing a bare array of scalars when prose preceded it
-  kept a marker charset alive on that one type, and the charset was missing `| `, `- [x] `,
-  `[^1]: ` — so a scalar array in a table cell beside a fenced stub loaded the stub. Any object or
-  array now counts as a second payload. `I weighed options [1, 2, 3] first` beside a fenced payload
-  is refused, which is the side of the trade this module's premise already picked: a stopped run
-  costs forty minutes, a wrong answer costs the answer.
-
-### Fixed
-- **An object is a payload wherever it stands.** Asking *where* a brace sits turned the ambiguity
-  guard into a list of the markdown markers the last review happened to try. `> `, `- ` and `1. `
-  were handled; `| … |`, `_…_`, `<p>…</p>`, `[^1]: `, `<!-- … -->`, `- [x] ` and `![…](x.png)` were
-  not, and behind every one of them a real pool went invisible while a fenced empty stub loaded and
-  the run continued. Position is now asked of exactly one shape that needs it — a bare array of
-  scalars, the only thing an English sentence produces by accident. An object, or an array holding
-  one, counts wherever it appears.
-
-- **A tilde fence is a fence.** `build_report.py` learned that a fence is three or more backticks
-  **or tildes**; `robust_json`'s fence pattern still matched exactly three backticks. A
-  tilde-wrapped real pool was therefore not seen as fenced at all, the unfenced scan took whatever
-  value consumed the tail, and a trailing stub won silently. Both recognisers now accept either
-  character and a close at least as long as the open.
-
-- **The code mask knew CommonMark's spellings and not HTML's.** `<pre><!-- like this</pre>` renders
-  exactly as written, and the burial gate read it as a comment opening and hid the rest of the
-  page. `<pre>` and `<code>` are masked alongside fences, indented blocks and code spans.
-
-- **The gitignored-path check could not see the citation shape this repo actually uses.** Its
-  pattern required a filename with an extension directly under the tree, so a dated run directory
-  one level deeper never matched, and four such citations had been sitting in shipped files while
-  the check reported green. It now matches nested paths, and all four are summarised in place.
-  (The first draft of this entry spelled the path out and tripped the widened check — the commit
-  that broadens a gate has to be run through it.)
-
-- **The JSON corpus's two modes called different entry points** — `_unwrap` by default, `load_obj`
-  under `--shipped` — so they could disagree about a shape for a reason having nothing to do with
-  the commit, which is what that mode exists to isolate. Both run `load_obj` now.
-
-### Fixed
-- **A payload does not stop being a payload because a markdown marker sits in front of it.** The
-  previous fix replaced a type test with a position test — does this brace start its line — and a
-  second payload written as `> {real pool}`, `- {real pool}` or `1. {real pool}` after a fenced
-  stub was mid-line, invisible to the guard, and the stub loaded on an empty pool. That is the same
-  silent loss, reached a third way. What disqualifies a candidate is **prose** in front of it, not
-  markup: `I weighed options [1, 2, 3] first` is punctuation inside a sentence, `- {…}` is a list
-  item. Both the ambiguity guard and the truncation test now ask that question.
-
-- **A fence is three *or more* backticks, and indented code carries no fence at all.** The mask
-  that stopped the gate refusing a report for documenting `<!--` matched exactly three backticks,
-  so a four-backtick fence — which is how you show a three-backtick one — ended the mask at the
-  inner fence and left the rest of the document in the clear. Four-space indented code, the other
-  CommonMark form, was never masked. The mask now walks lines, tracks the opening fence's length
-  and character, and covers indented blocks and code spans of any backtick run.
-
-- **`corpus_burial.py`'s gate runner scored any refusal as burial.** `check` refuses for four
-  reasons; a shape that tripped the missing-options gate would have been recorded as the wanted
-  verdict for the wrong reason — which had already happened here once. It now asserts which gate
-  fired and raises if the answer is a different one.
-
-- **`corpus_ids.py --shipped` exited 0 unconditionally**, described in its own comment as "never a
-  pass/fail gate". A baseline nobody can fail is not a baseline; it exits non-zero on disagreement
-  like the other three.
-
-- **A deeply nested file escaped as a bare `RecursionError`**, with no stage named — the failure
-  `robust_json` exists to replace, in the one corruption whose exception is outside the
-  `ValueError` family. And `check-repo.py` normalised a manifest path with `lstrip("./")`, which
-  strips a character set, so `../creative-problem-solving/agents/x.md` read as a path inside the
-  repo.
-
-### Fixed
-- **The JSON guard was asking what type a value is, when the question is where it stands.** Both
-  answers were wrong, in opposite directions, at two call sites. Narrowing the ambiguity guard to
-  "an object, or an array holding one" let a standalone `["opt one", "opt two"]` beside a fenced
-  stub through — the stub loaded, the pool was empty, and nothing said so, which is the same silent
-  loss the guard was built for. Widening the unfenced scan to accept any parseable value made
-  `I weighed options [1, 2, 3] first:` fatal, and a bracket left open in a preamble — `Consider [`
-  — starts a parse that swallows the real payload and hits end of input, so a complete file was
-  refused with a message blaming the generator's output limit.
-
-  A payload occupies its own line; a bracket inside a sentence is punctuation. The ambiguity guard
-  now counts any object or array that starts a line, so the type narrowing is gone and arrays of
-  scalars are caught again. The unfenced scan takes the brace whose value consumes the rest of the
-  file, which is what the caller demands anyway, and treats "consumed everything and still wanted
-  more" as truncation only from a brace that starts a line.
-
-- **Markup inside a code block is shown, not obeyed.** Both halves of the burial gate read raw
-  text, so a report documenting its own syntax — a ```` ```html ```` block containing `<!--`, or a
-  `<details>` example — was read as a document hiding its answer and refused. Code fences and code
-  spans are now blanked before the scan, with offsets preserved so every span still indexes the
-  real document. A bare `<!--` in a paragraph stays a refusal: a renderer really does swallow the
-  rest of the page.
-
-- **`corpus_json.py --shipped` imported the live module, so it measured the same code as the
-  default mode.** The baseline number `CONTRIBUTING.md` quotes was not reproducible by the flag
-  that supposedly produced it. It now loads the module from a git revision (`--shipped [REV]`,
-  default `HEAD`), which cannot drift the way a frozen hand copy did and cannot be silently
-  identical to the working tree.
-
-- **Two corpora only ran from the repo root**, inserting a relative path on `sys.path`; from
-  anywhere else one reported every shape as an import error and the other emitted a bare traceback
-  naming no stage. Both resolve the scripts directory from `__file__`.
-
-- **The Cursor agents check compared basenames.** `./agents/verifier.md` and
-  `./creative-problem-solving/agents/verifier.md` have the same basename and only one resolves, so
-  a manifest pointing at nothing passed — the failure the check exists to catch, one level in. It
-  now compares paths and refuses a listed path that resolves to no file.
-
-- **Three stale statements of what the code does.** `references/pipeline.md` described `--check` as
-  refusing options collapsed inside `<details>`, after it also began refusing options buried in
-  comments; `conftest.py` said `check-repo.py` asserts 32 things, where the count is derived and now
-  reads 35; and `CONTRIBUTING.md` still told a contributor to implement the rule in the corpus as a
-  plain function, which is the practice that let two corpora drift from their scripts.
-
-### Fixed
-- **Two guards were tightened in the accept direction and one in the refuse direction, and each
-  overshot.** The JSON ambiguity guard now scans from every brace, so every bracket an English
-  sentence contains gets parsed too: `I weighed options [1, 2, 3] first` beside a fenced payload is
-  a valid JSON array, and the stage hard-failed on a file that was never ambiguous. Only
-  payload-shaped values count now — an object, or an array holding one — which is what every stage
-  writes and what the shape that motivated the guard was.
-
-  The same every-brace scan, on the unfenced path, turned a loud failure into a quiet one. A file
-  cut off after a complete inner object parses from that object alone, so prose plus a truncated
-  pool loaded as **one option** and the run continued: the whole-file parse had named the
-  truncation, and the scan looked past it. A parse that consumed everything and still wanted more
-  is truncation, not prose, and is now handed to the strict parse that says where the file stops.
-
-- **The burial gate could not see either of the two ways to hide a page without a `<details>` tag.**
-  Comments became a hidden region for the predicate, but `check` still decided *whether to look* by
-  asking `_collapsed_spans` — so a report with its whole answer inside one comment and no `<details>`
-  anywhere was never handed to the predicate that would have refused it. And `<!--.*?-->` matches
-  nothing when there is no close tag, so deleting one `-->` hides the rest of the rendered page and
-  the gate saw a fully visible document. Hidden regions are now one function, used by both, and an
-  unclosed comment runs to end of document exactly as an unclosed `<details>` does.
-
-- **The corpus was aimed one layer below the gate.** Every burial shape was measured against
-  `_buried`, a predicate its caller reaches only after deciding there is something to look at, so
-  a hole in that decision was invisible to a corpus reporting the predicate green. `corpus_burial.py`
-  now runs `check` itself alongside the predicate. Two further corpus defects came out with it:
-  `corpus_json.py --shipped` always exited 0, so the mode that records the pre-change baseline could
-  not fail; and a new shape that inlined its own option text would have been refused by the
-  missing-options gate before the burial gate was reached — the wanted verdict for the wrong reason.
-
-- **Four figures that named the wrong sample.** `merge_relations.py` described its warn bands as
-  drawn from three runs with a 25x duplicate-share spread, in a file whose `RECORDED_DUP` holds
-  eight values spanning 0.6% to 19.5% — a 32-fold spread. `tests/README.md` still said the old
-  floors fired on six of eight runs where the same claim, corrected, reads five in
-  `merge_relations.py` itself.
-
-- **`check-repo.py` checked the shape of a hand-written `agents` array and never its contents.**
-  `marketplace.json` auto-discovers agents; `.cursor-plugin/plugin.json` lists them by hand, so a
-  seventh agent would pass every check and silently never be offered under Cursor — the same
-  "manifest is valid, nothing is offered" failure the neighbouring check exists to catch, in the
-  direction it did not look.
-
-### Added
-- **A pinch merge says when the share rule did not apply to it.** The bound added above exempts any
-  union with fewer than ten adjudicated internal pairs — the floor exists so a run is never stopped
-  on almost no evidence, which is right for reporting a breach. On this path it is not an edge case:
-  across 300 end-to-end runs **every pinch merge that happened was below the floor**, median three
-  judged pairs, and all of them were over the 15% separating share. So the bound has not yet bound
-  anything here, and nothing said so.
-
-  The summary line now names the exemption rather than leaving it invisible. The floor itself is
-  unchanged: removing it for merges turns **every** pinch merge into a refusal — all 367 in 3,000
-  instances, since every one is below the floor — costing 14% of completing runs. That removes the
-  pinch-merge path rather than tightening it, and is a case to argue directly rather than arrive at
-  by moving a constant. (An earlier draft of this entry said 56%, which used the wrong denominator.) Reporting it lets a few
-  real runs answer the question that fuzzing cannot.
-- **`check-repo.py` reports a scenario whose pinned baseline has no staged agent binary.** A Desktop
-  update deletes the previous version's agent; a scenario still pinning that version dies in
-  `resolveAgentBinary` before the agent starts — seconds after `doctor` said ready, because doctor
-  validates its own current baseline rather than what each scenario pins. That cost a paid run to
-  learn. It currently reports 11 of the 12 scenario files.
-
-  Three properties worth stating, because each is a way to get this check wrong. It tests the
-  **binary** path with `exists`, not the directory: the pruned case leaves the version directory
-  behind and empty, so a directory test passes on exactly the case that fails. It **warns and never
-  fails** — which Desktop versions are staged is a property of the machine, not the repo. And it
-  **never fires in CI**, where there is no node and no harness, so it is a local pre-flight rather
-  than a gate; the check says so itself rather than implying coverage it does not have. Baselines
-  resolve from the `cowork-harness` on `PATH`, because this machine has 18 copies under `~/.npm/_npx`
-  and most are old enough to be missing the pin — resolving to one of those reports a fact about the
-  cache rather than about the repo.
-
-- **`bin/cps`, so the shell can find the plugin by name.** Claude Code puts a plugin's `bin/` on
-  the Bash tool's `PATH`, built for that shell rather than inherited, so a bare `cps` resolves in
-  the shell's own namespace — which is what Step 0 otherwise reconstructs by hand on hosts where
-  the file tools and the shell disagree about paths. The resolver tries `cps --where` first on
-  those hosts, below the path it read the instructions at and gated on the namespaces being split:
-  only that path can promise the scripts belong to the same install as the instructions, and a
-  launcher on `PATH` proves a working install rather than that one. Its answer is verified against
-  a sentinel file and falls through to the existing search, because a `PATH` entry is advertised
-  whether or not anything is behind it and the entry is not present on every install route. So it
-  is an optimisation that usually fires, never a mechanism the run depends on.
-
-  `bin/cps` is named in `SECURITY.md` — it is the widest-reach file a plugin install delivers — and
-  CI refuses an executable there that is not. Why `${CLAUDE_PLUGIN_ROOT}` cannot do this job, and
-  why testing whether it is empty will not tell you it is wrong, is in `references/pipeline.md`
-  beside the rule that depends on it.
-
-- **`docs/INCIDENTS.md`** — the runs behind the rules that read as unusually specific, in full:
-  the working directory that resolved read-only, two runs merging in one directory, the
-  over-budget shard warning passed to the reader, headings that grew to 537 characters, a
-  169-member family that passed every check then in existence, and the three step-10 delivery
-  failures. It is a repository document and is not installed; every rule in `references/pipeline.md`
-  is complete without it. It exists for deciding whether a rule can be relaxed, which is the
-  question the narrative answers and the rule does not.
-
-- **Each dispatch tells its sub-agent what consumes the output.** One clause per stage in steps
-  3-8. A generator told that nothing downstream rewrites an option writes the sentence the reader
-  will actually get; an adjudicator told that `plan_groups.py` partitions on the joinable graph
-  knows a pair it does not return is indistinguishable from one nobody proposed.
-
-- **Two more static checks.** Every executable in `bin/` must be named in `SECURITY.md` — it is
-  the widest-reach file a plugin install delivers and it was documented nowhere. And the host-path
-  guard now walks `docs/` and `bin/`, scanning every file in `bin/` rather than only known
-  suffixes, since a launcher has no extension; `docs/internal/` stays excluded, being untracked
-  and the one place host paths legitimately live.
-
-### Changed
-- **The worked example is a run of the pipeline you would install.** It had been captured on
-  0.1.0, an architecture that pruned to a shortlist, so the caption had to disclaim the demo
-  directly beneath it. The new capture ran 2026-08-30 under `tests/scenarios/demo-retention-capture.yaml`
-  on the same problem: 270 options across nine lenses, 113 families, 38.7 minutes to the report,
-  all five harness assertions passing. Two of those assertions were graded by a judge against
-  claims copied verbatim from eval 5 — that the run tests the ruled-out "it's not the money"
-  premise instead of obeying it, and that at least one option questions the framing. The full
-  report and what the run measured about itself are under
-  `evals/transcripts/capture-2026-08-30-retention/`.
-
-  **A caveat that belongs with it.** `plan_groups.py` could not prove lead-assignment infeasible
-  at any budget it was given, including 20,000,000 nodes, and neither documented remedy helped.
-  The run wrote a forward-checking driver and monkey-patched `choose_leads` to finish the stage.
-  The grouping in this capture is therefore partly the product of code the run wrote, not only of
-  the shipped script. Nothing was talked into a merge — the objective and tie-breaks are
-  unchanged — but `verify_pipeline.py` checks relations between stage files, not which code
-  produced them, so it could not have seen this. See `docs/INCIDENTS.md`.
-
-- **The adjudicator agreement range is 75-85%, not 80-90%.** Five recorded runs read 75, 77.1,
-  81, 83 and 85.4. The published range excluded the bottom two, which are the ones that tell a
-  reader how much of the grouping is a coin toss.
-
-- **Requirements are attributed to a run rather than to `/ideas`.** The command is a fifteen-line
-  invocation wrapper and states that a run reached by naming the skill and a run reached by
-  typing `/ideas` are the same run. Writing "`/ideas` needs sub-agent dispatch, `python3` and web
-  search" told the reader on a host without slash commands — the reader the next paragraph
-  addresses directly — that the requirements were not theirs. Same correction in `INSTALL.md`,
-  where the host-compatibility paragraph is the one someone consults to decide whether their
-  host works.
-
-- **The README states what is true rather than how it changed.** A demo caption explaining what
-  an earlier pipeline used to do, and a losses paragraph narrating the origin of a fix, were both
-  changelog voice in a file that is not a changelog. The premise-testing result now sits with the
-  other evidence as a measurement, and the losses paragraph carries the one limit that is live.
-- **The README states rather than argues.** It had been explaining why each design decision was
-  allowed — nine `because` clauses — and following statements with a sentence making sure the
-  reader drew the right conclusion. The rationale belongs in `DESIGN-NOTES.md`, which carries it;
-  the README now says what the skill does and lets it land. A paragraph describing verification
-  and family grouping was also cut whole: the mermaid diagram forty lines below showed the same
-  mechanism, and the paragraph sat under "When it runs, and when it refuses", which is about
-  invoking the skill rather than how it works. The two facts it alone carried moved into "What
-  you get". Sentences average 21 words, from 24. 2,682 words to 2,531.
-- **"Does it actually work?" answers the question it asks.** It opened with "Partly", which is
-  ambiguous between *works for some kinds of question* — true, and supported: it wins on open
-  strategic problems and loses on bounded ones — and *we only partly know whether it works*,
-  which is what the section then spent its length demonstrating. It now opens by saying which
-  claim it is making. The 0.1.0 paragraph, whose numbers are better than anything the current
-  pipeline can show, drops to a sentence and a link; keeping a superseded architecture's
-  strongest results inline was flattering in the one section whose job is not to be. 357 words
-  to 282.
-
-- **The "roughly 21 useful ideas against 18" figure is no longer stated in the README.** The
-  measurement it derives from is 25 pipeline options with 15 not worth the reader's time, against
-  a plain model's 9 of 25 — that is 10 against 9, and no derivation from those to 21 against 18
-  is recorded anywhere in this repository. The README now gives the counted numbers and shows the
-  subtraction. The derived pair is left as-is in this file and in `DESIGN-NOTES.md`, which record
-  what was said at the time; it should not be repeated in user-facing prose until someone can
-  reproduce the step. Note that the counted result is the weaker of the two.
-
-- **The README stages its caveats instead of applying them all at the front door.** Every
-  qualification landed at the same altitude as every claim, including in the first screen, where
-  a reader has not yet been given a reason to read a caveat as rigour rather than as doubt. The
-  worked example in particular was retracted in the paragraph immediately below it — old version,
-  changed pipeline, and a round the baseline won — so the demo argued with itself before the
-  reader reached anything else. The example now leads, carries a one-clause version note and a
-  forward pointer to the round it lost, and the loss is stated in full under "Does it actually
-  work?" alongside the bounded-question result. The three limits on grouping move up out of the
-  results section, where someone deciding whether to spend forty minutes will actually meet them,
-  and a new "Reading the output" section says how the report is laid out — the one question the
-  page never answered. 3,605 words to 2,757.
-
-  The 0.1.0 numbers keep every figure and every counter-finding, now in `evals/` rather than
-  inline; each was verified present there before deletion. The `outputs/` retention policy moved
-  to `INSTALL.md` and the deduplication rationale to `DESIGN-NOTES.md`, both published in the
-  preceding commit so no claim was unreadable in between. This narrows the earlier decision
-  recorded under 0.2.0 — which kept the 0.1.0 results inline under their own subheading — to a
-  sentence and two links; the tradeoff is that a reader who never follows a link now gets a
-  rosier picture than before, which was the point of the change and its cost.
-
-- **`README.md` said the skill is six files; it is nine.** `INSTALL.md` and `tools/check-repo.py`
-  both said nine, and the checker computes it from the payload. Only the README was wrong.
-
-### Added
-
-- **The run says what each phase produced, in the one channel every reader can see.** Seven phase
-  boundaries now print a line beginning `SAY: ` — what the phase produced, and what happens next —
-  and the orchestrator repeats each verbatim. Three ride on scripts that already run
-  (`shard_candidates.py`, `merge_relations.py`, `merge_families.py`); three are `progress.py`
-  calls at boundaries where nothing else runs (`generated`, `ranked`, `verified`); the seventh is
-  `verify_pipeline.py`'s final counts.
-
-  The old design computed four of these correctly and printed them where a terminal renders a
-  command's output under the call that produced it. A client that collapses tool calls to a card
-  shows *"ran 4 commands"* and none of their output, so all four landed where nobody was looking —
-  while `references/pipeline.md` forbade relaying them on the grounds that the reader had already
-  seen them. Measured across this machine's transcripts, the pipeline spoke on 17.0% of its
-  main-thread turns under that client against 53.3% in a terminal, and a preserved 46-minute run
-  went 31 minutes 46 seconds between the Opening and its next word, across six phases.
-
-  **The anti-fabrication rule is not relaxed to do this.** It never said the model must be silent;
-  it said the model must not claim a stage ran, because a description of a skipped stage reads
-  exactly like a description of a real one. A `SAY:` line is repeated verbatim, so the model adds
-  no claim, and every count in it is read off a file at print time. The half that looks forward —
-  *"Next I group what they connected into families"* — is safe for a different reason: a sentence
-  about what is **about to** happen cannot be a false claim that something already happened.
-
-  Which lines get repeated is not a judgement the model makes. A marked line is repeated and an
-  unmarked one is not, because choosing which output is worth passing on is an editorial judgement
-  about what the run did — which is the thing the marker exists to keep away from it.
-
-- **A silent phase boundary is named at step 9.** Three of the boundaries are calls whose only job
-  is to print, and a command whose only job is to print is the first one dropped with nothing to
-  notice it went. Each boundary that prints now records that it did, and `verify_pipeline.py`
-  names any that never spoke. A WARN, not a gate: a run whose answer is right and whose narration
-  was skipped is still a right answer.
-
-- **A refused run tells the reader it is being fixed.** `verify_pipeline.py` is a gate, so a run it
-  stops exits before printing the counts that would have been the last boundary's line — meaning a
-  reader who had heard every earlier stage would stop hearing anything at the moment something
-  went wrong. It is deliberately unspecific: which invariant tripped is printed above it for
-  whoever is fixing it.
-
-### Changed
-
-- **The grouping line reports merging, not only splitting.** Grouping splits clusters holding more
-  than one idea and merges families the verdicts say are one move, and on preserved runs the
-  merges dominate often enough to matter — 91 clusters became 57 families on one, 106 became 99 on
-  another. A sentence that could only report splitting read as an error there, because the reader
-  can see both numbers and only one of the two movements was named.
-
-- **The progress lines lost their standing doctrine.** The step-4 line was 467 characters of which
-  369 were policy repeated identically on every run — nothing is dropped, grouping never deletes,
-  refutations are reported too. Skimmed as terminal output that is free; repeated as the
-  assistant's own message it is a wall of text at the moment the reader's attention is most worth
-  having. The policy belongs in the report.
-
-- **The Opening promises reporting rather than quiet**, and does not promise a number of updates:
-  a run that fails its integrity check takes a repair round and speaks a different number of
-  times, and a reader counting against a promise learns the wrong thing from that.
-
-### Fixed
-- **Two of the previous round's fixes did not work, and one made a gate worse.** Both were caught by
-  shapes that were not in the corpora written to prevent exactly this.
-
-  **The JSON ambiguity guard was not symmetric.** It tested only the whole of the text outside a
-  fence and the suffix from its first brace, never a prefix — so any prose beside the second payload
-  defeated it. `{real}\nHope that helps.\n```json\n{stub}\n```` still loaded as an empty pool, as
-  did the original motivating direction with a sentence between the two. The corpus held one
-  whitespace-only representative per direction, which were the only two variants the rule handled.
-  It now scans from every brace, and the corpus carries the noisy members of both families.
-
-  **The burial gate's "every occurrence is hidden" rule traded a false positive for a false
-  negative.** An HTML comment renders as nothing, so echoing each option into `<!-- … -->` above a
-  collapsed block made every occurrence count as visible and the gate passed — the exact attack
-  `check`'s own docstring names, reintroduced by the fix for the appendix case. Comments are now
-  hidden regions.
-
-  **Both corpora carried their own copy of the rule, and both copies drifted from the script.** They
-  reported green while the shipped code still lost data, because each had been fixed separately. A
-  corpus that reimplements what it tests is testing the reimplementation; both now import it, and
-  `--shipped` keeps a frozen copy of the *old* predicate, which is what that mode is for.
-
-- **The import-time band check was an `assert`, which `python -O` strips.** `plan_groups.py` already
-  documents this, sixteen lines explaining why its own import-time check exits rather than asserts.
-  Demonstrated: under `-O` a violating band imported cleanly. Now a `sys.exit`, and the message says
-  which value sits outside which band.
-
-- **Three more claims, and a fourth reader.** The bands fired on **five** of eight recorded runs, not
-  six — six is the *file* count, and the same commit message said "eight events, not nine files".
-  The joinable ceiling is 23 points clear of the highest recorded run, not 25. A comment 235 lines
-  from the edit still described three runs "at n=3" with agreement rates matching nothing on disk.
-  And `progress.py` was a **fourth** reader of pair records that `verdicts.is_id` was introduced to
-  unify — a list id raised `unhashable type` there, a bare string raised `AttributeError`.
-
-- **Housekeeping the same review caught:** a test insertion had displaced the file's shebang and
-  module docstring to line 43; a refusal for *zero* payloads read "holds more than one candidate
-  payload"; and an assertion hardcoded `38/38`, so adding a corpus shape would have failed it.
-- **The heartbeat claimed a second adjudicator wherever it saw a duplicate.** It reported
-  `judgements - pairs` as the planted count and explained the gap as two blind adjudicators — true
-  only when the duplication is *cross-shard*. A pair listed twice inside one shard gives the same
-  arithmetic and one reader; a pair planted across three shards was reported as two planted pairs.
-  It now counts pairs appearing in two **different** shard files, and the sentence appears only when
-  one does. Both preserved runs still report 48, now for the reason stated.
-
-- **A comment said zeroing `implementation_variant` fails the run. It does not — it fuses.** 27 lead
-  pairs survive the complete search on `realrun` and 225 on `dense-frozen`, every one a proven
-  pinch, so the run completes with **20 and 83 irreversible merges** rather than stopping. The
-  cited 38 and 242 are the *greedy* stall counts, from before the complete search, and the failure
-  they described stopped happening when the pinch-merge path was added. Renumbering while keeping
-  "fails the run" would have corrected a figure and left a false claim — the floor under any
-  retuning is now silent, which is worse than the one the comment warned about.
-
-- **A test definition was shadowed by a second copy of itself.** Two functions named
-  `t_heartbeat_counts_pairs_not_judgements` existed; Python bound the later one and the earlier was
-  dead. Both were in the runner list, so the suite reported it twice and ran it once.
-- **Three readers of the same record disagreed about what a valid option id is, so one predicate now
-  serves all three.** `verdicts.relation_of` tested `not entry.get(side)` — truthiness, so `5`,
-  `true` and `[]` all count as present. `shard_candidates.py` tested the same way and **dealt an
-  integer id to an adjudicator**, first refused four stages later by a message that could say the id
-  was unknown but not that a proposer had invented it. Worse, the int then broke the named failure
-  that script was already trying to print, because the unknown-id list joins its members as strings.
-  `merge_relations.py` indexed the ids straight into a `frozenset`, so a missing side put `None` in
-  a key and a later `sorted()` raised a bare `TypeError` naming no stage — the failure `robust_json`
-  exists to replace — while a list or dict side raised `unhashable type` before any check ran.
-
-  `verdicts.is_id` is now the single predicate: a non-empty, non-whitespace **string**. Not a
-  numeric exclusion, because `isinstance(True, int)` is true and a numeric guard lets `true` through.
-
-  Two more from the same corpus. A **self-pair** collapses to a one-element `frozenset` that
-  `for a, b in …` cannot unpack, so it raised in the reporting path of the error trying to explain
-  the file; both messages now render a pair without assuming two elements. And the fabrication gate
-  guarded on `if all_dealt` rather than on whether candidate files exist, so a `cand-*.json` holding
-  `"pairs": []` — a positive statement that nothing was dealt — read as "no baseline, cannot tell"
-  and waved every returned verdict through. A shard returning 116 of 117 failed loudly while a
-  proposer dealing 0 passed.
-
-  Malformed records are **refused at read time** rather than dropped: this stage measures a set
-  difference, so a dropped record shrinks the baseline the coverage and fabrication claims are
-  computed against, and the error would name the adjudicator when the broken stage is the proposer.
-
-  Shapes are in `tools/corpus_ids.py`, 38 shape/stage pairs, driven through the real scripts: the
-  shipped code agreed with 14, it now agrees with all 38, and all 21,925 pair records across the 75
-  recorded files are still accepted.
-- **Four published figures named a population that was not the one measured.** Audited every number
-  in the scripts and the README, re-deriving each from the files it claims to come from.
-
-  **`609 of 40,000 pinched states`** — the count is exact and the generator *is* committed (the
-  sweep in `t_no_evidence_merge_is_refused`, at a tenth the scale), but "pinched" is false twice
-  over: 21,809 of the 40,000 are pinched, and **not one of the 609 is among them**. The sentence
-  named a population that both exists and excludes the entire finding, three lines above another
-  sentence in the same comment that had it right.
-
-  **`0 in 48,000`** had no generator anywhere and is withdrawn rather than reconstructed. Its
-  neighbour, `13 in 432,000`, is real and reproduces exactly — but from a sweep that is not in this
-  repo, so it now says so rather than reading as something a reader can re-run.
-
-  **The agreement range `75% to 85%`** excluded 89.6%, which appears in *both* complete preserved
-  runs — and which the 80–90% range it replaced contained. The correction moved the ceiling away
-  from the best-evidenced runs. `85.4`, one of the five values behind it, appears nowhere in the
-  repo or its history except the commit that introduced the claim. The README now leads with the
-  figure a reader can check — 37 of 48 on the tracked capture — and gives the preserved range as
-  77% to 90%.
-
-  **`3.3x to 1.4x` and `about 90% of families`** are correct for `clusters.json` and the sentence
-  said *families*, one stage later — and one of the two runs the 90% rests on has no `families.json`
-  at all. Same defect as the 609: right number, wrong population. Reworded to name the partition the
-  grouper is handed. The duplicate-share endpoints (19.5%, 0.7%) were checked and are real, in
-  `run3-partial` and `rerun-partial`; a review had claimed neither existed, having sampled five of
-  the nine files. The floor is now stated as "under 1%", since the true minimum across all nine is
-  0.62%.
-
-  **`160 of 266` nested variants** matches no dataset; the run it cites gives 150. Replaced with
-  157 of 270 from the tracked capture, which a reader can verify.
-
-  Also removes the retracted "roughly two thirds were load-bearing" from a test docstring — the
-  fourth time in this series a correction reached two of three sites.
-- **The verdict-mix bands fired on five of the eight runs on record, including both complete ones.**
-  They were drawn when a single 0.7% run was read as the anomaly, so the floors sat at 5% and 40%.
-  Five of the eight recorded runs are at or below 2.2% duplicate: the low-duplicate regime is the
-  common case and the two early runs at 18.5% and 19.5% are the outliers. A warning that fires on
-  the runs it calls normal is one the reader learns to skip.
-
-  Only the lower edges moved — nothing recorded has come within 25 points of either ceiling. The
-  bands are now silent on all nine `relations.json` on disk.
-
-  **And the message cited evidence outside its own band**: "outside the 5%-45% of recorded runs
-  (18.5%, 19.5%, 0.7%)" named a run below the range it had just called the range of recorded runs.
-  The recorded values are now named constants with an import-time assert that each sits inside the
-  band it is cited for, so that class of sentence cannot be written again rather than being caught
-  by the next reader.
-- **Three partition checks in a row could not fire, and the third replaced the second.** The first
-  read `len(placed) - len(rejected) + len(rejected) != len(ids)`, which cancels to the second. The
-  second restates two gates 400 lines earlier. The third compared two sets those same gates had
-  already forced equal — `:219` refuses a family member that was never generated, `:224` refuses a
-  generated option no family holds, so `placed == ids` unconditionally by the time any of them ran.
-  Confirmed by suppressing `die()` and watching each candidate stray get eaten by an earlier gate.
-
-  All three are gone. In their place, a comment naming where the invariant is actually held: those
-  two gates, plus `:457` for the verdicts, plus `build_report.py`'s `slots + rejected != generated`
-  one step later — where `slots` is counted off the render loop rather than derived from the
-  partition, which is the first point in a run that an independent number for "presented" exists.
-  A new test perturbs each of the three gates and asserts each fires, since a deleted check leaves
-  nothing else to assert.
-
-- **Five documents asserted `presented == generated`, which the code retracted.** A run with a
-  refuted option presents fewer than it generated — `20260827-run1` is 270 and 266 — and
-  `verify_pipeline.py` has said so since the three-option-states change. `references/pipeline.md`
-  (both copies), `tests/README.md`, `DESIGN-NOTES.md` and the maintainer memory all still carried
-  the old form; `DESIGN-NOTES.md` contradicted its own correct statement 700 lines earlier.
-- **The burial gates measure readability rather than one spelling of the tag.** Both have been wrong
-  twice. First they counted `### N.` headings inside a `<details>` block, so folding away everything
-  *beneath* the headings passed with the structure standing — the nested variants are the majority
-  of the options on a recorded run. The fix for that matched the tag literally, and missed
-  `<DETAILS>`, `</details >`, a newline inside the open tag, and an unclosed block, which folds the
-  rest of the document on GitHub. Measured: the shipped predicate agreed with 6 of 12 shapes.
-
-  It also had two false positives, refusing correct reports: a `<details open>` block, whose content
-  is visible, and a report that presents every option and repeats them in a collapsed appendix.
-
-  A third fix was proposed and rejected on measurement: exempting any block carrying `open` is
-  defeated by `<details open>` wrapping a plain `<details>`, which the shipped code refuses and the
-  exemption would pass — the gate turned off by its own fix. Shapes are pinned in
-  `tools/corpus_burial.py`, which the tests drive through the real script for both the report and
-  the reply; the rule was run there against the shipped code first, and reaches 12 of 12.
-
-  One shared helper serves both gates, so they cannot drift apart again, and the heading fallback
-  now runs only when there is no manifest — counting headings inside a collapsed span regardless is
-  what refused the appendix report even after the option check had passed it.
-- **A JSON file with two payloads is refused instead of silently resolved to one of them.** This was
-  wrong twice, in opposite directions. Anchored to the whole file, the fence pattern fired only when
-  the fence *was* the file, so prose or a sign-off around it made ordinary shapes fail as "Extra
-  data". Unanchoring it fixed those and introduced the worse failure: `search` bound the **first**
-  fence and discarded the rest, so a generator that wrote a fenced stub and then the real pool
-  loaded as an **empty pool** — a wrong answer where the old behaviour was at least a stopped run.
-  And an empty pool is a legal shape, so nothing downstream could tell.
-
-  The property is not "the repairs compose"; it is that an ambiguous file is refused. A fenced block
-  is the payload only when it is the only thing in the file that parses — two parseable fences, or a
-  fence with another JSON value beside it **in either direction**, now fails naming the file and the
-  stage. The mirror matters: the first fix for this guarded a second value *after* a fence and left
-  *before* alive.
-
-  Shapes are pinned in `tools/corpus_json.py`, which the test imports rather than restates.
-  It was run against the shipped code first — 18 of 21, the three failures all silent — and every
-  one of the 357 preserved and eval JSON files still loads.
-- **The pair count the reader is given counted judgements, not pairs.** 48 pairs are planted into
-  two shards each so two adjudicators judge them blind — that is how a run reports its own grouping
-  reliability — and the heartbeat summed `len(pairs)` across shards, counting each twice. Both
-  preserved runs were inflated by exactly 48: the line said 1,342 and 1,651 where the candidate sets
-  hold 1,294 and 1,603. `SKILL.md` has the orchestrator repeat every `SAY:` line verbatim, so this
-  was a number handed to the reader. It now counts distinct pairs and names the planted ones rather
-  than dropping them silently.
-
-- **A record missing an id was reported as a duplicate proposal.** `shard_candidates.py` dropped
-  genuine repeats, malformed records and self-pairs through one branch and one counter, then
-  described all of them as duplicates — a different defect with a different fix, named wrongly. Each
-  reason is now counted and reported separately.
-
-- **The JSON repairs worked one at a time and not together.** `robust_json._unwrap` strips a BOM, a
-  code fence and prose before the first brace, but the fence pattern was anchored to the whole file,
-  so it only fired when the fence *was* the file. Prose before a fence, or a sign-off after one,
-  defeated the strip and the brace-cut then left the closing fence in place — so two of the three
-  shapes a model actually emits failed as "Extra data" in the module whose job is exactly this.
-  Verified that every corruption case (truncated, empty, prose-only, `NaN`, duplicate keys, bare
-  array) is still refused with its named message.
-
-- **Two figures about verifier notes were wrong, in different places.** `references/pipeline.md`
-  said 5 of 5 records on one preserved run; it is 13 of 13, as `verify_pipeline.py` already said.
-  Both then called the total "sixteen"; 13 + 11 is 24. Counted from the preserved `verified-*.json`
-  files.
-- **The burial gate counted family headings, so the majority of the answer could be folded away.**
-  `build_report.py`'s own docstring names the attack — collapsing the list into a `<details>` block
-  headed "raw machine output (ignore)" keeps every word and passes any check that only counts
-  presence — and then counted `### N.` headings inside the block. Nested variants are a line each
-  under their family and match no heading, and they are the majority of the options — 157 of 270 on
-  the tracked capture. A
-  report with every heading visible and everything beneath them folded away passed. It now asks the
-  manifest which options are hidden rather than asking the markup.
-
-- **The reply had no burial gate at all.** `check_reply` guards "the surface every other gate
-  misses" and checked only that the options were present, so a reply could carry the entire report
-  under "full machine output — you can ignore this" and pass. That is the artifact the reader
-  actually receives. Same gate, same manifest.
-
-- **An adjudicator could return a verdict on a pair nobody dealt it.** `merge_relations.py` computed
-  `dealt - back` — every pair sent out must come home — and never `back - dealt`. So a judgement on
-  two options that were never compared merged into `relations.json` and grouping, ranking and
-  verification were built on it, with `verify_pipeline` catching it four stages later if at all.
-  `shard_candidates.py` already makes this argument for the proposer's half of the same hole. The
-  check is skipped when no `cand-*.json` exists, since with no baseline "cannot tell" must not read
-  as "fabricated".
-
-- **A partition check could not fail.** `verify_pipeline.py` asserted
-  `len(placed) - len(rejected) + len(rejected) != len(ids)`, which cancels to the line directly
-  above it — the module's headline invariant spelled by a check with no independent term. Replaced
-  with one that has: `rejected` is read from the verifiers' verdicts and `placed` from the grouper's
-  families, so a refuted option no family holds means those stages disagree about which options
-  exist. Also made the two readers of a relations record agree about whether an id is optional.
-- **`ruff` was red at HEAD, and CI has never run on any of it.** Three `F401`/`F841` errors against
-  the pinned `ruff==0.15.0` the workflow installs, one of them added by the previous commit's own
-  test. The branch is far enough ahead of `origin/main` that the lint gate had not been exercised
-  since before this series began; it would have failed on first push. All three fixed.
-
-- **The tiering guard's "inert below 50 options" was sampling luck, not a threshold.** It changes
-  the pick about once in a thousand pinch decisions — 3 of 2,674 at 20-40 options and 1 of 1,096 at
-  50. The earlier claim of "never at 8-40" came from 1,226 draws, where seeing none has probability
-  around a quarter. The guard is rare and size-independent, which is the reason to keep it; the
-  regime boundary was read into a small sample.
-- **The 609 no-evidence merges were never reachable, so neither argument about them held.**
-  `merge_families.main` asks for a merge target only when `solve_leads` finds no assignment and
-  proved none exists. In all 609 states behind that figure, `solve_leads` found one — the fallback
-  could not have fired in a single case. Two rounds then argued whether such a merge is load-bearing
-  (53%, then two thirds) from a population containing none of the event. The refusal stands, on the
-  basis it always had: fusing families the adjudicators called apart permanently answers a question
-  the evidence did not ask. The count no longer pretends to measure how often that happens.
-
-- **Three refusals told the caller to re-shard, which cannot change what they are about.** They
-  said "re-run `plan_groups.py` with more shards" — prose naming no flag, since `--shards` belongs
-  to a different stage. A first attempt replaced it with `--max-task`, a real flag, which is worse:
-  `pack()` is first-fit over *whole clusters*, so `clusters.json` is byte-identical from
-  `--max-task 45` down to `1` and only the task-file batching changes. `docs/INCIDENTS.md` already
-  records a run that followed that advice and spent a re-run learning it. All three now name what
-  can actually change the input — re-adjudicating the pairs, or a fresh grouping dispatch — and say
-  `--max-task` will not help. The test asserts an action is named and that `--max-task` is not
-  offered as the remedy, rather than matching a flag token.
-
-- **The test added for the malformed-baseline fix could not fail.** Its own `except` clause swallowed
-  exactly the exceptions the bug raised, so it was green before the fix, after it, and would be
-  green if the fix were reverted — and it re-implemented the guard inline rather than running
-  `check-repo.py`. It now plants a malformed baseline and runs the real script, and fails against
-  the pre-hardening commit with the `AttributeError` it exists to catch.
-
-- **The guard added for an unreadable scenario file was on the wrong reader.** Two earlier checks
-  read the same glob unguarded and run first, so that is where an unreadable file raises. The guard
-  is correct and kept; the claim that it prevents a lost failure summary is not, and the code says
-  which reader owns that.
-- **The previous commit corrected seven claims and applied four of them only to the changelog.** The
-  refuted numbers stayed in `plan_groups.py`'s doctrine comment and in a test docstring — including
-  the 56% figure that commit itself called "the whole argument for leaving the floor alone", left
-  standing in the file a maintainer reads before touching the code. The retracted justification for
-  refusing a no-evidence family merge stayed in two comments and, worse, in the `die()` an operator
-  reads: it told them no merge "can fix it" when by that commit's own measurement one usually can.
-  All corrected at the source this time.
-
-- **The pinch merge now prefers a candidate the share rule could evaluate over one merely exempt.**
-  The previous commit declined this on the grounds that both kinds were never available at the same
-  pinch — true across 10,000 instances at the repo generator's 8-14 options, and false at 20-40,
-  where they do co-occur. A universal claim from one generator, used to justify not guarding the one
-  irreversible act in the script. The guard is a strict no-op on outcomes in 5,500 instances across
-  both sizes, which is the point: it costs nothing and removes the case.
-
-- **The baseline check still crashed on five shapes of malformed input.** The earlier hardening
-  guarded `null` and truncation and duck-typed the rest, so a baseline JSON that is a list, or an
-  `agentBinary` that is a string, raised `AttributeError` — outside the `except`. It is the last
-  check in the file, so an uncaught raise pre-empts the failure summary and discards every genuine
-  finding above it. Now type-checked, with a test over eight malformed shapes.
-- **The baseline check no longer hands a contributor a traceback.** It argued at length that it must
-  warn rather than fail so nobody is blocked by their own machine's state, then raised on a
-  truncated baseline JSON and on `"agentBinary": null` — worse than the failure it refused to be.
-  It also missed a quoted `baseline: "desktop-x"` (reporting it as unshipped), and its green line
-  counted scenario *files* rather than pins, so scenarios with no pin at all were reported as
-  verified. All four found by review, all reproduced before fixing.
-- **`merge_families.py` no longer fuses two families the verdicts do not connect.**
-  `worst_pinned_pair` skips any pair with no joining verdict and any pair that would breach the
-  separating-share rule — then fell back to merging the two smallest families whose union passed the
-  share check, with no joining evidence required at all. Reaching that fallback means every pair
-  failed one of those tests, and it merged one anyway. Measured over 40,000 pinched states: 609 such
-  picks, including families with no adjudicated cross pair between them; 0 after the change, with
-  all 39,391 evidence-backed picks unaffected.
-
-  **The 609 counts probe calls, not reachable events — and that undoes both arguments made about
-  it.** `main` asks for a merge target only when `solve_leads` finds no assignment *and* proved none
-  exists; in all 609, `solve_leads` found one. **Zero were reachable.** Two rounds argued over
-  whether such a merge is load-bearing (53%? two thirds?) from a population containing no reachable
-  case. Sweeps that filter for reachability make it very rare — 13 firings in 432,000 states in one,
-  0 in 48,000 in another. So this guards a shape no run has been observed to reach, and is kept on
-  that basis rather than on a frequency. The reason does not depend on the count: fusing two
-  families the adjudicators called `distinct`, or never compared at all, permanently answers a
-  question the evidence did not ask.
-
-  **A recorded partition produces the pick, though no recorded run reached it.** Called against the
-  preserved `dense-frozen` families, the fallback picks 17 and 18 — *"Batch first and second review into one scarce-review"* and
-  *"Give second units same-day attention from the person"* — which have no adjudicated pair between
-  them at all — two plainly different ideas, fused on no evidence. `solve_leads` settles that
-  instance without ever calling the fallback, so this is a probe against real labels rather than a
-  run that failed; the fuzz remains the evidence that it fires. The pair is transcribed into the
-  regression test, since the dataset itself is gitignored.
-- **Two documents said `plan_groups.py` satisfied the share rule by construction.** It did not: its
-  pinch merge was unbounded until the change above. `references/pipeline.md` now says which half is
-  by construction and which is by the bound, and `verify_pipeline.py`'s widened-family message names
-  both scripts that can merge rather than only one — while still pointing at the likely source.
-
-- **Two annotations, because a reader should not infer coverage that does not exist.** `_search` has
-  never been reached by a recorded run — of eight preserved datasets one enters the collision branch
-  and propagation settles it without searching — so its docstring says the fixtures are synthetic.
-  And one assertion in `t_lead_search_scales_and_preserves` guards the complete search rather than
-  anything fixed in this series; it passes against all three prior commits, and now says so.
-- **The pinch merge is bounded by the separating-share rule.** Merging two clusters whose every lead
-  choice collides was the one merge in the pipeline bounded by nothing — every other is bounded that
-  way — and it wrote a cluster over the rule on **1,184** of 10,000 random instances, worst 60%
-  against a 15% limit. It now refuses any pair the rule can prove breaches, in the same order as
-  before, and stops with a diagnosis when no pair survives.
-
-  **The bound is narrower than "merges only a pair inside the rule".** The rule does not apply below
-  ten adjudicated pairs in the union, and that exempts most of what this path merges, so a thin
-  merge is unevaluated rather than approved. The entry below on reporting the exemption is the other
-  half of this change and should be read with it.
-
-  **Nothing downstream was catching it.** The obvious argument for merging anyway — a widened family
-  dies at a later gate — is false: a grouper that splits the fused cluster back along its seam yields
-  two families that both pass, and `agents/grouper.md` tells it to split when unsure. The breach was
-  silent, not deferred, and the refusal message says so rather than promising a later failure.
-
-  **The bound is the whole change; ranking the candidates was measured and rejected.** Ordering by
-  joining density picks a pair that does not resolve the collision, so the loop iterates again —
-  2 merges where the plain order needs 1 — and it drove an instance whose every candidate was legal
-  into a refusal. A pinch merge is irreversible, so more merges is a safety regression. Acceptance
-  test over 4,000 generated instances at the repo generator's 8-14 options: never merges more than
-  before, never refuses where the previous behaviour finished legally, and every preserved dataset
-  that stores a partition (7 of 8) byte-identical. **That last is weaker than it sounds**: the seven
-  comparable datasets are exactly the seven that never reach the pinch branch, so their identity is
-  guaranteed by construction. `critique-repro`, the only one that exercises this path, stores no
-  partition to compare against — the change is unverified on recorded data. **That first property is size-dependent** — at 20-40 options one seed in
-  2,000 does merge more, so it holds for the tested regime rather than universally.
-
-  The bound is vacuous below `SHARE_MIN_ADJUDICATED`, which is where the only preserved instance
-  sits. Whether a floor written for reporting a breach should also gate a merge decision is left
-  open rather than settled quietly.
-
-- **`t_pinch_merge_is_reported` pinned a merge that broke the rule.** Its fixture fused a family at
-  40% separating share — the repo's own demonstration of the feature demonstrated the defect. It is
-  kept as the refusal case, and a second covers a merge the rule does not refuse. Not a *within-rule*
-  merge: no generated instance in 300 runs merges a union the rule can evaluate, so that branch has
-  no fixture and is not claimed to have one.
-- **A family label a grouper wrote could carry a newline all the way to the reader.** Nothing in
-  `scripts/` scrubbed line breaks: `merge_families.py` took `.strip()`, which is leading and
-  trailing only. `build_report.py` prints the label as `### {rank}. {label}`, so a label with a
-  break ended that heading early and dropped whatever followed into the report as markdown of its
-  own — a sub-agent choosing the structure of a document it cannot see. The same label reaches a
-  watching reader through `progress.py`, which quotes it mid-run and says the quote is the
-  grouper's own words; a break there produced a second line of output that reads as the script's
-  own statement rather than as something quoted.
-
-  Repaired rather than refused, in `robust_json.one_line()` — the split that module already
-  applies to a BOM or a code fence, since a break in a label is unambiguous and touches nothing
-  about the content. It is applied at ingest, where the label enters `merge_families.py`, and not
-  at emission: every emitted label is checked for byte identity against the labels the shards
-  wrote, so cleaning one on the way out would find all of them invented and stop the run.
-  `progress.py` keeps its own call, because it reads `families.json` off disk and that file may
-  predate any of this. `build_report.py` had its own same-named helper doing the same job; it now
-  imports the shared one, so the tree carries one `one_line` rather than two that would drift —
-  and that file is injection-safe because the value is clean at ingest, not because of a guard of
-  its own.
-
-- **A comment in `merge_families.py` denied what the code below it does.** The block introducing
-  the merge loop said it "can undo a split, never invent a merge across clusters". Thirty lines
-  down, the loop merges two families from different clusters whenever every adjudicated pair
-  between them joins, counts those separately as `cross_merged`, and carries its own comment
-  explaining why the cluster of origin cannot change the answer. Both comments justify the same
-  loop and only one of them describes it. The bound is the verdicts, not the partition; the first
-  comment now says so and points at the second.
-
-- **`merge_families.py` carried the same two lead-search defects `plan_groups.py` had, and they were
-  left standing when that side was fixed.** One budget shared across independent components, and
-  `proven` inferred from what was left of it. So the two solvers disagreed on the same instance:
-  the re-check reported UNKNOWN and stopped a run that the partitioner had already proved out, and
-  flipped to a proof when the families were numbered the other way round. It also returned on the
-  first failed component, so a search-hard one visited first hid a later component that was
-  infeasible in a handful of nodes. Its UNKNOWN message repeated the advice `plan_groups.py`
-  already records as inert — re-run with more shards, which sizes grouping tasks and cannot change
-  the partition this solver is given.
-
-- **The lead search no longer tie-breaks on the cluster index.** Indices are an artefact of
-  partition order, so tie-breaking on them let a permutation of one instance reshape the search tree
-  and flip `proven` where the tree straddled the budget — the same class as the shared-budget defect,
-  narrowed rather than closed. Measured over 600 instances at three budgets: 5/1/1 permutations
-  changed the answer before, 0/0/0 after.
-
-- **Total search work is bounded again.** Giving each component its own budget removed the only
-  ceiling on the sum — measured at 120x the nodes for the same answer on a pathological partition.
-  Every component is now propagated before any is searched, which costs no budget and settles the
-  realistic pinch, so no component's proof can be starved; the search that remains runs under a
-  global ceiling as well as a per-component one.
-
-- **A repeated option id is refused instead of being shipped in two clusters.** The partition check
-  compared sorted multisets, which catches loss and count drift but not distinctness, so a pool file
-  listing one id twice put that option in two clusters, two grouping dispatches and two families.
-  The only gate that caught it ran at the end of a forty-minute pipeline. Disjointness is also the
-  precondition the pinch-reporting argument rests on, so violating it was the one path that could
-  return a merge target from a component never proven infeasible — that branch now refuses.
-- **A pinch merge is named in the summary rather than counted silently.** Merging two clusters
-  whose every lead pair collides is the one irreversible thing `plan_groups.py` does — two
-  families the adjudicators kept apart become one, and no later stage can tell it happened.
-  The count existed and was never printed, so a run that fused families looked exactly like one
-  that did not, in the summary and in `clusters.json` alike. The regression test drives a real
-  end-to-end run, because the partition absorbs most pinches before the lead search sees them;
-  the input that survives agglomeration was found by fuzzing and is pinned.
-- **Lead assignment infers before it searches, and searches only what can collide.** A run on
-  2026-08-30 could not prove a six-member cluster's pinch infeasible at 20,000,000 nodes — a
-  thousandfold over the default — and finished only because it wrote its own solver. The instance
-  was provable with no search at all: every blocker was a singleton, a singleton's lead is forced,
-  and propagating those forced leads empties the pinched cluster's candidates in one pass.
-
-  `choose_leads` now decomposes the instance into connected components of the cluster-conflict
-  graph and re-solves only components holding a collision, propagates forced leads to fixpoint
-  inside each, and prunes future domains as it assigns. The incident instance is proven in 6 ms.
-  Each of those three would have collapsed it alone; the shipped search did no inference anywhere,
-  so on failure it re-enumerated the product of every unrelated cluster's domain.
-
-  **The PROVEN/UNKNOWN distinction is unchanged and now decided in three places** rather than
-  inferred from what is left of the budget: a propagation wipeout and an exhausted tree both prove
-  infeasibility, a cutoff proves nothing. The reported collisions are the pinched component's
-  rather than the lexicographically least, so the caller merges at the pinch instead of at an
-  unrelated pair. **Each component carries its own budget**: sharing one across them let a
-  search-hard component starve a later one that was infeasible in two nodes, which came back
-  UNKNOWN and flipped to PROVEN when the same two were numbered the other way round. A flag that
-  licenses an irreversible merge must not turn on cluster numbering. One infeasible component does
-  settle the instance even when another was cut off — but only once each is actually given the
-  budget to reach that conclusion.
-
-- **A component with no collision keeps its leads.** `choose_leads` documents that it overrides
-  only where the gate would fail, 0-4 clusters on recorded runs. On success it replaced every
-  lead with the complete search's canonical choice, so an unrelated pinch elsewhere in a run
-  silently changed which option fronted a family the reader sees. Component-scoped solving ends
-  it; the regression test builds two independent components and asserts the untouched one settles
-  the same way alone and together.
-
-- **The budget-exhaustion message no longer names a flag that cannot help.** It advised re-running
-  with a smaller `--max-task`; that flag sizes the grouping tasks packed after this stage and
-  cannot affect the lead search. The 2026-08-30 run followed the advice and spent a re-run on it.
-- **`INSTALL.md` said the skill both does and does not offer itself, in one sentence.** The
-  opening read "the skill does offer itself when you ask for options on an open-ended problem"
-  and then, after an aside, "the skill does not self-select on naturally-phrased questions (0 of
-  12 in testing)" — a botched edit that also contradicted `README.md`. The measurement supports
-  the second half: 0 of 12 across three problems. The first half described behaviour the skill
-  description has since been hardened against, which now tells a model not to select the skill
-  even when a prompt says the obvious answers are spent. Corrected to the single claim, with the
-  measurement kept at its real scope.
-
-- **`--fill` no longer deletes a slot when handed an empty value.** `{"{{CLOSING …}}": ""}` printed
-  `filled 1 slot(s)`, exited 0, and replaced the closing judgement with nothing — the failure
-  `--fill` exists to prevent. `--check` then passes: its `{{` scan finds no token and the missing
-  words are far under the floor, and the note beneath `--check` says plainly that a deleted slot is
-  not recoverable from the artifact. Non-string values are refused rather than coerced, the same
-  rule `verify_pipeline.py` applies to verdict fields — `str(v)` puts a literal `None` or `[]` into
-  the report under a heading the reader trusts.
-
-- **And no longer refuses a plain retry with the wrong diagnosis.** Once a fill succeeds its keys
-  are gone from the body, so re-running the same command hit the never-a-slot refusal — *"a key
-  that matches nothing is silently skipped by a replace loop"* — which is a different failure and
-  misleading to read while debugging. It is reachable on any retry and on the multi-pass fill step
-  10 endorses. The manifest carries the skeleton the report was built from, so an already-filled
-  key is told apart from a typo; with no manifest it falls back and says so, rather than inventing
-  a refusal at step 10 of a forty-minute run. The summary line counts what was actually replaced.
-  **What this does not catch, since the WARN is the only signal:** a shifted mapping, where every
-  key is one slot out of step — each slot fills, no token remains, and `--check` goes green on
-  wrong content.
-
-- **A superseded shard's verdicts are superseded with it.** `relations-<k>.json` is written against
-  `cand-<k>.json`, so when a re-shard renames that shard aside its verdicts are stale by
-  construction — but `merge_relations.py` globs `relations-*.json` without knowing which sharding
-  produced them. Left behind, the stale file padded the union the coverage check compares against
-  and a **current** shard that came back short merged green: measured at four shards re-sharded to
-  three, exit 0 with the orphan present and exit 1 without it. The existing sweep now covers both
-  prefixes on the same index test. A repair file written after a re-shard is swept by the next one
-  — its index is always above the shard count — and that is correct rather than incidental: a
-  re-shard invalidates a repair as thoroughly as it invalidates a shard, since both were judged
-  against a partition that no longer exists. It fails loudly either way.
-
-- **A verifier note renders whatever the verdict says.** The guard listed verdicts, so a note on an
-  `unclear` lead below rank 13 rendered nowhere while `verify_pipeline` printed *"each is rendered
-  under its option in the report"* over it. The guard is unconditional now, the band header's
-  count widens with it so the number matches the markers beneath it, and notes the report genuinely
-  cannot place — a note belongs to a family's block, which only the lead gets — are named in their
-  own WARN instead of absorbed by a claim that they rendered.
-
-- **The transcript-marker check no longer fails open.** It validated only the last scenario file's
-  first marker, ignored single-quoted ones, and emitted neither pass nor failure when it found none
-  — so deleting the assertion removed the check silently. It now accumulates across every file,
-  accepts both quote styles, and refuses when there are none, naming what is lost: that assertion
-  is the live lane's only check on the **sent** message.
-
-- **`--check`'s usage line no longer claims it detects a deleted slot.** Four hundred lines below,
-  the same file explains at length that a deleted slot is not reliably detectable from the artifact.
-
-- **The wholly-missing-shard message now actually fires.** The branch added for an adjudicator
-  that returned nothing keyed on the gap being the whole shard, which the agreement probe makes
-  impossible: `shard_candidates.py` deals some of shard *k*'s pairs to a second shard as well, so
-  when *k* returns nothing those copies still come back from its neighbour. Measured at three
-  shards of twelve with a probe of six, a silent shard reported a gap of eight — so the branch was
-  unreachable in any real run and the case got the "re-dispatch with ONLY its missing pairs"
-  remedy it exists to avoid. It now keys on that shard's own relations file being absent or empty.
-  The test that passed over this hand-built disjoint shards, a shape no sharder produces; it is
-  rebuilt on `shard_candidates.py` and asserts the overlap it depends on.
-
-- **`cps --list` on a skills-only install refuses instead of printing nothing.** The zip, the
-  `.agents/` mirror and older versions ship without `scripts/` by design — the shape the
-  resolver's own scriptless branch exists for — and there the launcher printed an empty list and
-  exited 0. That is the "no output, exit 0" symptom its header cites as a defect, reached by a
-  legitimate route. It now names the install shape and the fallback to take.
-
-- **`pytest` collects conventionally named tests again.** Narrowing pytest's discovery pattern
-  stopped the script-suites being imported, but the setting is repo-wide: a normal `test_*.py`
-  anywhere else was then collected by nothing and pytest reported green having run it — the same
-  false green, one directory over, introduced by its own fix. Discovery is back to the default and
-  the suites are import-inert instead, so the collector finds no tests in them while
-  `tools/conftest.py` runs each as a subprocess. Verified both ways: a planted failing test
-  outside `tools/` is now collected and fails.
-
-- **A repair now merges only inside the component the lead proof is about.** `worst_pinned_pair`
-  runs after `solve_leads` has *proved* no assignment of distinct family leads exists, and that
-  proof is always about one component — the families that constrain each other. Its score ranged
-  over the whole partition, so it kept picking the highest-scoring pair from a component that was
-  never stuck: a merge that cannot move the proof licensing it, fusing two families the reader
-  would have seen separately and leaving the loop to go round again. A budget exhaustion is not a
-  proof, so an unproven component is left out rather than treated as infeasible.
-
-- **A grouping stale against its own ranking is refused.** Re-running `merge_families.py` after
-  step 7 or 8 can change which family a lead belongs to, which restakes the ranking and the
-  verifications recorded against it. `verify_pipeline.py` already caught the visible half — a
-  top-13 lead nothing checked — but a re-merge that reshuffles membership without stranding a lead
-  left every count adding up and the report ranked on a grouping that no longer existed. It now
-  refuses when `families.json` is newer than `ranked.json`, on the same mtime pattern and
-  tolerance as the existing relations-versus-grouping gate. The message says what it cannot do:
-  the comparison is mtimes, not content, so it also fires on a no-op re-merge or a directory
-  restored without its mtimes, and it names `touch ranked.json` as the deliberate way out.
-
-- **An adjudicator that returned nothing is caught at the merge, not four stages later.**
-  `merge_relations.py` skipped a `cand-*.json` with no relations file of its own, deferring it to
-  the step 9 gate — so a shard returning 116 of 117 failed loudly here while one returning 0 of
-  117 passed, and surfaced only after grouping, ranking and verification had been built on a short
-  relation set. Every shard is now checked. The remedy is split by shape: a shard that is merely
-  short is re-dispatched with its missing pairs, one that returned nothing is re-dispatched against
-  its `cand-<k>.json` in full rather than being handed a truncated list to retype.
-
-- **`SKILL.md` fits the compaction budget.** At 20,186 characters it was over the roughly 19,900
-  that survives a compaction, so the tail was dropped and the truncation written back — recoverable
-  only by re-reading the file from disk, on a skill whose runs are long enough to compact mid-run.
-  Now 19,958, cut entirely from restatement rather than method: a `## Gotchas` section that
-  repeated its own Reference files entry, a second copy of the `report.md` pointer nine lines from
-  the first, a `pipeline.md` pointer given twice within nine lines, and an opening that made its
-  thesis three times. Every phase, the lens table and every rule are unchanged, and the four
-  required-file pointers were checked to fall above the surviving mark.
-
-- **`pytest tools/` no longer reports green having run nothing.** The suites are scripts that run
-  at import and exit non-zero on failure, and CI invokes them that way — but their filenames match
-  pytest's discovery pattern while containing no `test_` functions, so `pytest tools/` collected
-  nothing and exited 0. `tools/conftest.py` collects each suite as one item and runs it as a
-  subprocess; discovery is narrowed so the default collector no longer imports them, which was
-  separately turning a real failure into an `INTERNALERROR` instead of a red.
-
-- **The reply must now carry the report, and a copy no longer satisfies the check.** Step 10 has
-  always said "the file is the answer, and the reply is the file… do not compose a second, shorter
-  version", and has always admitted `--check-reply` cannot see the message actually sent — so
-  `cp report.md reply.md` satisfies it by construction. On 2026-08-28 a live run did exactly that
-  and sent 2,155 characters of fresh summary instead of the 76,246-byte report, with every check
-  green. The page now says the copy is not the step, and `ideas-command.yaml` asserts a band
-  heading appears in the **sent message** — the one surface the script cannot reach. Verified
-  against the kept run: the marker is in the report and absent from that reply, so the assertion
-  reds it. (The obvious marker, the assumption line, appears in both and would have passed
-  vacuously.)
-- **An edit after `--check` now requires re-running it.** The echo scan exists to prompt an edit,
-  and the same run edited `report.md` six seconds after `--check` passed — so the green certified a
-  file that no longer existed when it was sent. The edit was correct; the missing re-check was not.
-- **`slots.json` has a named home, in both spellings.** The `--fill` step said to write it and
-  never said where, so a run put it in the session scratchpad — outside every directory the reader
-  can see, and reclaimed at session end. It is now `$RUN/_work/slots.json` for the file tool that
-  writes it and `"$BASE/$RUN/_work/slots.json"` for the script that reads it, because no single
-  string is correct for both. It must be overwritten, never deleted: `outputs/` is delete-denied,
-  and on a real Cowork session an `rm` there fails outright.
-- **A missing `slots.json` says it is missing.** `--fill` reported every failure as malformed JSON,
-  so a file that landed in the other namespace sent the caller to inspect something that was not
-  there — at the last step of a forty-minute run.
-- **The shard-budget warning names a remedy, and the pipeline now tells the model to apply it.**
-  `shard_candidates.py` warns when the agreement probe caps shards below what the pair count wants,
-  and says to raise `--probe`. Nothing instructed the model to act on it, so a run took 12 shards
-  at ~137 pairs each — 9% over budget — and passed the warning to the reader instead. Every other
-  `WARN:` here is for the reader to judge; this one is for the run to fix.
-- **A merged family's heading names one mechanism again.** When two families had to be merged —
-  which happens when the adjudicators leave no way to give them distinct leads — `merge_families.py`
-  joined their labels with `"; "`, and `build_report.py` prints the label as the `###` heading. One
-  recorded run put three mechanisms in its second heading, 537 characters long, with 38 of 99 labels
-  over 200. The heading is now the label of the family the **final** lead came from, resolved after
-  the lead is settled, because a merge re-solves the lead over the union and it can land on a member
-  from the absorbed side. The other label moves to a new `merged_labels` field and the report prints
-  it in the family body — nothing is dropped, it just stops being part of the heading. A gate refuses
-  any label no grouper wrote, byte for byte; a length cap was rejected because it would refuse the
-  223-character label and the four legitimate semicolon labels that real runs contain.
-- **The verifier's qualification reaches the reader.** Verifiers were already writing one into a
-  `note` key that nothing read — 5 of 5 records on one preserved run, 11 of 19 on another, with
-  `agents/verifier.md` never mentioning the field. Sixteen qualifications were discarded, so a
-  `confirmed` whose source supports a weaker claim than the option states rendered identically to a
-  clean one. `note` is now accepted on every verdict, refused when empty or contradicted by a
-  `caveat`, counted by `verify_pipeline.py`, and rendered under the option and in the rejected band
-  — where it says *which* part did not hold, which is the only reason that band is worth reading.
-- **The progress heartbeat names the stage that is actually next.** It said grouping; adjudication
-  is, and it quoted a wait calibrated against the grouper dispatches rather than the longer one in
-  front of the reader. It now counts the adjudicators off disk — and the call moved below the point
-  where those files are written, because counting them where it used to sit returned zero on a first
-  run and the previous run's count on a re-run. It also no longer announces a family count from a
-  stale `families.json` while the run is sharding.
-- **`$CPS` resolution no longer does path arithmetic in one filesystem and uses the answer in
-  another.** Step 0 derived the plugin root by stripping a known tail off the path the *file tools*
-  reported, then ran scripts with it under the *shell*. Where those are different mounts of the same
-  content — Cowork's host loop — the result does not exist for the shell, and the documented
-  fallback walked the same absent tree, so both halves failed together and produced "scripts not
-  found" on a host where the scripts were present. Step 0 is now an executable block: the string
-  edit verified rather than trusted, then a search from the shell keyed on the plugin id, matching a
-  sentinel **file** rather than a directory name (a skill mount carries the name and no `scripts/`,
-  so a name match can succeed and still be wrong). Ambiguous matches refuse instead of taking the
-  first. It prints which branch answered, and a missing install refuses loudly rather than dropping
-  to the scriptless fallback in silence — except for the `.agents/` mirror, which genuinely ships
-  without `scripts/` and is now told apart by a positive test rather than inferred from failure.
-- **Phase 0 no longer bans the subject of the question.** "List the loaded nouns and ban them" named
-  a *source* of words rather than a function, and its only worked example showed the form side. A run
-  banned the noun naming the thing being asked about, and nine generators produced 270 options about
-  nothing in particular — a whole generation cycle. The rule now bans the nouns naming a **shape of
-  answer** and never those naming the **thing the answer is about**, with the test that separates
-  them (strike it from the brief and read the brief back) and both sides of the example.
-- **`families.json`'s real shape is documented where it is used.** Three steps said "take its lead
-  member", but `merge_families.py` renames `cid` to `id` and spends `lead` into position, so
-  following the documented shape gets a `KeyError`. Step 8 now states the keys it actually emits,
-  that there is no `lead`, that `members[0]` is what verification targets, and that the report leads
-  with the first member *not refuted* — a divergence that was documented 140 lines further on.
-
-### Added
-
-- **`tools/run-live.sh`** — runs the live lane detached, with the harness's exit code written to
-  its own file rather than read through a pipe. Both halves are failures this repo has had: a
-  status read through `grep` reported a pass on a run that exited 1, and a 27-minute scenario was
-  killed at 30 minutes by a tracked background runner. Tested against a fake harness on the CI
-  gate, including that a silent launch leaves no status file.
-- **A per-slot deletion check was tried and removed, and the dead end is recorded in the code.**
-  The manifest carries the skeleton, so walking it against the body and requiring content in each
-  slot's place looks workable. Measured on a real report, it fires **both** ways: removing one
-  blank line after a filled paragraph reports three untouched bullets as deleted, and deleting a
-  slot while any other line occupies the run reports nothing. The echo scan this pipeline ships
-  exists to prompt an edit, so reflow is the expected case. A gate that fails correct work and
-  passes broken work is worse than none — `--check` still refuses an *unfilled* slot, and
-  fine-grained deletion is now documented as undetectable rather than falsely claimed.
-- **`build_report.py --slots` and `--fill`.** The build now prints every `{{...}}` token verbatim,
-  and `--fill` refuses a key matching no placeholder. The failure this removes is a fill loop keyed
-  on remembered names: a mistyped key matches nothing, is skipped in silence, and the judgement never
-  reaches the report while every later check still passes. A partial fill is accepted, because
-  filling some slots by hand is ordinary. `--check` also now catches a slot **deleted** rather than
-  filled, which previously left no trace at all.
-- **Two static checks in `tools/check-repo.py`**, both token-free. `families.json`'s documented key
-  set must equal what `merge_families.py` emits, read with `ast` so a reformatted dict fails loudly
-  instead of matching nothing and passing. And every scenario asserting a triggering outcome must
-  have a prompt that agrees with it.
-
-### Changed
-
-- **`ideas-command` is bounded in time and cost.** `timeout_ms` drops from 90 to 46 minutes and
-  `max_cost_usd: 40` is added — the same bound at the observed burn of $0.0146/s, where 60 minutes
-  paired with $40 would red on cost fifteen minutes before the clock. Both rest on one completed
-  run (1634.4 s, $23.8071) plus one censored lower bound, so raise them together or not at all.
-  Validated with `verify-run` against the kept run dir, free: $20 reds, $40 greens.
-- **CI pins `cowork-harness` 2.5.0**, up from 2.3.0. The two had drifted apart: `doctor` reports
-  the agent image and egress-proxy digests matching what 2.5.0 pins, so running the older CLI
-  against those images was the worse mismatch. Verified by running all four commands CI takes from
-  this tool — scenario lint, eval-scenario lint, `lint-skill` and `analyze-skill` — at 2.5.0.
-  Nothing between the two versions bites here: 2.4.0's `fidelity-defaulted` warning cannot fire
-  because every scenario pins `fidelity: container`.
-- **Three behavioural scenarios asked for the skill the way the description says not to.** The
-  description is explicit-only, and `pipeline-bounded`, `pipeline-strategic` and
-  `deliverable-composition` asserted `skill_triggered` on prompts that only wanted ideas and said the
-  obvious answers were spent — so a model behaving correctly failed them, which is what a live run
-  found. Their prompts now ask explicitly. The two whose subject is post-invocation behaviour use the
-  `/ideas` command so a trigger flake cannot waste a pipeline run; `pipeline-bounded` keeps the
-  phrase form, because it is the only remaining coverage of the path that resolves by description
-  matching — the one an edit to the description would break invisibly.
+  what you get: the reader ends with a file they can open and keep — written by `build_report.py`
+  on the scripted path and by hand on the no-script install, which is the normal case on the zip
+  and `.agents/` routes. `INSTALL.md` no longer says in one sentence that the skill both does and
+  does not offer itself.
+
+- **`families.json`'s real shape is documented where it is used**, so following the documented
+  shape no longer produces a `KeyError`: there is no `lead` key, and `members[0]` is what
+  verification targets and what the report leads with.
+
+- **`SKILL.md` fits the compaction budget**, so a long conversation cannot silently drop its tail.
+
+- **Each dispatch tells its sub-agent what consumes the output**, so a stage cannot satisfy a
+  format while defeating the purpose of the file it writes.
+
+### Maintainer tooling
+
+Not part of the installed skill. A method for testing the checks themselves: five **shape
+corpora** that run a rule against every shape at once and score it against a **git revision**
+rather than a pasted copy — twice a hand-frozen copy had drifted from its script and reported
+green while the code still lost data, which is the defect the corpus exists to catch, committed
+by the tool doing the catching. Plus `tools/run-live.sh` (the run's status survives, and its exit
+code is readable), `tools/extract_attribution.py`, per-dispatch model attribution, a `pytest`
+collector so `pytest tools/` no longer reports green having run nothing, and a `check-repo.py`
+that grew from 20-odd checks to 35 — including one that reports a scenario whose pinned baseline
+has no staged agent binary, which is what makes a live run unstartable after a Desktop update.
 
 ## [0.3.0] — 2026-08-28
 
