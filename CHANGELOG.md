@@ -20,10 +20,25 @@ clause) are held for a separate release.
   `cp report.md reply.md` satisfied it by construction, and a run did exactly that, passed, and
   sent a summary anyway.
 - **`shard_candidates.py --dry-run`** prints the shard plan and probe arithmetic without writing.
+- **The closing read now asks what the list is missing**, not only where to start. `{{CLOSING}}`
+  was already a required slot — `--check` refuses a report that leaves it unfilled — but it asked
+  *"where you would start, and why"*, which is answerable by pointing at rank 1 without making
+  contact with the other hundred options. The run this came from counted eleven places the
+  pipeline asked for care about the process and one that asked about the answer, took all eleven,
+  and examined the ideas only when the reader asked. It deliberately does not ask how many options
+  are worth acting on: that would pressure a run into presenting fewer, against the rule that
+  nothing is dropped.
 - **Two `check-repo.py` gates on the quota rule** — the shipped clause must be present, and no
   script may compare a pool's option count against a literal. Both tested by planting the defect.
 
 ### Fixed
+
+- **The report's shrinkage guard counts generated content, not placeholder prompts.** It compares
+  the finished report against a word count taken from the skeleton, and that count included the
+  `{{SLOT — instructions}}` text — so editing a slot's wording silently moved a gate meant to
+  measure content. Lengthening one prompt by eight words made a fully-filled report fail the 90%
+  floor. Placeholders are scaffolding that gets replaced and filling one only adds words, so
+  excluding them leaves the guard catching exactly what it exists for.
 
 - **`references/pipeline.md` split** into `pipeline.md` (steps 0-6) and `pipeline-report.md`
   (steps 7-10). It was 1,133 lines and a single `Read` returned 945, so the ban on reporting a

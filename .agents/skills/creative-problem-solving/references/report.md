@@ -84,6 +84,22 @@ produces confident non-compliance.
 **Always end with a point of view.** On a light question that's one line, not a section — an
 answer that lists options and declines to say which you'd pick has handed the work back.
 
+**And say what the list is missing.** The closing read carries two halves: where you would start,
+and one line on what this run did not produce that you expected it to. The second half exists
+because everything else this pipeline asks of you is about the *run* — that every stage happened,
+that the counts add up, that no premise was handed back to the reader as their own words — and a
+run can satisfy all of it while never once asking whether the ideas are any good. On the run this
+rule came from, the author counted eleven places the pipeline asked them to demonstrate care
+about the process and one that asked about the answer; they took all eleven, and examined the
+ideas only when the reader asked them to.
+
+It is not a request to prune. Nothing is dropped, and a small number of strong options is not a
+reason to present fewer next time. It is a request to name the gap you can see and the reader
+cannot: an angle nobody took, a constraint every option assumes away, a question the list answers
+that they did not ask. If you cannot name one, say that in a line — but a closing that would be
+true of any run ("the top few are strongest, the rest are worth scanning") is the failure mode
+here, and no check can catch it.
+
 The raised ceilings are a **reallocation, not an expansion**. The budget comes from the cut
 list, which shrinks as fewer ideas are cut. Options past the first four or five carry their
 mechanism and a one-line risk and nothing else — a compact entry the reader can evaluate in a

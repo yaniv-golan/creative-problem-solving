@@ -308,7 +308,23 @@ def main(wd, out):
             L.append(f"- *Family #{rank_of[fid]} ({fams[fid]['label']}) had no surviving "
                      f"member.*")
         L.append("")
-    L += ["{{CLOSING — one line: where you would start, and why}}"]
+    # THE RUN'S ONE OUTPUT-FACING CHECKPOINT, and the question it asks is the whole of its value.
+    # `--check` has always refused an unfilled CLOSING, so the slot was never missing -- but it
+    # used to ask only "where would you start", which is answerable by pointing at rank 1 and
+    # never making contact with the other hundred. A run that filled it correctly could still
+    # have spent every ounce of its diligence on process: the field report's author counted
+    # eleven places the pipeline asked them to demonstrate care about the run and one that asked
+    # about the answer, took all eleven, and only examined the ideas when a human asked them to.
+    #
+    # "What this list is missing" cannot be satisfied by naming a rank, and it deliberately does
+    # NOT ask how many options are worth acting on. That phrasing would collide with the rule
+    # this pipeline is built on -- nothing is dropped, everything ships -- by pressuring a run
+    # that reports a small actionable count into presenting fewer options next time.
+    #
+    # It can still go hollow, and no script can tell: a closing line that would be true of any
+    # run ("the top few are strongest, the rest are worth scanning") satisfies this exactly as
+    # well as a real one. The tell is specificity, and it is readable in one glance.
+    L += ["{{CLOSING — where you would start and why; and one line on what this list is missing}}"]
 
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     open(out, "w", encoding="utf-8").write("\n".join(L) + "\n")
@@ -326,7 +342,15 @@ def main(wd, out):
     # later: anything in the finished report that is not a line this script emitted was written
     # by the model, and those are the only lines the echo scan and the slot check should read.
     # Pattern-matching for "a WHY paragraph" would guess; subtracting the skeleton does not.
-    json.dump({"families": len(live), "words": len("\n".join(L).split()),
+    # `words` COUNTS GENERATED CONTENT, NOT PLACEHOLDER PROMPTS. The shrinkage guard in check()
+    # compares the finished report against this number to catch option text deleted after
+    # generation. Counting the `{{SLOT — instructions}}` text into it couples that threshold to
+    # the length of the prompts, so editing a slot's wording silently moves a gate that is
+    # supposed to measure content: lengthening one by eight words made a fully-filled report fail
+    # the 90% floor. Placeholders are scaffolding that gets replaced, and filling one only ever
+    # adds words, so excluding them leaves the guard catching exactly what it is for.
+    _skeleton_words = len(re.sub(r"\{\{[^}]*\}\}", "", "\n".join(L)).split())
+    json.dump({"families": len(live), "words": _skeleton_words,
                "options": rendered, "skeleton": L},
               open(out + ".manifest.json", "w", encoding="utf-8"), indent=2)
     slots = sum(1 for fid in live for m in fams[fid]["members"] if m not in rejected)
