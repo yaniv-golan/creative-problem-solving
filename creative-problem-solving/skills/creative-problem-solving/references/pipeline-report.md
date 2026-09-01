@@ -171,9 +171,13 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
             --slots-json "$BASE/$RUN/_work/slots.json"
     ```
 
-    **Write `slots.json` with your file tools at the bare path `$RUN/_work/slots.json`, and pass
-    the script the `$BASE/`-prefixed form above.** Two spellings of one file, per Step 0b — you
-    write it, a script reads it, and on a split-namespace host no single string is right for both.
+    **Write `slots.json` with your file tools at whichever spelling Step 0b established** — bare
+    `$RUN/_work/slots.json` where the stagger settled on bare, absolute where it settled on
+    absolute — **and pass the script the `$BASE/`-prefixed form above.** Two spellings of one
+    file, per Step 0b — you write it, a script reads it, and on a split-namespace host no single
+    string is right for both. This line used to say "the bare path" flatly, which is wrong on a
+    host whose file tools require an absolute one: following it literally there puts the run's
+    judgement outside the run, where `--fill` cannot find it.
     Left unsaid, this lands outside every directory the reader can see — measured: the session
     scratchpad, which is reclaimed at session end, and the write reported success.
 
@@ -243,19 +247,23 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
 
     `python3 "$CPS/scripts/build_report.py" --check-reply "$BASE/$RUN/reply.md" --against "$BASE/$RUN/report.md"`
 
-    It refuses a reply that does not contain the report's rendered options. That is a containment
-    test, not a formatting one: a covering note above the content is fine, a summary instead of
-    the content is not. Note what it does **not** check: it reads the file you wrote, not the
-    message you send, so `cp report.md reply.md` satisfies it by construction. It is a floor
-    against summarising, not proof the reader got anything.
+    It refuses a reply that does not contain the report's rendered options — a containment test,
+    not a formatting one.
 
-    **So `cp report.md reply.md` is not the step, and running it is how this gate goes hollow.**
-    Write into `reply.md` the message you are actually going to send, then check that. If what you
-    intend to send is the report's contents — which is the answer — then send the report's
-    contents, and the copy is redundant rather than clever. This is not hypothetical: a run copied the file, passed
-    the check, and sent a fresh summary anyway. `tests/scenarios/ideas-command.yaml` now asserts a
-    band heading appears in the sent message, because that is the one surface this script cannot
-    reach.
+    **Be clear about what that check is worth now.** With `--emit-reply` writing the file, the
+    check is tautological: it compares a script-written reply against the manifest that same
+    script built. Its honest residual purpose is catching a corrupted or truncated write, and
+    nothing more. It was never stronger — before, `cp report.md reply.md` satisfied it by
+    construction, which is the same tautology wearing a manual step — and a run did exactly that,
+    passed the check, and sent a fresh summary anyway.
+
+    **Nothing this script runs can see the message you actually send.** It reads files. The only
+    thing that reaches the sent message is `tests/scenarios/ideas-command.yaml`, which asserts
+    band headings appear in top-level assistant text. So the rule is not enforced by a gate and
+    does not become true because a check passed: **send the file's contents.** A summary composed
+    afterwards has been through none of the checks above; on the run that produced this rule, two
+    of the three premises the pipeline had invented reached the reader as statements about the
+    reader, none of which appears that way in the checked file.
 
     **Then present the report file to the reader**, as well as sending its contents. Describe the
     outcome rather than naming a tool — the tool differs by host and a name that is right on one is

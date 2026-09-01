@@ -296,7 +296,7 @@ BASE="$([ -d mnt/outputs ] && echo mnt/outputs || echo outputs)"
 RUN="$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BASE/$RUN/_work" || { echo "REFUSING: cannot create $BASE/$RUN/_work from $(pwd)"; exit 1; }
 [ -z "$(ls -A "$BASE/$RUN/_work")" ] || { echo "REFUSING: $BASE/$RUN/_work already has files in it"; exit 1; }
-echo "PWD=$(pwd) BASE=$BASE RUN=$RUN"
+echo "PWD=$(pwd) BASE=$BASE RUN=$RUN HOME=$HOME"
 ```
 
 **Run this as the first command in its own call, and read the `PWD=` back.** `$BASE` is relative,
@@ -334,12 +334,31 @@ possible nine prompts had already committed to a spelling — and on a host whos
 demands an absolute path, the bare spelling is a documented failure the run has already made nine
 times. Instead:
 
-1. Dispatch **generator 1 only**, with the bare spelling.
+0. **First, read your own file-writing tool's parameter schema.** If it states that paths must be
+   absolute, the bare spelling cannot work on this host: **skip the stagger entirely**, dispatch
+   all nine with the absolute spelling, and say in one line that you did and why. This reads
+   *your* schema and infers your sub-agents'; on every host we know of they share one harness, but
+   it is an inference about a different party's tools, so treat a permissive or silent contract as
+   "unknown" and run the stagger. Where it applies it saves a full generator's latency — 112
+   seconds on the run that produced this rule, about 5% of the wall clock — for a fact the tool
+   declared before anything was dispatched.
+1. Otherwise dispatch **generator 1 only**, with the bare spelling.
 2. In Bash, `ls "$BASE/$RUN/_work/pool-1.json"`.
 3. If it is there, the bare spelling is right — dispatch the remaining eight with it.
 4. If it is missing or the write was refused, your sub-agents' file tools want the absolute path.
    Dispatch all nine — generator 1 again among them — with `$BASE/$RUN/_work/…`, and say in one
    line that you did.
+5. **If it is missing from `$BASE/$RUN/_work` but a file of that name exists elsewhere** — look
+   with `find "$HOME" "$(pwd)" -name "pool-1.json" -not -path "*/$BASE/*" 2>/dev/null`, and the
+   likely place is `<file-tool cwd>/$RUN/_work/`, which is why step 0b echoes `HOME=` beside
+   `PWD=` — then
+   the bare spelling *resolved*, against the wrong root. The write did not fail and was not
+   refused; it succeeded somewhere no validator will ever look. Treat this as case 4. **Do not
+   delete the stray file and do not use it**: it sits outside `outputs/`, so the never-delete rule
+   neither protects it nor licenses cleaning it, and its correct disposal is genuinely undefined.
+   Re-dispatch generator 1 with the absolute spelling like the others, and **name the stray path
+   in your closing line** so the reader knows it is there. That is what turns undeletable debris
+   into a disclosed artifact, which is the only outcome the rule below permits.
 
 This costs one generator's latency, not a stage, and it uses a write the run was going to make
 anyway. Do **not** probe with a throwaway file instead: it would have to live in `_work`, where the

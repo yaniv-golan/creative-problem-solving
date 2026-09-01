@@ -19,6 +19,7 @@ that it would otherwise copy out by hand.
   build_report.py --fill <report.md> --slots-json <slots.json>   # fill them; refuses a key that
                                                                  # was never a slot, or an empty value
   build_report.py --check <report.md>      # every {{...}} filled in, and the options intact
+  build_report.py --emit-reply <report.md>                          # write reply.md from it
   build_report.py --check-reply <reply.md> --against <report.md>   # the reply carries the report
 """
 import json, os, re, sys, glob
@@ -679,6 +680,42 @@ def _where_hidden(doc, options):
     return " or ".join(names) or "a hidden region"
 
 
+def emit_reply(report_path, reply_path=None):
+    """Write reply.md from the finished report, so the model does not author the thing it checks.
+
+    `--check-reply` reads the file you wrote, not the message you send, so `cp report.md reply.md`
+    satisfies it by construction -- and pipeline-report.md's step 10 says exactly that, in bold,
+    and a run copied the file anyway and sent a summary. The instruction and the mechanism pointed
+    in opposite directions: "the reply is the file" is the rule, and the only reachable form of
+    the step on a file-delivering host was a copy.
+
+    So the script writes it. "Send this file's bytes" is then a mechanical instruction with no
+    judgement in it, and the copy stops being a step the run performs and calls a gate.
+
+    WHAT THIS DOES TO --check-reply, said plainly rather than left to be discovered: it makes it
+    tautological. Checking that a script-written reply contains the manifest's options is checking
+    the script against itself. That is not a reason to keep the old shape -- a gate a `cp`
+    satisfies was already tautological, just less obviously -- but --check-reply's honest residual
+    purpose after this is catching a corrupted or truncated write, and nothing more. The only
+    thing that reaches the sent message is the scenario assertion in tests/scenarios/, which reads
+    top-level assistant text.
+    """
+    if not os.path.exists(report_path):
+        sys.exit(f"FAIL: {report_path} does not exist — build the report before emitting a reply")
+    body = open(report_path, encoding="utf-8-sig").read()
+    left = re.findall(r"\{\{[^}]*\}\}", body)
+    if left:
+        sys.exit(f"FAIL: {report_path} still has {len(left)} unfilled placeholder(s), e.g. "
+                 f"{left[0][:60]}. Fill them with --fill before emitting the reply: a reply "
+                 f"carrying a raw {{{{SLOT}}}} is what the reader would receive.")
+    reply_path = reply_path or os.path.join(os.path.dirname(report_path), "reply.md")
+    with open(reply_path, "w", encoding="utf-8") as fh:
+        fh.write(body)
+    print(f"wrote {os.path.abspath(reply_path)} — {len(body.split())} words, "
+          f"byte-identical to {os.path.basename(report_path)}. Send these bytes.")
+    return reply_path
+
+
 def check_reply(reply_path, report_path):
     """The reply the reader actually receives must contain the report, not a summary of it.
 
@@ -978,6 +1015,10 @@ if __name__ == "__main__":
     if a[0] == "--check":
         floor = int(a[a.index("--min-words") + 1]) if "--min-words" in a else None
         check(a[1], floor); sys.exit(0)
+    if a[0] == "--emit-reply":
+        if len(a) < 2:
+            sys.exit("usage: build_report.py --emit-reply <report.md> [<reply.md>]")
+        emit_reply(a[1], a[2] if len(a) > 2 else None); sys.exit(0)
     if a[0] == "--check-reply":
         if "--against" not in a:
             sys.exit("usage: build_report.py --check-reply <reply.md> --against <report.md>")
