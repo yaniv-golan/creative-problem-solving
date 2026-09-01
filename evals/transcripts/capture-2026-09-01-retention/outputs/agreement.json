@@ -1,0 +1,97 @@
+{
+  "probe_pairs": 48,
+  "self_judged_excluded": 0,
+  "agreed": 40,
+  "disagreed": 8,
+  "agreement_rate": 0.8333333333333334,
+  "resolved_toward_separation": [
+    {
+      "pair": [
+        "p1-001",
+        "p2-005"
+      ],
+      "verdicts": [
+        "duplicate",
+        "implementation_variant"
+      ],
+      "kept": "implementation_variant"
+    },
+    {
+      "pair": [
+        "p1-024",
+        "p2-017"
+      ],
+      "verdicts": [
+        "implementation_variant",
+        "shared_component"
+      ],
+      "kept": "shared_component"
+    },
+    {
+      "pair": [
+        "p3-002",
+        "p8-013"
+      ],
+      "verdicts": [
+        "distinct",
+        "implementation_variant"
+      ],
+      "kept": "distinct"
+    },
+    {
+      "pair": [
+        "p8-012",
+        "p8-013"
+      ],
+      "verdicts": [
+        "distinct",
+        "shared_component"
+      ],
+      "kept": "distinct"
+    },
+    {
+      "pair": [
+        "p2-026",
+        "p3-005"
+      ],
+      "verdicts": [
+        "distinct",
+        "implementation_variant"
+      ],
+      "kept": "distinct"
+    },
+    {
+      "pair": [
+        "p5-007",
+        "p5-013"
+      ],
+      "verdicts": [
+        "distinct",
+        "implementation_variant"
+      ],
+      "kept": "distinct"
+    },
+    {
+      "pair": [
+        "p3-027",
+        "p5-013"
+      ],
+      "verdicts": [
+        "distinct",
+        "implementation_variant"
+      ],
+      "kept": "distinct"
+    },
+    {
+      "pair": [
+        "p3-002",
+        "p3-006"
+      ],
+      "verdicts": [
+        "distinct",
+        "shared_component"
+      ],
+      "kept": "distinct"
+    }
+  ]
+}

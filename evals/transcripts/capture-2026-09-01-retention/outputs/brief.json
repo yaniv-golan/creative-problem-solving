@@ -1,0 +1,8 @@
+{"verbatim_prompt": "We keep losing senior engineers to bigger companies at around the 18-month mark. Comp is already competitive — we benchmark and we match. It's not the money. What can we actually do about this? This is all the information available, so don't ask me any questions; where something is missing, make a reasonable assumption and state it in your response.",
+ "reading": "why fully-productive senior engineers reach a point around 18 months where their reasons to stay run out just as a larger employer's offer lands, and what a small-to-mid-size engineering organisation can do about it",
+ "invented": [
+   "Assumption stated to the reader: the company is a startup or mid-size engineering organisation, smaller than the employers taking the people, with private illiquid equity and standard four-year vesting with a one-year cliff.",
+   "Adversarial world-attribute given to generators: outside offers arrive unsolicited and continuously because large employers' sourcing is automated and always-on.",
+   "Adversarial world-attribute given to generators: the market price for this level of skill resets upward every year, so any package priced at hire is below market within twelve months.",
+   "Adversarial world-attribute given to generators: a person's capability is now fully legible from outside their employer through public artifacts, so no employer holds an information advantage about who is good."
+ ]}

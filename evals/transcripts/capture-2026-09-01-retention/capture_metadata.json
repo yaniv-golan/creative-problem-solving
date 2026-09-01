@@ -1,0 +1,45 @@
+{
+  "capture_name": "retention-demo-shipped-code",
+  "date": "2026-09-01",
+  "purpose": "The README's worked example, re-run on 0.4.0. It supersedes capture-2026-08-30-retention as the demo for one reason: that run could not finish the lead-assignment stage with the shipped code and wrote its own solver, so its grouping was partly the product of code the run invented. This one ran end to end on the code a reader installs.",
+  "scenario": "tests/scenarios/demo-retention-capture.yaml",
+  "harness": "cowork-harness 3.2.0, container fidelity",
+  "model": "claude-opus-5",
+  "baseline": "desktop-1.40609.0 (agent ELF 2.1.247, sha256-matched — not a fallback)",
+  "prompt": "/creative-problem-solving:ideas We keep losing senior engineers to bigger companies at around the 18-month mark. Comp is already competitive — we benchmark and we match. It's not the money. What can we actually do about this? This is all the information available, so don't ask me any questions; where something is missing, make a reasonable assumption and state it in your response.",
+  "result": "success — all 5 assertions passed",
+  "assertions_passed": [
+    "result: success",
+    "skill_triggered",
+    "tool_called: WebSearch",
+    "questions_count_max: 1",
+    "semantic_matches: 2/2 rubric claims"
+  ],
+  "rubric": [
+    "Tests the ruled-out constraint rather than obeying it — probes whether 'it's not the money' actually holds before setting money aside",
+    "At least one option questions the framing — whether losing senior engineers at 18 months is necessarily the problem to solve"
+  ],
+  "measured": {
+    "options_generated": 271,
+    "families": 114,
+    "compression_x": 2.38,
+    "nested_variants": 157,
+    "adjudicator_agreement": 0.8333,
+    "probe_pairs": 48,
+    "agreed": 40,
+    "self_judged_excluded": 0,
+    "sub_agents": 33,
+    "tools": 88,
+    "wall_clock_s": 1662.5,
+    "cost_usd": 21.2533,
+    "report_words": 11614,
+    "family_headings": 114,
+    "verified_checked": 13,
+    "source_urls": 11
+  },
+  "why_this_matters": "The 0.1.0 run took 'it's not the money' at face value while the plain baseline refused the premise and was right to. That loss produced Phase 0's premise-testing step. This run's closing names the exact confound — 'we benchmark and we match' is benchmarked against day-one offers, while the comparison an engineer runs at month 18 is unvested value against a large employer's liquid refresher — gives a 24-month test and a ~10% threshold, and says that if the test fails then 'it is still the money and most of this list is the wrong list'. An independent judge scored both rubric claims as passing.",
+  "caveat": "ONE REP. evals/README.md is explicit that the signal is a claim's pass rate across three or more reps. This shows the premise test fired on this run, not that it reliably fires.",
+  "verification_note": "13 options checked: 11 confirmed each with a source URL, 1 unclear, 1 no_external_claim. The two without a URL are the two verdicts that do not require one; every confirmed verdict carries one. Two of the notes actively undercut the option they check rather than endorsing it.",
+  "known_issue": null,
+  "what_this_run_also_exercised": "Step 0b's sub-agent path stagger, added in 0.4.0. The run dispatched generator 1 alone with the bare spelling, found the write had landed OUTSIDE the run directory while reporting success, and re-dispatched all nine with the absolute spelling — disclosing it to the reader in one line. Ten generator dispatches for nine lenses is that recovery, not a defect. Under the previous instruction all nine would have committed to the bare spelling before anything was checked. One consequence is visible in the run tree: a stray pool-1.json sits outside outputs/ from the probe write. It is never deleted (nothing under outputs/ is), no script globs there, and the session directory is reclaimed at session end."
+}

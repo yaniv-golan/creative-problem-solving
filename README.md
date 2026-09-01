@@ -30,44 +30,48 @@ the 18-month mark. Comp is already competitive — we benchmark and we match. It
 What can we actually do about this?
 ```
 
-It refuses to take your framing on trust, and tells you what to measure first:
+It refuses to take your framing on trust, and tells you what to measure before you spend a quarter
+on anything else:
 
-> **"It's not the money" may be a conclusion rather than a fact.** Benchmarks price year-one
-> offers — at month 18 a competing offer carries a fresh four-year grant and a signing bonus
-> against a grant that is part-vested at an old strike, so matched-at-hire can be unmatched now.
-> Comparing unvested value ahead of each departing person against the offer they took is a cheap
-> check, and if it comes back large it changes which half of this list matters.
+> Before any of it, spend an hour testing the premise you ruled out, because "we benchmark and we
+> match" is almost always benchmarked against **day-one offers**, while the comparison an engineer
+> actually runs at month 18 is whatever is left unvested and unrealised on their side against a
+> large employer's liquid annual refresher plus a fresh grant. Compute realizable 24-month value
+> for the last three people who left versus the offer they took, and **if the gap is over about
+> 10% then it is still the money and most of this list is the wrong list.**
 
 Then it gives you options that differ in kind, each with what has to be true, how it fails, and
 who would actually have to run it:
 
-> ### Assign a persistent, exclusive domain, client, or system to own
+> ### Grant personal hiring authority over a team they recruit
 >
-> Like cleaner wrasse who hold fixed reef stations that client fish return to repeatedly, assign
-> each senior engineer a standing internal 'client' unit whose problems route only through them.
+> Let anyone past 18 months propose a new unit, and if accepted give them the headcount
+> requisitions, budget line and hiring authority to staff it themselves.
 >
-> *Checked — [ncbi.nlm.nih.gov](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3123342/)*
+> *Checked — [insperity.com](https://www.insperity.com/blog/what-is-intrapreneurship-and-why-should-it-be-part-of-your-hr-strategy/)*
 >
-> *Note — The biology is confirmed, with a wrinkle the analogy leans on: the literature
-> distinguishes 'resident' clients, which depend on one local station, from 'visitor' clients,
-> which have access to several and choose among cleaners. So exclusive routing describes only
-> part of the natural system.*
+> *Note — Confirms that intrapreneurship programs — employees proposing and running internal
+> ventures with dedicated budget and manpower — are a real, documented practice with a claimed
+> retention effect. The sources are practitioner/advisory writing, not controlled evidence, and
+> none of them describe handing the proposer headcount requisitions and independent hiring
+> authority, or an 18-month eligibility threshold. The delegation depth this option assumes is
+> beyond what any source shows.*
 >
-> It changes what the seat is rather than what it costs, and drawing a permanent ownership
-> boundary is something an engineering manager can do this quarter without asking anyone.
-> - **What has to be true:** There is a domain narrow enough to be one person's and consequential
->   enough that owning it is real authority.
-> - **Failure mode / cost:** A bus factor of one, and an owner who becomes a bottleneck; the
->   cleaner-wrasse literature carries the same warning in reverse — the highest-value clients keep
->   the right to switch stations, so the internal counterparty needs an escape route or the
->   arrangement turns into a toll booth.
-> - **Who runs it:** Whoever controls team and system boundaries — a head of engineering, or an
->   EM with a charter they can sign.
+> It ranks here because founding and staffing a team is the thing a mid-career engineer leaves to
+> go and do, and it is far easier to grant inside a company your size than inside the one
+> recruiting them — the eligibility gate then makes tenure the price of admission.
+> - **What has to be true:** You are growing enough to have headcount worth handing over, and you
+>   can live with a hiring bar set by someone who has never hired before.
+> - **Failure mode / cost:** A bad hire made under personal authority is politically expensive to
+>   reverse, and a rejected proposal is an accelerant — someone who pitches a unit and is turned
+>   down leaves faster than if you had never opened the door.
+> - **Who runs it:** The founder or CTO; this is a delegation of a hiring mandate and nobody below
+>   that level can actually grant it.
 
-Verbatim from a run on 2026-08-30: 270 options across nine lenses, grouped into 113 families,
-44 minutes. The
-[full report](evals/transcripts/capture-2026-08-30-retention/outputs/report.md) is in this repo
-with [what the run measured about itself](evals/transcripts/capture-2026-08-30-retention/capture_metadata.json).
+Verbatim from a run on 2026-09-01: 271 options across nine lenses, grouped into 114 families,
+28 minutes. The
+[full report](evals/transcripts/capture-2026-09-01-retention/outputs/report.md) is in this repo
+with [what the run measured about itself](evals/transcripts/capture-2026-09-01-retention/capture_metadata.json).
 
 ## When it runs, and when it refuses
 
