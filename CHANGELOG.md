@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+Field report from run `20260901-100305` — a full, undegraded run that passed every gate and still
+surfaced seventeen defects. Waves 1 and 3 of the response; the output-surface changes (a risk mark
+on coercive options, a verdict for claims no search can settle, the ranker's workflow-change
+clause) are held for a separate release.
+
+### Added
+
+- **`build_report.py --emit-reply`** writes `reply.md` from the finished report, refusing if a
+  placeholder is unfilled. The model no longer authors the file it then checks. `pipeline-report.md`
+  now says plainly that this makes `--check-reply` tautological — it was already, since
+  `cp report.md reply.md` satisfied it by construction, and a run did exactly that, passed, and
+  sent a summary anyway.
+- **`shard_candidates.py --dry-run`** prints the shard plan and probe arithmetic without writing.
+- **Two `check-repo.py` gates on the quota rule** — the shipped clause must be present, and no
+  script may compare a pool's option count against a literal. Both tested by planting the defect.
+
+### Fixed
+
+- **`references/pipeline.md` split** into `pipeline.md` (steps 0-6) and `pipeline-report.md`
+  (steps 7-10). It was 1,133 lines and a single `Read` returned 945, so the ban on reporting a
+  "distinct options" count at line 1010 was unreachable — and two independent readers then
+  proposed exactly that. Seven consequences, including a silent 12→5 coverage loss on
+  `check-repo.py`'s `$BASE/$RUN` gate, which kept printing `[ok]`.
+- **Adjudication and grouping are now audited.** `progress.py`'s `BOUNDARIES` carried two
+  meanings at once, so the two boundaries printed by `merge_relations.py` and `merge_families.py`
+  could never be checked. Split into `PRINTABLE` (4) and `BOUNDARIES` (6). The recorded run left
+  five lines for six boundaries and drew no warning; it now names both.
+- **The over-budget WARN names a probe value that actually clears it.** `want * 4` — the obvious
+  inversion of "the ceiling is a quarter of the probe" — leaves the WARN standing in 2,614 of the
+  cases it fires on, because `want` is itself a function of the probe. The recorded run's 1,772
+  pairs happens to be a fixed point.
+- **Failure messages resolve the path they looked in.** Every success path already printed
+  `wrote to {abspath}`; failures named the argument.
+- **Truncated WARNs write their full evidence** to `_work/warn-*.json`. The separated-pairs WARN
+  showed 5 of 16 and asked the reader to check families it never named.
+- **The echo scan's stopword list** goes from 76 to ~250 words, and multi-word runs from the
+  invented premises are matched and reported first. Six hits on the recorded run, none actionable;
+  now two, one genuine.
+- **Two `SAY:` forecasts were materially wrong** and the orchestrator repeats them verbatim.
+  Pair proposal was billed "a couple of minutes" and took 823.6s; adjudication was billed the
+  longest wait and was not. Both claims removed rather than renumbered.
+- **The closing line says what a family counts** — one distinct action, where several families
+  may be one strategy. The count itself is unchanged; a count of "distinct options" is not
+  measurable and remains unreported.
+- **Step 0b covers the stagger's third outcome:** a bare-path write that succeeds against the
+  file tools' own cwd, landing valid options outside `outputs/` where no validator looks and the
+  never-delete rule gives no guidance. Added branch 0 — read the tool's own schema first and skip
+  the stagger when it declares paths must be absolute, as the recorded host did before anything
+  was dispatched.
+- **Step 10 defers to the spelling Step 0b established** for `slots.json`, instead of saying
+  "the bare path" flatly.
+- **Step 6 says its output is gated.** `verify_pipeline.py` re-derives `joinable.json` and refuses
+  a wrong one, but nothing in the step said so — so "this step is un-gated" was a correct reading
+  of the documentation.
+- **The quota is documented as a target**, with the refused forms of pool-size check enumerated
+  rather than the principle stated. That decision had been re-proposed five times by three readers,
+  each time wearing a different word.
+
 ## [0.4.1] — 2026-09-01
 
 ### Removed
