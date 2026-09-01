@@ -18,6 +18,7 @@ facts belong here. Quality judgements belong in `../evals/`.
 | `meta-no-trigger.yaml` | the skill does **not** fire when someone asks how to improve a tool they maintain | a description that fires on phrasing rather than on an explicit ask |
 | `ideas-command.yaml` | `/creative-problem-solving:ideas` **routes into** the skill | the command expanding to prose the model answers directly — indistinguishable from success on the verdict line, and the only place dispatch is worth asserting |
 | `deliverable-composition.yaml` | a strategic run's **file** deliverable exists and still carries load-bearing-assumption language | Phase 3's annotations dropping out when the answer is composed into a document |
+| `demo-retention-capture.yaml` | **not a regression test** — a capture whose product is the README's worked example, re-run on current code; its `semantic_matches` rubric is copied verbatim from eval-5 | a README demo that describes an architecture the skill no longer has |
 
 `deliverable-composition` guards the boundary the others never cross: the point where the
 answer stops being a chat report and becomes a file. Phases 0-3 constrain generation; composition
@@ -322,6 +323,35 @@ unit tests assert: 99 families with **every label byte-identical to one a groupe
 83 characters, against the 537 that started the review), 23 labels carried in `merged_labels`
 rather than concatenated into headings, 13 verifier notes written and 13 rendered, `slots.json`
 under `_work/`, and a 75,600-character reply carrying the report rather than a summary of it.
+
+**2026-09-01 — five scenarios on the shipped 0.4.0 tree.** The first measurements taken under
+**`cowork-harness` 3.2.0, baseline `desktop-1.40609.0`, agent ELF `2.1.247` staged and
+sha256-matched — not a fallback**, which is what makes these the first figures in this file whose
+provenance is not carrying a caveat. `claude-opus-5`, one run each.
+
+| scenario | result | tools | sub-agents | duration | cost |
+|---|---|---|---|---|---|
+| `negative-trigger` | pass — skill declined | 12 | 0 | 18.5 s | $0.1364 |
+| `meta-no-trigger` | pass — skill declined | 12 | 0 | 50.2 s | $0.1885 |
+| `ideas-command` | **9/9**, all guards clean | 75 | 33 | 1656.6 s | $21.5232 |
+| `deliverable-composition` | **5/5**, all guards clean | 105 | 53 | 2428.1 s | $33.5883 |
+| `demo-retention-capture` | **5/5**, incl. the judged rubric | 88 | 33 | 1662.5 s | $21.2533 |
+
+`deliverable-composition` had never had a post-0.3.0 green: the attempt before this one ran the
+whole pipeline and was killed at final composition by an account spend limit, which is a billing
+outcome and not a skill result. `ideas-command` is the cheapest and among the fastest runs this
+scenario has recorded.
+
+Two runs on this date independently exercised step 0b's **path-spelling stagger**, added in 0.4.0.
+Both dispatched generator 1 alone with the bare spelling, found the write had landed outside the
+run directory *while reporting success*, and re-dispatched all nine with the absolute spelling —
+so **ten generator dispatches for nine lenses is the recovery working, not a defect**. Under the
+previous instruction all nine would have committed to the bare spelling before anything was
+checked.
+
+`pipeline-bounded` and `pipeline-strategic` were **not** re-run on this date. They guard grounding
+and the question ceiling, neither touched by 0.4.0, and the one change every run executes — step 0b
+— is covered twice above. That is a deliberate omission, not coverage.
 
 **What those three runs settle about bounding.** `ideas-command` gained `max_cost_usd` and a
 `timeout_ms`, first set at $40 / 46 minutes from its own single observation and described as 1.5x
