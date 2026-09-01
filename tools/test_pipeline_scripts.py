@@ -1547,6 +1547,37 @@ def t_plan_groups():
     shutil.rmtree(d2, True)
 
 
+def t_over_budget_warn_names_the_task():
+    """The over-budget WARN must name the task FILE, not just count how many were over.
+
+    A run followed this message, guessed which task was meant, guessed wrong, and sent a
+    splitting instruction to a grouper holding forty-one singletons. pack() is first-fit-
+    DECREASING, so the over-budget task is task 1 and the "highest index" guess lands on the
+    last one -- which is why this fixture builds three tasks rather than one. With a single
+    task, "names the only file" and "names the right file" are indistinguishable.
+    """
+    print("\nplan_groups — the over-budget WARN names its target")
+    with tempfile.TemporaryDirectory() as d:
+        wd = Path(d)
+        make_pools(wd, 2, 60)
+        opts = [f"p1-{i:03d}" for i in range(1, 61)]
+        rel = [{"a": opts[i], "b": opts[i + 1], "relation": "implementation_variant"}
+               for i in range(len(opts) - 1)]
+        json.dump({"relations": rel}, open(wd / "relations.json", "w"))
+        derive_joinable(wd)
+        rc, out = run("plan_groups.py", wd, "--max-task", "45")
+        check("plan_groups exits 0 with an over-budget task", rc == 0, out)
+        check("the WARN fired at all", "exceed the 45-option budget" in out, out)
+        check("the WARN names the OVER-BUDGET task, which is task 1",
+              "group-task-1.json" in out, out)
+        check("the WARN does not name the last task, the wrong guess it exists to prevent",
+              "group-task-3.json" not in out, out)
+        named = set(re.findall(r"group-task-(\d+)\.json", out))
+        check("every task file the WARN names exists on disk",
+              bool(named) and all((wd / f"group-task-{k}.json").exists() for k in named),
+              f"named={sorted(named)}")
+
+
 def t_merge_families():
     """A shard may split what it was given. It may not lose, invent, or reach outside it.
 
@@ -4908,6 +4939,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
               t_out_path_echo, t_promoted_lead_gate,
               t_lead_assignment_complete, t_cps_resolver,
+              t_over_budget_warn_names_the_task,
               t_merged_labels_replace_concatenation, t_heading_follows_the_lead_across_a_merge,
               t_slots_fill_and_deletion,
               t_fill_refuses_an_empty_value_and_survives_a_retry,

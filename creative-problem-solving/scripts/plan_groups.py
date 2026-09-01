@@ -550,13 +550,22 @@ def main(wd, max_task, split_over):
     sizes = sorted((len(c["members"]) for c in out), reverse=True)
     singles = sum(1 for s in sizes if s == 1)
     big = [c for c in out if c["split_candidate"]]
-    over = [t for t in packed if sum(len(x) for x in t) > max_task]
+    # NAME THE TASK, never just count them. "Check its result first" has no referent: a run read
+    # this message, guessed the highest index, and sent a splitting instruction to a grouper
+    # holding forty-one singletons. pack() is first-fit-DECREASING, so the over-budget task is
+    # near the front while the plausible guess is the last one -- the index is already in hand
+    # here (group-task-<k>.json is written by enumerate(packed, 1) above) and withholding it
+    # makes the caller reconstruct what this line already knows.
+    over = [(k, t) for k, t in enumerate(packed, 1) if sum(len(x) for x in t) > max_task]
     if over:
-        worst = max(sum(len(x) for x in t) for t in over)
-        print(f"WARN: {len(over)} grouping task(s) exceed the {max_task}-option budget, the largest "
-              f"at {worst}. A single cluster larger than the budget cannot be split across "
-              f"dispatches without hiding it from both, so it ships whole — but it is the task most "
-              f"likely to be slow, and the one whose split matters most. Check its result first.")
+        worst_k, worst_t = max(over, key=lambda kt: sum(len(x) for x in kt[1]))
+        worst = sum(len(x) for x in worst_t)
+        named = ", ".join(f"group-task-{k}.json" for k, _ in over)
+        print(f"WARN: {len(over)} grouping task(s) exceed the {max_task}-option budget: {named}. "
+              f"The largest is group-task-{worst_k}.json at {worst}. A single cluster larger than "
+              f"the budget cannot be split across dispatches without hiding it from both, so it "
+              f"ships whole — but it is the task most likely to be slow, and the one whose split "
+              f"matters most. Check group-task-{worst_k}.json's result first.")
     print(f"{len(ids)} options -> {len(out)} clusters "
           f"(largest {sizes[0]}, {singles} single-member, {100*singles/len(out):.0f}%); "
           f"{len(packed)} grouping task(s), largest {max(sum(len(x) for x in t) for t in packed)} options; "
