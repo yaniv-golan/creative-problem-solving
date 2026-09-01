@@ -205,9 +205,33 @@ def main(wd, out):
         # now the report rendered the two identically.
         note = (v.get("note") or v.get("caveat") or "").strip()
         if vd == "confirmed" and v.get("source_url"):
-            b += ["", f"*Checked — {source_link(v['source_url'])}*"]
+            # NAME WHAT WAS CHECKED, not just where. "Checked — [threads.com]" under an option
+            # reads as "this option was checked"; what was checked is one outside-world assertion
+            # inside it, sometimes an incidental one. On the run this came from, the #1 option's
+            # verdict confirmed that paste-to-install exists, while the option's load-bearing
+            # claim -- about the reader's own product -- was untouched and unmentioned.
+            # The query is what the verifier actually ran, so it is the honest subject line; it
+            # is rendered as a claim rather than as a search string, and truncated because a
+            # query can be long and this is a caption.
+            # From the verifier's `claim` field, NOT from `query`. A first draft rendered the
+            # raw search string and produced *Checked — that Skills" Anthropic announcement
+            # available Claude apps…* — a search string is an implementation detail and reads as
+            # noise, which is worse than the bare badge it replaced. `claim` is optional, so a
+            # verifier that omits it, or an older run, gets the plain badge unchanged.
+            _c = one_line((v.get("claim") or "").strip())
+            _c = (_c[:110].rstrip() + "…") if len(_c) > 110 else _c
+            b += ["", (f"*Checked — {_c} — {source_link(v['source_url'])}*" if _c
+                       else f"*Checked — {source_link(v['source_url'])}*")]
         elif vd == "no_external_claim":
             b += ["", "*Proposal — nothing to verify*"]
+        elif vd == "internal_claim":
+            # DISTINCT FROM BOTH NEIGHBOURS, and the reason is the failure that produced it.
+            # Without a branch here this falls through to "*Not verified*", which reads as "we
+            # looked and could not confirm it"; "*Proposal — nothing to verify*" reads as "there
+            # was nothing to check". Neither is true of an option resting on a claim about the
+            # reader's own system. The note carries the claim, and verify_pipeline requires one.
+            b += ["", "*Not checkable from outside — this rests on a claim about your own "
+                      "system, below*"]
         elif rank <= 13:
             b += ["", "*Not verified*"]
         # UNCONDITIONAL. The guard used to list verdicts, which dropped exactly one lead case and
@@ -310,7 +334,7 @@ def main(wd, out):
         def _checked(fid):
             v = verdict.get(effective_lead(fams[fid]["members"], rejected), {})
             vd_ = (v.get("verdict") or "").lower()
-            return (vd_ in ("confirmed", "no_external_claim")
+            return (vd_ in ("confirmed", "no_external_claim", "internal_claim")
                     or bool((v.get("note") or v.get("caveat") or "").strip()))
         checked_below = sum(1 for fid in rest if _checked(fid))
         scope = "the lead option of each of the top 13 families"

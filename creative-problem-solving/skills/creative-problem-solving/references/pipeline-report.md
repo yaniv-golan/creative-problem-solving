@@ -19,8 +19,13 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
 7. **A `ranker` orders the families** — not the options — and writes `$RUN/_work/ranked.json`.
    *Tell it what its order feeds: the top 13 families are the ones whose leads get search-checked
    and the ones the reader reads first; everything below still ships, in this order.*
-   **Its dispatch carries the problem as the user stated it** (`brief.json`'s `verbatim_prompt`),
-   never the invented premises of step 0c — see the rule there:
+   **Tell it to read `brief.json` at the resolved path** and rank against `verbatim_prompt`,
+   never the invented premises of step 0c — see the rule there. It writes a `prompt_echo` field
+   beside `ranked` carrying the first 60 characters of what it read, and `verify_pipeline.py`
+   compares that against the file. Reading is a step a run can skip and describe having taken;
+   the echo is what makes the difference visible, and it is the only thing in this pipeline that
+   says anything about what a dispatch actually contained. An older run with no `prompt_echo`
+   passes unchanged.
    family ids in order, ids only. A mechanism reached by six lenses gets one slot, not six.
 
    **Rank by whether it would survive vetting, not by how unusual it is.** The reader is going
@@ -31,6 +36,18 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
    Ranks high: it addresses what actually blocks the decision; someone could start it inside a
    quarter with authority the reader plausibly has; its failure mode is known and survivable;
    and it does not require a counterparty who has no reason to agree.
+
+   **A workflow change is not a missing counterparty.** An option whose only objection is *"someone
+   would have to change how they already work"* ranks on the value of the change, not on the
+   objection — requiring it of people the reader already directs is not the same as requiring
+   agreement from a party with no incentive. The second half of that distinction is in the list
+   below; the first was missing, and the criterion collapsed them. On the run that produced this,
+   the two cheapest distribution moves in the whole pool — have the fund's associates run the
+   teardown on decks they pass on and send the raw output back as the pass letter, and put it in
+   the hands of the lawyers and bookkeepers who already hold the numbers — ranked 55th and 47th,
+   while eleven of the top twenty were product features. Both use a flow the reader already runs
+   weekly. Both die to "who's going to make them do that?", which is exactly what the criterion
+   predicts and also the answerable objection.
 
    Ranks low: it needs a party with no incentive to play along; it depends on data nobody has;
    it is a restatement of the problem in mechanism form; it would embarrass the reader to
@@ -96,8 +113,9 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
      set and aliased to a gated workspace tool, so a verifier reaching for it stalls waiting on
      an approval that never comes. WebSearch runs natively.
    - for each id: run a real search, record the query, and return `confirmed`, `refuted`,
-     `no_external_claim` (the option rests on nothing checkable — no search, no query field) or
-     `unclear`
+     `unclear`, `no_external_claim` (the option rests on nothing checkable) or `internal_claim`
+     (it rests on a claim about the *reader's own* system, which no search can settle). The last
+     two carry no `query` field.
    - **a `confirmed` verdict requires a source URL and a short quote.** No URL means `unclear`.
      Reasoning from memory is not checking.
    - write to `$RUN/_work/verified-<k>.json`, its own file, where k is 1, 2 or 3. **Three
@@ -110,7 +128,9 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
                  "source_url": "https://…", "quote": "the sentence that supports it",
                  "note": "what the source does and does not support"},
                 {"id": "p4-002", "query": "what was searched", "verdict": "unclear"},
-                {"id": "p6-011", "verdict": "no_external_claim"}, ...]}
+                {"id": "p6-011", "verdict": "no_external_claim"},
+                {"id": "p1-003", "verdict": "internal_claim",
+                 "note": "rests on whether X is true of your own product"}, ...]}
    ```
 
    **`note` is optional, allowed on every verdict, and rendered under the option.** It is where a
@@ -121,20 +141,31 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
    on the two preserved runs, 13 of 13 and 11 of 19 records carried one, and all twenty-four were
    discarded.
 
-   **Four verdicts, and the difference between the last two is the whole point.**
+   **Five verdicts, and the differences between the last three are the whole point.**
 
    - `confirmed` — you searched, and a source says so. Needs `source_url` **and** `quote`.
    - `refuted` — you searched, and a source contradicts it. Same bar; this one removes an option.
    - `unclear` — **you searched** and it settled nothing. Record the query you actually ran.
    - `no_external_claim` — the option rests on nothing checkable, so no search was possible.
      **Carry no `query` field at all.**
+   - `internal_claim` — the option's load-bearing claim is about the **reader's own** product,
+     situation or data. No outside source could settle it, whatever you searched. No `query`,
+     and a `note` is **required**: the note names the claim, and it is the whole verdict.
+
+   `internal_claim` exists because the alternative was worse in both directions. On the run that
+   added it, the top-ranked option rested on whether a useful subset of six analytical skills
+   survives as plain text with no runtime — a fact about the reader's own product. A search
+   confirmed an incidental assertion inside the option (that paste-to-install exists) and the
+   report printed *"Checked"* beneath it, which reads as though the option had been checked.
+   `no_external_claim` would have been just as wrong the other way: it renders as *"Proposal —
+   nothing to verify"*, and there was something to verify — nobody outside could do it.
 
    An option resting on nothing external is not exempt and not a failed check: it is a proposal,
    and it says so. Do not record it as `unclear` with a query explaining why you did not search —
    "none run", "N/A", "no external claim to check" are not queries, and a verdict that says a
    search happened when none did is the one thing this file cannot detect from the outside.
-   `verify_pipeline.py` refuses both shapes: `unclear` with an empty query, and
-   `no_external_claim` carrying one.
+   `verify_pipeline.py` refuses all of these shapes: `unclear` with an empty query,
+   `no_external_claim` or `internal_claim` carrying one, and `internal_claim` with no note.
 
    Then say what the phase produced, with one Bash call, and repeat the `SAY:` line it prints:
 

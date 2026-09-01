@@ -2581,6 +2581,65 @@ def t_infeasible_lead_core():
     shutil.rmtree(tempfile.mkdtemp(), True)
 
 
+def t_internal_claim_verdict():
+    """The fifth verdict, across every surface that counts or renders a verdict.
+
+    The four-verdict vocabulary lived in six places and two of them produce reader-facing
+    numbers. Patching only the enum made `progress.py` print "13 claims checked: 12 confirmed" --
+    a total that does not match its own breakdown, with the fifth verdict named nowhere, in a
+    SAY: line the orchestrator must repeat verbatim. No test covered that line, which is why the
+    sum invariant is asserted here rather than the specific wording.
+    """
+    print("\nthe internal_claim verdict, on every surface")
+    d = tempfile.mkdtemp()
+    try:
+        ids, fams = full_fixture(d, multi=True)
+        vpath = os.path.join(d, "verified-1.json")
+        rows = json.load(open(vpath))["checked"]
+        rows[0] = {"id": rows[0]["id"], "verdict": "internal_claim",
+                   "note": "rests on whether your own pipeline already records this"}
+        json.dump({"checked": rows}, open(vpath, "w"))
+
+        rc, out = run("verify_pipeline.py", d)
+        check("verify_pipeline accepts it", rc == 0 and "OK" in out, out[-200:])
+        check("...and counts it in the summary", "internal_claim=1" in out, out[-200:])
+
+        rc, out = run("progress.py", d, "verified")
+        total = len(rows)
+        check("the SAY: line names it", "no outside source can settle" in out, out[:220])
+        # THE INVARIANT: every verdict counted is a verdict named.
+        import re as _re
+        said = sum(int(n) for n in _re.findall(r"(\d+) (?=confirmed|refuted|unclear|resting)", out))
+        check("the named parts sum to the total it claims", said == total,
+              f"named {said} of {total} in: {out[:200]}")
+
+        # A note is the verdict here, so it is required.
+        rows[0].pop("note")
+        json.dump({"checked": rows}, open(vpath, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("internal_claim with no note is refused", rc != 0 and "no note" in out, out[:160])
+        rows[0]["note"] = "rests on your own data"
+        # A query asserts a search ran; this verdict says none could settle it.
+        rows[0]["query"] = "something"
+        json.dump({"checked": rows}, open(vpath, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("internal_claim carrying a query is refused", rc != 0 and "carries a query" in out,
+              out[:160])
+        rows[0].pop("query")
+        json.dump({"checked": rows}, open(vpath, "w"))
+
+        rep = os.path.join(d, "report.md")
+        run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("it renders as its own line, not as Not verified",
+              "Not checkable from outside" in body, body[:400])
+        check("...and does not render as a proposal either",
+              "*Proposal — nothing to verify*" not in body.split("Not checkable")[0][-300:],
+              body[:300])
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t_risk_mark_survives_to_the_report():
     """A grouper's `risk` reaches the reader, through a merge, at any rank -- or the run stops.
 
@@ -5197,6 +5256,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
               t_probe_advice_actually_clears, t_echo_scan_precision, t_quota_gate_fires,
               t_actor_and_decision_are_gated, t_risk_mark_survives_to_the_report,
+              t_internal_claim_verdict,
               t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
               t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
               t_repair_stays_inside_the_pinned_component,

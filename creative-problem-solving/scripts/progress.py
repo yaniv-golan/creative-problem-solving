@@ -209,8 +209,19 @@ def _verified(wd):
     named = [(tally["confirmed"], "confirmed against a source"),
              (tally["refuted"], "refuted"),
              (tally["unclear"], "unclear"),
-             (tally["no_external_claim"], "resting on no outside-world claim")]
+             (tally["no_external_claim"], "resting on no outside-world claim"),
+             (tally["internal_claim"], "resting on a claim about your own system that no "
+                                       "outside source can settle")]
     parts = [f"{c} {label}" for c, label in named if c]
+    # THE INVARIANT THIS COMMENT ALREADY CLAIMED, now enforced. `n` counts every verdict and
+    # `named` listed four, so adding a fifth printed "13 claims checked: 12 confirmed" -- a
+    # total that does not match its own breakdown, in a SAY: line the orchestrator repeats
+    # verbatim, with the fifth verdict named nowhere. No test covered this line.
+    KNOWN = ("confirmed", "refuted", "unclear", "no_external_claim", "internal_claim")
+    _unnamed = sum(tally.values()) - sum(c for c, _ in named)
+    if _unnamed:
+        _which = ", ".join(sorted(k for k in tally if k not in KNOWN))
+        parts.append(f"{_unnamed} with a verdict this line does not know how to name ({_which})")
     out = f"{SAY}{_plural(n, 'claim')} checked: " + ", ".join(parts) + "."
     if tally["refuted"]:
         out += (" The refuted ones are reported with their sources rather than quietly dropped.")

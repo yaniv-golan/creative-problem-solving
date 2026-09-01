@@ -488,6 +488,23 @@ def main(wd):
             "is unchanged, `touch ranked.json` and re-run this. That is a deliberate act on a "
             "directory you are inspecting, not something a pipeline run can do to itself.")
 
+    # PROOF THE RANKER READ THE RIGHT HALF OF brief.json. Its dispatch must carry the problem as
+    # the user stated it and NOT the premises Phase 0 invented -- a ranker ranking against our
+    # own inventions ranks against a problem nobody has. That rule was enforced by nothing but
+    # the orchestrator typing the correct field. Reading the file instead makes it structural,
+    # but trades a guaranteed input for a claimed one: "read brief.json" is a step a run can skip
+    # and describe having taken, which is the failure this pipeline names as the one it cannot
+    # survive. So the ranker echoes back the opening of what it read, and it is checked here.
+    # This is the first thing in the pipeline that says anything about what a dispatch contained.
+    _echo = brief_str(load_obj(rkpath) if os.path.exists(rkpath) else {}, "prompt_echo", rkpath)
+    if _echo:
+        _want = " ".join((brief.get("verbatim_prompt") or "").split())[:len(_echo)]
+        if " ".join(_echo.split()) != _want:
+            die(f"ranked.json's `prompt_echo` does not match the opening of brief.json's "
+                f"verbatim_prompt.\n  echoed: {_echo[:80]!r}\n  actual: {_want[:80]!r}\n"
+                f"The ranker is dispatched against the problem as the USER stated it, never the "
+                f"premises Phase 0 invented. A mismatch means it ranked against something else.")
+
     order = load(rkpath, "ranked")
     if any(isinstance(x, dict) and "text" in x for x in order):
         die("ranked.json carries text — it must reference family ids only")
@@ -529,8 +546,8 @@ def main(wd):
         i = e.get("id")
         if i not in ids: die(f"verified.json references unknown id {i!r}")
         v = (e.get("verdict") or "").lower()
-        if v not in ("confirmed", "refuted", "unclear", "no_external_claim"):
-            die(f"{i}: verdict must be confirmed|refuted|unclear|no_external_claim, "
+        if v not in ("confirmed", "refuted", "unclear", "no_external_claim", "internal_claim"):
+            die(f"{i}: verdict must be confirmed|refuted|unclear|no_external_claim|internal_claim, "
                 f"got {e.get('verdict')!r}")
 
         # `note` — the verifier's qualification, and it is NOT a new field. Verifiers were
@@ -554,7 +571,7 @@ def main(wd):
         # a key the verifier was right to leave empty. A non-string is refused rather than
         # coerced: `str(["a","b"])` is truthy, so it passed the old check and then crashed
         # build_report with an AttributeError at the last step of the run.
-        for k in ("note", "caveat"):
+        for k in ("note", "caveat", "claim"):
             if k in e and e[k] is not None and not isinstance(e[k], str):
                 die(f"{i}: `{k}` must be a string, got {type(e[k]).__name__}. A qualification is a "
                     f"sentence for the reader; a list or object cannot be rendered and would fail "
@@ -572,12 +589,25 @@ def main(wd):
         # Collapsed together, the second can be recorded with a query describing why none ran --
         # which satisfies a non-empty-query check while being the exact thing that check exists to
         # prevent. Separating them makes the absence of a search a verdict rather than a string.
-        if v == "no_external_claim":
+        # `internal_claim` shares no_external_claim's shape -- no search ran, so no query -- and
+        # differs in what it says. no_external_claim means the option rests on no outside-world
+        # claim at all; internal_claim means it rests on one about the READER's own product,
+        # situation or data, which no search could settle. The distinction is the whole point:
+        # on the run this came from, the #1 option rested on whether a useful subset of six
+        # analytical skills survives as plain text with no runtime, a claim about the reader's
+        # own system, and the report printed "Checked" beneath it because a search had confirmed
+        # an incidental assertion about paste-to-install. Rendering that as "Proposal — nothing
+        # to verify" would have been just as wrong in the other direction.
+        if v in ("no_external_claim", "internal_claim"):
             if (e.get("query") or "").strip():
-                die(f"{i}: verdict 'no_external_claim' carries a query {e.get('query')!r}. If a "
+                die(f"{i}: verdict {v!r} carries a query {e.get('query')!r}. If a "
                     f"search ran, the verdict is confirmed|refuted|unclear; if none ran, leave "
                     f"query empty. A recorded query that never happened is the failure this "
                     f"verdict was added to remove")
+            if not (e.get("note") or e.get("caveat") or "").strip() and v == "internal_claim":
+                die(f"{i}: verdict 'internal_claim' with no note. The note IS the verdict here — "
+                    f"it names the claim about your own system that nobody outside could check. "
+                    f"Without it the reader is told something was not checkable and not what.")
         else:
             q = (e.get("query") or "").strip()
             if not q:
@@ -713,6 +743,7 @@ def main(wd):
             f"is build_report.py's and reordering hides the gap rather than closing it.")
     unclear = [i for i in top13 if by[i] == "unclear" and i not in rejected]
     no_claim = [i for i in top13 if by[i] == "no_external_claim"]
+    internal = [i for i in top13 if by[i] == "internal_claim"]
 
     # A family whose LEAD is refuted keeps its rank and promotes its next surviving member --
     # rank is a property of the family. A family with no surviving member at all is fully
@@ -749,7 +780,8 @@ def main(wd):
         print(f"famil(ies) with no surviving member: {fully_rejected} — report as rejected, "
               f"keep their rank position so cross-references still resolve")
     print(f"verified_confirmed={sum(1 for i in top13 if by[i]=='confirmed')} "
-          f"unclear={len(unclear)} no_external_claim={len(no_claim)}"
+          f"unclear={len(unclear)} no_external_claim={len(no_claim)} "
+          f"internal_claim={len(internal)}"
           + (f" -> present these as unverified: {unclear}" if unclear else "")
           + (f" -> these rest on no outside-world claim: {no_claim}" if no_claim else ""))
     print(f"report_top={min(3,n)} report_next={max(0,min(10,n-3))} report_rest={max(0,n-13)}")

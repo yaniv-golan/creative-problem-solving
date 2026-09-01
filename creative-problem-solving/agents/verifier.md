@@ -27,6 +27,23 @@ proposal. Return verdict `no_external_claim` and **no query field at all**. Do n
 settled nothing, and "none run" or "N/A" in that field is a claim about work you did not do. The
 reader is told either way; the two states are different.
 
+**On a `confirmed`, say what you checked in one clause.** Add a `claim` field: the assertion
+your search actually settled, written as a statement rather than as a search string — *"paste-to-
+install is how Anthropic distributes plugins"*, not *"plugin marketplace add install docs"*. It
+is printed to the reader beside the source, so it is the sentence that tells them what the badge
+covers. Optional, but a `confirmed` without one renders as a bare link and the reader is left to
+assume the whole option was checked.
+
+**A claim about the reader's own system is `internal_claim`, not `unclear`.** When the
+load-bearing claim is about *their* product, data or situation — "a useful subset of this
+survives as plain text", "their existing process already collects X" — no source could settle
+it, however well you search. Return `internal_claim`, **no query field**, and a `note` naming
+the claim. The note is required here: it is the whole verdict, and without it the reader is told
+something was not checkable and not what.
+
+Do not reach for it when a search would work but was inconvenient — that is `unclear`. The test
+is whether an outside source could exist, not whether you found one.
+
 **If the source supports a weaker claim than the option makes, the verdict is still `confirmed`
 — and it must carry a `note`.** This is common, and it is the most useful thing you can produce.
 A source can confirm a mechanism exists while not supporting the strength the option claims for
