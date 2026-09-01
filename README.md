@@ -139,13 +139,13 @@ flowchart TD
     G1 & G2 & G3 & G4 --> PP(["possible versions<br/>of each other paired off"])
     PP --> A1 & A2 & A3
 
-    subgraph ADJ ["three judges, none able to see another's pile · some pairs judged twice"]
+    subgraph ADJ ["judges sized to the pair volume, none able to see another's pile · some pairs judged twice"]
         A1(["pile 1"])
         A2(["pile 2"])
-        A3(["pile 3"])
+        A3(["…and more"])
     end
 
-    A1 & A2 & A3 --> PG["a script groups<br/>into families"]
+    A1 & A2 & A3 --> PG["a script packs the work,<br/>agents name each family"]
     PG --> RK(["ranked by<br/>survivability"])
     RK --> VF(["top families<br/>checked by search"])
     VF --> GATE{"integrity gate"}
