@@ -11,7 +11,7 @@ hard gate -- verify_pipeline refuses a run whose probe is too small -- so leavin
 model's diligence means a run can burn forty minutes and fail at the last step. Here the count
 is guaranteed by construction.
 
-  shard_candidates.py <work-dir> [--shards N] [--probe 48] [--per-shard 126]
+  shard_candidates.py <work-dir> [--shards N] [--probe 48] [--per-shard 126] [--dry-run]
 
 Reads candidates.json, writes cand-1.json .. cand-N.json. Deterministic: the probe sample is
 evenly spaced through the deduplicated list, so the same input always produces the same shards.
@@ -122,10 +122,23 @@ def concentration_warnings(wd, uniq):
     hogs = [(i, n) for i, n in ends.most_common() if n > ID_HOG]
     if hogs:
         shown = ", ".join(f"{i} in {n} pairs" for i, n in hogs[:4])
+        # Same reason as verify_pipeline's separated-pairs WARN: this shows four and asks the
+        # reader to check they are not generic restatements, which needs all of them. On the
+        # recorded run it truncated 143 to four.
+        # Serialize before opening, and never let advisory evidence fail the run -- see the
+        # matching comment in verify_pipeline.py's separated-pairs WARN.
+        _hp = os.path.join(wd, "warn-pair-hogs.json")
+        try:
+            _body = json.dumps({"options": [{"id": i, "pairs": n} for i, n in hogs]}, indent=1)
+            with open(_hp, "w", encoding="utf-8") as _fh:
+                _fh.write(_body)
+            _full = f" Full list ({len(hogs)}): {_hp}."
+        except Exception as _e:                                        # noqa: BLE001
+            _full = f" (could not write the full list: {_e})"
         print(f"WARN: {len(hogs)} option(s) appear in more than {ID_HOG} proposed pairs "
               f"({shown}{', …' if len(hogs) > 4 else ''}). One option pulling this many pairs "
               f"tends to become the hub of an oversized family; check it is not a generic "
-              f"restatement of the problem.")
+              f"restatement of the problem.{_full}")
 
     # Keyed on the index parsed from the FILENAME, not on the `pool` field and not on enumerate
     # position. The field is now checked to equal it, so today the three agree -- but keying on the
@@ -188,6 +201,30 @@ def plan_shards(npairs, nprobe, per_shard):
     return max(SHARDS_MIN, min(want, cap)), want, cap
 
 
+def probe_for(npairs, nprobe, per_shard=PER_SHARD, _limit=64):
+    """The smallest --probe that actually clears the over-budget WARN, or None if already clear.
+
+    NOT `want * 4`. The obvious inversion of "the ceiling is a quarter of the probe" is wrong,
+    because `want` is itself a function of `nprobe` -- raising the probe adds pairs, which can
+    raise the shard demand past the ceiling it just lifted. Swept over 100-6000 unique pairs at
+    the default probe, `want * 4` leaves the WARN standing in 2,614 cases; the first is 1,587
+    pairs, where it advises 52 and 56 is needed. The recorded run's 1,772 pairs happens to be a
+    fixed point, which is how an advice string can be validated against one run and still be
+    wrong nearly half the time.
+
+    So iterate to the fixed point. Terminates because `want` grows by at most one shard per added
+    per_shard pairs while the cap grows a quarter per added probe pair; `_limit` is a guard, not a
+    working bound, and returning None on exhaustion means "no advice" rather than bad advice.
+    """
+    p = nprobe
+    for _ in range(_limit):
+        _, want, cap = plan_shards(npairs, p, per_shard)
+        if want <= cap:
+            return None if p == nprobe else p
+        p = want * 4
+    return None
+
+
 def main(wd, nshards, nprobe, per_shard=PER_SHARD):
     pairs = load(os.path.join(wd, "candidates.json"), "pairs")
 
@@ -224,10 +261,25 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
     if nshards is None:
         nshards, want, cap = plan_shards(len(uniq), nprobe, per_shard)
         if want > cap:
+            # NAME THE VALUE, NOT THE LEVER. This used to end at "Raise --probe to lift the
+            # ceiling", which names the knob and not the number -- and the relationship needed to
+            # derive it (ceiling = probe / 4) appears once, in prose, in a reference file. A run
+            # that did not go back and re-read that sentence either guessed and re-ran, or passed
+            # the WARN to the reader; both happened. The script holds every term, so it computes it.
+            _p = probe_for(len(uniq), nprobe, per_shard)
+            if _p is None:
+                _fix = (f"Raise --probe to lift the ceiling, or --shards {want} to override "
+                        f"deliberately.")
+            else:
+                _n = plan_shards(len(uniq), _p, per_shard)[0]
+                _fix = (f"Re-run with --probe {_p} to allow {_n} shards (the cross-check ceiling "
+                        f"is --probe / 4, and raising the probe also adds pairs, so {_p} is the "
+                        f"smallest value that actually clears this). Or --shards {want} to "
+                        f"override deliberately.")
             print(f"WARN: {len(uniq)} unique pairs want {want} shards at {per_shard} per shard, but "
                   f"the agreement probe can only cross-check {cap}. Sharding into {cap}; each "
                   f"adjudicator gets about {(len(uniq) + nprobe) // cap} pairs, above the budget. "
-                  f"Raise --probe to lift the ceiling, or --shards to override deliberately.")
+                  f"{_fix}")
 
     shards = [[] for _ in range(nshards)]
     for i, p in enumerate(uniq): shards[i % nshards].append(p)
@@ -359,4 +411,28 @@ if __name__ == "__main__":
     # ~2,000 adjudications costs nothing measurable.
     # --shards defaults to None, not 3: absent the flag the count is DERIVED from pair volume
     # (see plan_shards). Passing --shards is an explicit override and skips the budget entirely.
+    # --dry-run prints the shard plan and the probe arithmetic and writes nothing. The remedy
+    # for the over-budget WARN used to have to be computed by hand from a sentence in a reference
+    # file, mid-run, by a caller who had already spent the pair-proposal stage; this makes it
+    # answerable before committing to a sharding.
+    if "--dry-run" in a:
+        _wd, _probe, _ps = a[0], opt("--probe", 48), opt("--per-shard", PER_SHARD)
+        _pairs = load(os.path.join(_wd, "candidates.json"), "pairs")
+        _uniq = {frozenset((p.get("a"), p.get("b"))) for p in _pairs if isinstance(p, dict)}
+        _n = len(_uniq)
+        _ns, _want, _cap = plan_shards(_n, _probe, _ps)
+        print(f"{len(_pairs):,} proposed, {_n:,} unique after dedup")
+        print(f"--probe {_probe} --per-shard {_ps}")
+        print(f"  want {_want} shards ({_n} + {_probe} probe copies, ceil / {_ps} per shard)")
+        print(f"  cap  {_cap} shards (the probe cross-checks --probe / 4 = {_probe // 4}, "
+              f"floor {SHARDS_MIN})")
+        print(f"  plan {_ns} shards, about {(_n + _probe) // _ns} pairs each")
+        if _want > _cap:
+            _p = probe_for(_n, _probe, _ps)
+            print(f"  OVER BUDGET. " + (f"--probe {_p} clears it "
+                  f"({plan_shards(_n, _p, _ps)[0]} shards)." if _p else
+                  f"No probe value clears it; use --shards {_want} deliberately."))
+        else:
+            print("  within budget")
+        sys.exit(0)
     main(a[0], opt("--shards", None), opt("--probe", 48), opt("--per-shard", PER_SHARD))

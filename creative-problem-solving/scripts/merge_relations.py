@@ -25,6 +25,20 @@ from robust_json import load
 from verdicts import is_id
 from progress import record
 
+def _where(wd):
+    """`<given> (resolved: <abs>, cwd: <cwd>)` — for any failure that names a path.
+
+    Every writing script already prints `wrote to {os.path.abspath(wd)}` on success, and none of
+    them resolved the path on failure. That asymmetry is the bug: the moment the resolved path is
+    most needed is the one where it was not shown. Measured: `FAIL: no pool-*.json in
+    outputs/RUN/_work` on a directory that was full of them, because an earlier `cd` in the same
+    Bash call moved the ground under a later relative argument, and the message reported the
+    argument rather than where it looked.
+    """
+    a = os.path.abspath(wd)
+    return wd if a == wd else f"{wd} (resolved: {a}, cwd: {os.getcwd()})"
+
+
 # The verdict mix of every run whose relations.json is still held: `duplicate` share and joinable
 # share, ascending. Transcribed from run records kept outside this repository, so these are figures
 # of record rather than something a reader can recompute from what ships. Eight events, not nine
@@ -77,7 +91,7 @@ def _name(pair):
 def main(wd):
     shards = sorted(glob.glob(os.path.join(wd, "relations-*.json")))
     if not shards:
-        sys.exit(f"FAIL: no relations-*.json in {wd}")
+        sys.exit(f"FAIL: no relations-*.json in {_where(wd)}")
 
     # EVERY PAIR DEALT MUST COME BACK, AND THIS IS THE PLACE TO NOTICE.
     #

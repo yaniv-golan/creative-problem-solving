@@ -115,10 +115,19 @@ def _generated(wd):
     lenses, n = _pools(wd)
     if not lenses: return None
     L = len(lenses)
+    # NO NUMBER, AND NOT "a couple of minutes". Measured on run 20260901-100305: pair proposal
+    # took 823.6 s -- 6.9x the "couple of minutes" this line used to promise, and 54% longer than
+    # the stage the NEXT line calls the run's longest. The orchestrator repeats these verbatim and
+    # may write nothing of its own between them, so a wrong forecast here is one nobody can
+    # correct. Replacing it with a rate ("a minute per twenty options") would be worse: the cost
+    # tracks PAIRS, which grow faster than options and do not exist yet at this boundary, and one
+    # measurement cannot license a rate. Say the shape of the wait, which is stable, rather than
+    # its length, which is not.
     return (f"{SAY}{n} options, from {_plural(L, 'separate angle')} run in isolation from one "
             f"another. Nothing is dropped for being similar to another. Next I look for pairs "
-            f"that might be the same idea, so they can be grouped rather than deleted — a couple "
-            f"of minutes.")
+            f"that might be the same idea, so they can be grouped rather than deleted. That "
+            f"stage is serial and it is the longest single wait in the run — nothing prints "
+            f"until it returns.")
 
 
 def _sharded(wd):
@@ -168,10 +177,12 @@ def _sharded(wd):
     # Nothing here reads families.json, which is what makes a stale one from an earlier run
     # unable to turn the sharding line into a grouping line. That used to need a guard; now the
     # stage simply does not look at the file it would have misread.
+    # "The longest wait in the run" moved off this line. Adjudication is N-way parallel and pair
+    # proposal is a single serial agent, so on the current architecture the claim is false: 534 s
+    # against 823 s on the recorded run. It was probably true when adjudication was unsharded.
     return (f"{SAY}{pairs:,} candidate pairs, split into "
             f"{_plural(len(shards), 'batch', 'batches')}.{planted} Next, adjudicators judge every "
-            f"one of them. This is the longest wait in the run — several minutes, with nothing "
-            f"printed until every batch is back.")
+            f"one of them, in parallel — nothing is printed until every batch is back.")
 
 
 def _ranked(wd):

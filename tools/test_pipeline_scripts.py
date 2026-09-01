@@ -797,6 +797,55 @@ def t_rev6_report():
           "seven of nine briefs were byte-identical; independence is not established")
     shutil.rmtree(d, True)
 
+def t_echo_scan_precision():
+    """The scan must survive its own false-positive rate: phrases reported, ordinary words not.
+
+    Measured on run 20260901-100305, the scan fired six times on eight ordinary English words --
+    `constraint assistant something tool used answer company remove` -- and not one was an
+    invented premise asserted as the reader's situation. A block whose hits are reliably ~0%
+    actionable teaches the reader to skim it, which is the state in which the one real hit is
+    skimmed too. Both directions are asserted here because widening a stopword list can only be
+    validated by the direction that must still fire.
+    """
+    print("\nthe echo scan reports phrases and not ordinary English")
+    d = tempfile.mkdtemp()
+    try:
+        ids, fams = full_fixture(d, multi=True)
+        json.dump({"verbatim_prompt": "An office of 200 people has a 20-minute lunch queue at noon.",
+                   "reading": "shorten the wait",
+                   "invented": ["every workstation is instrumented for data collection",
+                                "the team is reluctant to give up core authority"]},
+                  open(os.path.join(d, "brief.json"), "w"))
+        rep = os.path.join(d, "report.md")
+
+        def slot(text):
+            run("build_report.py", d, "--out", rep)          # regenerate the placeholders
+            # TWO STATEMENTS, deliberately. Inlining this as
+            # `open(rep,"w").write(fill_placeholders(rep)...)` truncates the file before the
+            # argument is evaluated, so fill_placeholders reads an empty report -- the exact trap
+            # fill_placeholders' own docstring documents, and this is its fourth occurrence.
+            body = fill_placeholders(rep)
+            open(rep, "w").write(body.replace("written", text, 1))
+            return run("build_report.py", "--check", rep)
+
+        # MUST FIRE: a multi-word run lifted straight out of an invented premise.
+        rc, out = slot("This assumes every workstation is instrumented for data collection.")
+        # Asserts that A phrase from the premise is named, not WHICH one: the scan reports the
+        # longest matching n-gram, so pinning an exact span makes the test fail on a change in
+        # n-gram width rather than on a change in behaviour.
+        check("a phrase from an invented premise is reported", "ECHO SCAN" in out and
+              "PHRASE" in out and "instrumented" in out, out.strip()[:200])
+        check("and a phrase hit still fails nothing", rc == 0, f"rc={rc}")
+
+        # MUST NOT FIRE: ordinary English that happens to appear in the premises' text.
+        rc, out = slot("The answer here is to remove something the company already uses as a tool.")
+        check("ordinary words alone do not fire the scan", "ECHO SCAN" not in out,
+              out.strip()[:200])
+        check("and that run passes too", rc == 0, f"rc={rc}")
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t_invention_surfaces():
     """The two checks over model-written text: one that fails, one that only advises."""
     print("\ninvention surfaces")
@@ -2526,6 +2575,51 @@ def t_infeasible_lead_core():
     check("with no joining verdicts at all, every family keeps its own lead",
           a3 is not None and len(a3) == 2, f"{a3}")
     shutil.rmtree(tempfile.mkdtemp(), True)
+
+
+def t_probe_advice_actually_clears():
+    """The --probe value the over-budget WARN names must clear the WARN. Swept, not spot-checked.
+
+    The obvious remedy -- invert "the ceiling is a quarter of the probe" to `want * 4` -- is wrong,
+    because `want` is itself a function of `nprobe`: raising the probe adds pairs, which can raise
+    the shard demand past the ceiling it just lifted. It happens to be right on the one recorded
+    run (1,772 pairs, where 60 is a fixed point), which is exactly how a wrong formula gets
+    validated against a single archive and shipped.
+
+    So this sweeps the range rather than checking a fixture. The assertion is behavioural -- feed
+    the advised value back into plan_shards and the WARN must be gone -- not a string match on the
+    advice, because a string match cannot tell correct advice from confident advice.
+    """
+    print("\nthe probe value the WARN names clears the WARN")
+    sys.path.insert(0, str(SCRIPTS))
+    from shard_candidates import plan_shards, probe_for, PER_SHARD
+
+    over, unclear, wrong4 = [], [], []
+    for n in range(100, 6001):
+        _, want, cap = plan_shards(n, 48, PER_SHARD)
+        if want <= cap:
+            continue
+        over.append(n)
+        p = probe_for(n, 48, PER_SHARD)
+        if p is None or plan_shards(n, p, PER_SHARD)[1] > plan_shards(n, p, PER_SHARD)[2]:
+            unclear.append(n)
+        _, w4, c4 = plan_shards(n, want * 4, PER_SHARD)
+        if w4 > c4:
+            wrong4.append(n)
+
+    check("the sweep actually exercises the WARN", len(over) > 1000, f"only {len(over)} cases")
+    check("every advised probe clears the WARN", not unclear,
+          f"{len(unclear)} of {len(over)} still over budget, e.g. {unclear[:3]}")
+    # The regression this test exists for, asserted directly: if someone reinstates want*4, this
+    # reds with the count. Naming the number keeps the reason legible when it does.
+    check("CONTROL: want*4 would NOT have cleared them", len(wrong4) > 2000,
+          f"want*4 failed {len(wrong4)} cases; if this is now small, plan_shards changed")
+    # And the fixed point is a no-op where the run is already inside budget.
+    check("no advice when already within budget", probe_for(300, 48, PER_SHARD) is None,
+          str(probe_for(300, 48, PER_SHARD)))
+    # The recorded run, as a named case rather than the only case.
+    check("the recorded run's 1,772 pairs advise 60", probe_for(1772, 48, PER_SHARD) == 60,
+          str(probe_for(1772, 48, PER_SHARD)))
 
 
 def t_shard_budget():
@@ -4880,6 +4974,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
               t_plan_groups, t_merge_families, t_forced_lead_collision,
               t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
+              t_probe_advice_actually_clears, t_echo_scan_precision,
               t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
               t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
               t_repair_stays_inside_the_pinned_component,

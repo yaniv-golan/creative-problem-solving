@@ -20,6 +20,12 @@ The reader ends with a file they can open and keep, not only a long message. On 
 `build_report.py` writes it and `references/pipeline-report.md` step 10 presents it; on the no-script fallback you write it
 yourself. This is not conditional on the user asking.
 
+**Which half of this file binds you depends on that split, and the file does not repeat it.** From
+here on, the shape rules describe what the reader should receive. On the scripted path
+`build_report.py` implements them and is the authority on what actually renders — where the two
+differ, the script is what ships, and the prose is describing the fallback. Read a shape rule as a
+requirement on *you* only when you are writing the report yourself.
+
 **Phases 0-3 are working state, not deliverable.** The user gets the ideas and the
 judgement — not the brief you sharpened, not the lens names, not the cluster analysis.
 Showing your process is the single easiest way to triple the word

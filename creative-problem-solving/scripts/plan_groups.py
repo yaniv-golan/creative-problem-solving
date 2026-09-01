@@ -31,6 +31,20 @@ from verdicts import JOINING, SEPARATING, SHARE_MAX, SHARE_MIN_ADJUDICATED  # no
 from verdicts import share_ok, share_breach, share_counts
 from verdicts import relation_of
 
+def _where(wd):
+    """`<given> (resolved: <abs>, cwd: <cwd>)` — for any failure that names a path.
+
+    Every writing script already prints `wrote to {os.path.abspath(wd)}` on success, and none of
+    them resolved the path on failure. That asymmetry is the bug: the moment the resolved path is
+    most needed is the one where it was not shown. Measured: `FAIL: no pool-*.json in
+    outputs/RUN/_work` on a directory that was full of them, because an earlier `cd` in the same
+    Bash call moved the ground under a later relative argument, and the message reported the
+    argument rather than where it looked.
+    """
+    a = os.path.abspath(wd)
+    return wd if a == wd else f"{wd} (resolved: {a}, cwd: {os.getcwd()})"
+
+
 # Disagreement weights. `duplicate` is the strongest evidence of sameness and `distinct` the
 # strongest evidence against, so they outweigh their softer neighbours.
 #
@@ -405,7 +419,7 @@ def pack(clusters, cap):
 
 def main(wd, max_task, split_over):
     pools = sorted(glob.glob(os.path.join(wd, "pool-*.json")))
-    if not pools: die(f"no pool-*.json in {wd}")
+    if not pools: die(f"no pool-*.json in {_where(wd)}")
     ids, text = [], {}
     for p in pools:
         for it in (load(p, "items") or []):

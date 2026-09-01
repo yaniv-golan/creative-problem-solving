@@ -997,6 +997,48 @@ if os.path.isdir(_bin):
 else:
     ok("no top-level bin/ — hosted marketplace sync is not blocked by one")
 
+# The one decision in this repo that has been re-proposed five times by three readers, each time
+# wearing a different word: a brief.json quota field, an "id outside the declared range" WARN, and
+# "return between 15 and 30", which is a floor and a ceiling called a band. The rule was written
+# down every time and did not bind -- once within 260 lines of the paragraph that broke it. So it
+# is asserted here rather than only stated: prose tells a reader what was decided, a fail() tells
+# them they are about to undo it. PLAN-quota-instrumentation-2026-08-31.md refuses a pool-size gate
+# in either direction (no floor is derivable -- early stopping is licensed; no ceiling either --
+# nothing forbids overshoot), and that file is gitignored, so the shipped clause has to carry the
+# whole rule with no pointer.
+print("\nthe quota is documented as a target, in the shipped text")
+_q = read_text("%s/skills/%s/references/pipeline.md" % (plugin_name, skill_names[0]))
+_missing_q = [_p for _p in ("target, not a bound",
+                            "Nothing anywhere\ncounts pool sizes")
+              if _p.replace("\n", " ") not in " ".join(_q.split())]
+if _missing_q:
+    fail("references/pipeline.md no longer states that the quota is a target and that nothing "
+         "counts pool sizes (missing: %s). That sentence is the whole of the rule -- the "
+         "reasoning is in a gitignored doc, so a reader who loses the clause has no way back to "
+         "it, and the check it prevents has been proposed five times."
+         % "; ".join(repr(_p) for _p in _missing_q))
+else:
+    ok("references/pipeline.md states the quota is a target and names the forms of check refused")
+
+# And no script may grow one. Counting pool sizes is the behaviour, whatever it is called.
+_sizey = []
+for _f in sorted(glob.glob(os.path.join(plugin_name, "scripts", "*.py"))):
+    _src = read_text(_f)
+    # The BEHAVIOUR, not a spelling: the length of something that is a pool or its items,
+    # compared against a numeric literal. Quote-agnostic, because the first draft matched only
+    # `['items']` and silently passed a planted `len(d["items"]) < 30` -- a gate that does not
+    # fire is worse than none, since it is also a claim that it looked. Requiring `items` or
+    # `pool` inside the call is what keeps it off the many legitimate `len(x) < 2` guards: the
+    # draft without that requirement flagged all eight scripts.
+    if re.search(r"""len\(\s*[^)\n]*\b(?:items|pool)\b[^)\n]*\)\s*(?:[<>]=?|[!=]=)\s*\d""",
+                 _src):
+        _sizey.append(os.path.basename(_f))
+if _sizey:
+    fail("a script compares a pool's option count against something: %s. No pool-size check is "
+         "derivable in either direction -- see references/pipeline.md step 3." % ", ".join(_sizey))
+else:
+    ok("no script compares a pool's option count against a bound")
+
 print("\nthe families.json shape is documented as it is emitted")
 _mf = os.path.join(REPO, plugin_name, "scripts", "merge_families.py")
 _emitted = set()

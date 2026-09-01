@@ -350,11 +350,37 @@ def main(wd, out):
     if slots + len(rejected) != len(text):
         sys.exit(f"FAIL: {slots} presented + {len(rejected)} rejected != {len(text)} generated")
 
+# ~250 of the commonest English words, not 76. Measured on run 20260901-100305: the scan fired
+# six times, on `constraint assistant something tool used answer company remove` -- eight ordinary
+# words appearing inside the report's own judgement prose, none of them an invented premise
+# asserted as the reader's situation, and not one of the eight in the 76-word list. A scan whose
+# hits are reliably ~0% actionable teaches the reader of the block to skim it, which is the state
+# in which the one real hit is skimmed too. The list is deliberately generous: a false negative
+# here costs one advisory line, a false positive costs the credibility of every line.
 STOPWORDS = set("""the and for with that this from they them their there here what when where
 which who whom whose will would could should have has had been being are was were you your our
 its it's not but all any can may might must into onto over under about above below between more
-most some such than then these those very just only also because while after before each other
-own same too own don't isn't aren't""".split())
+most span some such than then these those very just only also because while after before each other
+own same too don't isn't aren't a an as at be by do does did for from get go got had has have
+he her hers him his how i if in is it its me my no nor now of off on once one or other ought
+out own per put said say says see seen she so some soon still take than that the theirs there
+they thing things think this through thus to together told too took two under until up upon us
+use used uses using very want wants was way ways we well went were what whatever when whenever
+whether which while who whole why will with within without work works would yet you
+also always another answer anyone anything around away back become becomes been before begin
+being best better both bring came cannot case cases change changes come comes company different
+does doing done down during either else enough even ever every example far few find first
+follow following found full further gave general give given goes going good great group hand
+happen hard help here high hold however idea ideas important instead keep kept kind know known
+large last later least leave less let level like likely little long look made make makes making
+many matter mean means might more moment much must name named need needs never new next nothing
+number often old only open order others part particular people perhaps place point possible
+present problem process public question rather reach real really reason remove result right
+run same second seem seems sense set several should show shown side since single small
+something sometimes soon sort sound start state stay stop such sure system take taken tell
+term terms thank their themselves thought three time times today tool tools toward true try
+turn under understand unless upon usual value various view whatever whole whose why wide within
+without wonder word words world write written year years yes yet young""".split())
 
 
 def _model_written(body, man):
@@ -380,13 +406,37 @@ def _echo_scan(body, man, brief, label):
     if not invented.strip(): return
     import re
     tok = lambda t: {w for w in re.findall(r"[a-z']{3,}", (t or "").lower())}
-    suspect = tok(invented) - tok(brief.get("verbatim_prompt")) - STOPWORDS
-    if not suspect: return
+    prompt_tok = tok(brief.get("verbatim_prompt"))
+    suspect = tok(invented) - prompt_tok - STOPWORDS
+
+    # PHRASES OUTRANK TOKENS. "instrumented for data collection" turning up in the report's prose
+    # is the signal this scan exists for; "something" is not, and the two used to be reported
+    # identically. A run of three or more consecutive non-stopword words from an invented premise,
+    # absent from the user's own prompt, is a premise being echoed rather than a coincidence of
+    # ordinary English -- so it is reported first and labelled, and a line that carries one is
+    # worth reading whatever else is on it.
+    phrases = set()
+    for prem in (brief.get("invented") or []):
+        ws = re.findall(r"[a-z']+", (prem or "").lower())
+        for n in (5, 4, 3):
+            for i in range(len(ws) - n + 1):
+                span = ws[i:i + n]
+                if all(w in STOPWORDS or w in prompt_tok for w in span):
+                    continue
+                phrases.add(" ".join(span))
+    low_prompt = " ".join(re.findall(r"[a-z']+", (brief.get("verbatim_prompt") or "").lower()))
+    phrases = {p for p in phrases if p not in low_prompt}
+
+    if not suspect and not phrases: return
     hits = []
     for ln, line in _model_written(body, man):
+        low = " ".join(re.findall(r"[a-z']+", line.lower()))
+        hit_p = sorted((p for p in phrases if p in low), key=len, reverse=True)
         found = sorted(w for w in suspect if re.search(rf"\b{re.escape(w)}", line.lower()))
-        if found: hits.append((ln, found))
+        if hit_p: hits.append((ln, [f"PHRASE: \u201c{hit_p[0]}\u201d"] + found))
+        elif found: hits.append((ln, found))
     if not hits: return
+    hits.sort(key=lambda h: (not str(h[1][0]).startswith("PHRASE"), h[0]))
     # The status has to be on the header line, because that is the half a reader meets first and
     # a list of file:line hits reads as a defect list in every other tool they use. Scoped to what
     # is true at this point: the scan contributes nothing to the exit code. It deliberately does

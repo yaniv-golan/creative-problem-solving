@@ -21,6 +21,20 @@ from verdicts import relation_of
 from verdicts import share_ok as _share_ok
 from progress import record
 
+def _where(wd):
+    """`<given> (resolved: <abs>, cwd: <cwd>)` — for any failure that names a path.
+
+    Every writing script already prints `wrote to {os.path.abspath(wd)}` on success, and none of
+    them resolved the path on failure. That asymmetry is the bug: the moment the resolved path is
+    most needed is the one where it was not shown. Measured: `FAIL: no pool-*.json in
+    outputs/RUN/_work` on a directory that was full of them, because an earlier `cd` in the same
+    Bash call moved the ground under a later relative argument, and the message reported the
+    argument rather than where it looked.
+    """
+    a = os.path.abspath(wd)
+    return wd if a == wd else f"{wd} (resolved: {a}, cwd: {os.getcwd()})"
+
+
 
 
 def die(msg):
@@ -274,7 +288,7 @@ def main(wd, expect):
         what = missing or "none missing, so the extra file(s) are unexpected"
         die(f"expected {expect} shard(s), found {len(shards)}; missing {what}. "
             f"Re-dispatch only the named shard(s).")
-    if not shards: die(f"no group-result-*.json in {wd}")
+    if not shards: die(f"no group-result-*.json in {_where(wd)}")
 
     fams, seen, claimed, grouper_labels = [], Counter(), set(), set()
     for s in shards:

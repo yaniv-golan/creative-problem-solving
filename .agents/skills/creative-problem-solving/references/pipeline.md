@@ -481,7 +481,15 @@ assumed: a negation round against that structure returned one search-verified op
    assigned lens, the obvious answer as a banned category, and **a quota of 30 options**. Tell
    it the first ten or so will be obvious and the quota exists to push past them — but that an
    option nobody would act on is not worth a slot, so it should stop reaching once the lens is
-   genuinely spent rather than padding to the number. Each writes `$RUN/_work/pool-<k>.json`
+   genuinely spent rather than padding to the number.
+
+   **30 is a target, not a bound.** A pass that returns 17 because the lens was spent at 17 has
+   done this correctly, and a pass that returns 32 has done nothing wrong. **Nothing anywhere
+   counts pool sizes or option totals — not a gate, not a WARN, not a band, not a floor or a
+   ceiling, not a range check on ids, not a recorded quota to compare against, not a note in a
+   summary. No such check is derivable in either direction. Do not add one.** The forms are
+   listed rather than the principle stated because each of the five times this was proposed it
+   wore a different word, and the principle was written down every time. Each writes `$RUN/_work/pool-<k>.json`
    (k = 1..N, its own index in the batch) and returns only a one-line receipt — path and count.
 
    ```json
@@ -530,7 +538,9 @@ assumed: a negation round against that structure returned one search-verified op
    one WARN that has one.** `Raise --probe to lift the ceiling, or --shards to override
    deliberately` means what it says: the agreement probe caps how many shards can be cross-checked,
    so a large pool gets fewer, bigger shards than the 126-pair budget wants. Re-run the command
-   with `--probe` raised (the ceiling is a quarter of it) rather than accepting the excess. A run
+   with `--probe` raised (the ceiling is a quarter of it — but raising the probe also adds pairs and
+   so raises the shard demand, which makes the right value a fixed point rather than an inversion.
+   The script computes it and prints it; `--dry-run` shows the arithmetic without writing) rather than accepting the excess. A run
    passed this one to the reader instead — every other WARN in this pipeline is for the reader to
    judge, and this one is for you to fix before continuing.
 
@@ -596,13 +606,20 @@ assumed: a negation round against that structure returned one search-verified op
    nothing. Computing a partition is mechanical; telling a mechanism from a theme that resembles
    one is not. The script does the first, and the dispatches do only the second.
 
-   **First, write the joinable pairs to their own file.** From `relations.json`, keep only the
-   pairs whose relation is `duplicate` or `implementation_variant`, and write them to
+   **First, write the joinable pairs to their own file.** `relations.json` is
+   `{"relations": [...]}` — an object, not a bare list. From it, keep only the pairs whose
+   relation is `duplicate` or `implementation_variant`, and write them to
    `$RUN/_work/joinable.json` in the same shape:
 
    ```json
    {"relations": [{"a": "p2-033", "b": "p4-008", "relation": "duplicate"}, ...]}
    ```
+
+   **`verify_pipeline.py` re-derives this filter from `relations.json` and refuses an
+   over-inclusive, under-inclusive or invented one**, naming the count and examples in each case.
+   A mistake here stops the run rather than reaching the reader — so there is no version of this
+   step that is cheaper to guess at than to do, and a run that skipped it fails at step 9 with a
+   message saying exactly which pairs are wrong.
 
    **Then plan the groups:**
 
