@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] — 2026-09-01
+
+### Removed
+
+- **`bin/cps`, because it made the plugin unsyncable as a claude.ai-hosted marketplace.** Adding a
+  launcher on `PATH` was 0.4.0's headline convenience; the hosted validator refuses any plugin
+  carrying a top-level `bin/`, and refuses the whole plugin rather than the file:
+
+  > `status: failed_content` — *"Plugin contains a top-level `bin/` directory (`bin/cps`).
+  > claude.ai-hosted plugins may not ship `bin/` executables because they are added to PATH on the
+  > CLI but are not shown on the admin approval surface."*
+
+  The reasoning is the same one `SECURITY.md` gave for documenting the file — a `bin/` entry has
+  the widest reach in the payload — and the validator draws a harder line: a reviewer approving the
+  plugin never sees it. So this removes it rather than arguing with it.
+
+  **Nothing depends on it.** Step 0 resolves the scripts itself, and the launcher was always
+  described as an optimisation rather than the mechanism. Two live runs on 2026-09-01 confirm it:
+  on container the read path resolved directly (branch 1), on host-loop the search answered with an
+  id join (branch 2), and the launcher branch fired on neither. That branch is gone too — with
+  nothing of ours on `PATH`, a `cps` that answered would belong to a *different* install, which is
+  the version skew the remaining branches exist to refuse.
+
+  `tools/check-repo.py` now fails on the presence of a top-level `bin/` rather than on an
+  undocumented one, since a documented `bin/` is still a broken marketplace. The failure the UI
+  reported was *"Marketplace sync failed. Check the repository URL and try again"*, which is not
+  what went wrong — the URL, the branch and the manifest were all fine.
+
 ## [0.4.0] — 2026-09-01
 
 Almost all of this release is one thing: the checks that decide whether an answer can be trusted

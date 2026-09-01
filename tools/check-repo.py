@@ -959,25 +959,29 @@ for label, n, phrase in (("files in scripts/", len(on_disk),
 # Read with ast, not a regex over source lines. A regex breaks the moment the dict is reformatted
 # and it breaks OPEN -- no match yields an empty set and the check passes vacuously, which is the
 # most-repeated failure shape in this repo. Finding no dict is a FAILURE here, not a pass.
-# bin/ is on the Bash tool's PATH, which makes it the widest-reach thing the plugin installs. The
-# scripts/ inventory is asserted against SECURITY.md three ways; this file had none of that, and
-# shipped documented nowhere. Same rule, smaller: whatever is executable in bin/ is named there.
-print("\nevery executable in bin/ is named in SECURITY.md")
+# A TOP-LEVEL bin/ BREAKS claude.ai-HOSTED MARKETPLACE SYNC OUTRIGHT. This started as "whatever is
+# executable in bin/ must be named in SECURITY.md", on the reasoning that bin/ lands on the Bash
+# tool's PATH and is therefore the widest-reach thing a plugin installs. The hosted validator
+# reaches the same conclusion and enforces it harder: it refuses the whole plugin.
+#
+#   status: failed_content — "Plugin contains a top-level bin/ directory ('bin/cps').
+#   claude.ai-hosted plugins may not ship bin/ executables because they are added to PATH on the
+#   CLI but are not shown on the admin approval surface. Declare executable entry points via
+#   hooks, commands, or mcpServers instead."
+#
+# 0.4.0 shipped bin/cps and could not sync as a hosted marketplace at all; the UI reported it as
+# "check the repository URL", which is not what went wrong and cost a round of looking at the
+# wrong thing. So the rule is now absence, not documentation -- a documented bin/ is still a
+# broken marketplace. Step 0 of references/pipeline.md resolves the scripts without it.
+print("\nno top-level bin/, which claude.ai-hosted marketplace sync refuses")
 _bin = os.path.join(REPO, plugin_name, "bin")
-if not os.path.isdir(_bin):
-    ok("no bin/ directory")
+if os.path.isdir(_bin):
+    fail("%s/bin/ exists (%s). A top-level bin/ makes the hosted marketplace refuse the whole "
+         "plugin with failed_content, because bin/ entries reach the CLI's PATH without appearing "
+         "on the admin approval surface. Declare entry points via hooks, commands or mcpServers."
+         % (plugin_name, ", ".join(sorted(os.listdir(_bin))) or "empty"))
 else:
-    _sec = read_text("SECURITY.md")
-    _unnamed = [f for f in sorted(os.listdir(_bin))
-                if os.access(os.path.join(_bin, f), os.X_OK) and "`%s`" % f not in _sec
-                and "`bin/%s`" % f not in _sec]
-    if _unnamed:
-        fail("SECURITY.md does not name %s, which a plugin install puts on the Bash tool's PATH. "
-             "SECURITY.md is what a security researcher reads to learn what executes; the file "
-             "with the widest reach in the payload is not the one to leave out"
-             % ", ".join("bin/" + f for f in _unnamed))
-    else:
-        ok("every executable in bin/ appears in SECURITY.md")
+    ok("no top-level bin/ — hosted marketplace sync is not blocked by one")
 
 print("\nthe families.json shape is documented as it is emitted")
 _mf = os.path.join(REPO, plugin_name, "scripts", "merge_families.py")

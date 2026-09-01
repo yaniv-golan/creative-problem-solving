@@ -146,10 +146,9 @@ without one runs it as sequential passes in a single context and says so in a li
 
 **The plugin — the above plus the machinery the pipeline runs on:** `commands/ideas.md`, six
 sub-agent definitions in `agents/` (one per pipeline role, each carrying only the tools its role
-needs), nine stdlib-only Python scripts in `scripts/`, and one bash launcher, `bin/cps`, which
-finds those scripts for the shell and runs one. Claude Code puts a plugin's `bin/` on the Bash
-tool's `PATH`, so it is reachable as a bare `cps` where that holds; nothing depends on it, and the
-pipeline falls back to locating the scripts itself where it does not. The pipeline runs seven of them through
+needs), and nine stdlib-only Python scripts in `scripts/`. Step 0 of `references/pipeline.md`
+locates those scripts for the shell, which matters on hosts where the shell and the file tools
+disagree about paths. The pipeline runs seven of them through
 your host's Bash tool to shard the candidate pairs, merge the adjudicators' verdicts, partition
 the options into clusters, reassemble those into families, say at each phase boundary what that
 phase produced, build the report, and check the

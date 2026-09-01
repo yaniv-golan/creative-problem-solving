@@ -3424,10 +3424,14 @@ def t_cps_resolver():
             open(root + "/scripts/verify_pipeline.py", "w").write("")
         empty = mk("empty")
 
-        # BRANCH 0 — a launcher on PATH answers before anything else is tried, and its answer is
-        # in the shell's own namespace, so this is the one branch that needs no namespace
-        # reasoning at all. Modelled with a stub because the real one is only on PATH once the
-        # plugin is installed.
+        # NO BRANCH 0, AND A FOREIGN LAUNCHER MUST NOT BE BOUND. The plugin no longer ships
+        # bin/cps: claude.ai-hosted plugins may not carry a top-level bin/, because a bin/ entry
+        # lands on the CLI's PATH while staying invisible on the admin approval surface. With
+        # nothing of ours on PATH, a `cps` that answers belongs to some OTHER install -- a
+        # different version, quite possibly -- so the resolver must ignore it and search. This is
+        # the positive control for that: a working launcher pointing at a COMPLETE install, and
+        # the run still has to reach it by its own search rather than by taking the launcher's
+        # word, or refuse.
         z = mk("Z", "plugin_Z"); skill(z); scripts(z)
         stub_dir = mk("stub")
         stub = os.path.join(stub_dir, "cps-stub")
@@ -3435,21 +3439,10 @@ def t_cps_resolver():
             fh.write('#!/bin/sh\n[ "$1" = "--where" ] && printf "%s\\n" "' + z + '"\n')
         os.chmod(stub, 0o755)
         rc, out = resolve("/nowhere" + TAIL, empty, split=True, launcher=stub)
-        check("a launcher on PATH resolves on branch 0", rc == 0 and "branch 0" in out and z in out,
-              out.strip()[:120])
-
-        # ...and it is VERIFIED, not trusted. A PATH entry is advertised whether or not anything
-        # is behind it — measured, 35 advertised and none present — so a launcher pointing at a
-        # tree with no sentinel must fall through rather than answer.
-        hollow = mk("hollow")
-        stub2 = os.path.join(stub_dir, "cps-hollow")
-        with open(stub2, "w") as fh:
-            fh.write('#!/bin/sh\n[ "$1" = "--where" ] && printf "%s\\n" "' + hollow + '"\n')
-        os.chmod(stub2, 0o755)
-        rc, out = resolve("/nowhere" + TAIL, os.path.join(base, "Z"), split=True, launcher=stub2)
-        check("...but a launcher pointing at a tree with no scripts/ falls through to the search",
-              rc == 0 and "branch 2" in out and z in out and "branch 0" not in out,
-              out.strip()[:140])
+        check("a launcher on PATH is never consulted — no branch 0 exists",
+              "branch 0" not in out, out.strip()[:140])
+        check("with nothing found, an unresolvable read path refuses rather than guessing",
+              rc != 0 and "REFUSING" in out, out.strip()[:140])
 
         # BRANCH ORDER. A launcher is not proof of the SAME install -- only branch 1 can promise
         # that. Run first it preferred a marketplace copy over the checkout the model was reading,
@@ -4301,112 +4294,6 @@ def t_progress_names_the_next_stage():
         shutil.rmtree(d, True)
 
 
-def t_cps_launcher():
-    """bin/cps -- the launcher that lets the shell find the plugin by name.
-
-    It exists so the resolver's 196-line search is not on the hot path: Claude Code puts
-    <plugin root>/bin on the Bash tool's PATH, built for that shell, so a bare `cps` is looked up
-    in the shell's own namespace and no path crosses the file-tool boundary.
-
-    The empty-argument case is the one that shipped wrong. `-h`, `--help` and `""` were one
-    branch, so `cps typo` exited 127 while `cps "$UNSET"` printed usage and exited 0 -- the
-    near-miss loud, the likelier programmatic failure silent. A pipeline step that does nothing
-    and reports success is the exact failure this plugin exists to prevent.
-    """
-    print("\nbin/cps — the launcher, and the argument that used to pass silently")
-    cps = ROOT / "creative-problem-solving" / "bin" / "cps"
-    check("bin/cps sits beside .claude-plugin/, not at the repo root", cps.exists(),
-          "a bin/ anywhere else is on nobody's PATH — the single observed failure mode")
-    check("...and is executable", os.access(cps, os.X_OK), oct(cps.stat().st_mode)[-3:])
-
-    def call(*a):
-        r = subprocess.run([str(cps), *a], capture_output=True, text=True)
-        return r.returncode, r.stdout + r.stderr
-
-    rc, out = call("--where")
-    check("--where names the plugin root", rc == 0 and out.strip().endswith("creative-problem-solving"),
-          out.strip()[:120])
-    check("...and that root carries the scripts", os.path.isfile(os.path.join(out.strip(), "scripts",
-          "verify_pipeline.py")), out.strip()[:120])
-
-    rc, out = call("--list")
-    listed = set(out.split())
-    check("--list names the entry points", {"verify_pipeline", "build_report"} <= listed, sorted(listed))
-    check("...and omits the modules that are imported, not run",
-          not ({"robust_json", "verdicts"} & listed), sorted(listed))
-
-    rc, _ = call()
-    check("no arguments is a person asking for help, and exits 0", rc == 0, f"rc={rc}")
-
-    # THE REGRESSION. Grouped with -h, this returned 0.
-    rc, out = call("")
-    check("an EMPTY argument is a variable that did not expand, and refuses",
-          rc == 127, f"rc={rc} — a step that does nothing and reports success is the failure mode")
-    check("...and says why", "did not expand" in out, out.strip()[:120])
-
-    # A SKILLS-ONLY install ships no scripts/ by design -- the zip, the .agents/ mirror, an older
-    # version -- and the resolver's branch 1b exists for that shape. --list printing nothing and
-    # exiting 0 there was the same "no output, exit 0" symptom this file's own header cites as the
-    # measured symlink defect, reached by a legitimate route.
-    d = tempfile.mkdtemp()
-    try:
-        os.makedirs(os.path.join(d, "p", "bin")); os.makedirs(os.path.join(d, "p", "skills"))
-        bare = os.path.join(d, "p", "bin", "cps")
-        shutil.copy(str(cps), bare); os.chmod(bare, 0o755)
-        r = subprocess.run([bare, "--list"], capture_output=True, text=True)
-        check("--list on a skills-only install refuses rather than printing nothing",
-              r.returncode == 127 and "no scripts/" in (r.stdout + r.stderr),
-              (r.stdout + r.stderr).strip()[:120])
-        check("...and names the fallback to take", "Phase 1 fallback" in (r.stdout + r.stderr),
-              (r.stdout + r.stderr).strip()[:120])
-        r = subprocess.run([bare, "verify_pipeline"], capture_output=True, text=True)
-        check("...and asking for a script there says why there is none",
-              r.returncode == 127 and "no scripts/" in (r.stdout + r.stderr),
-              (r.stdout + r.stderr).strip()[:120])
-    finally:
-        shutil.rmtree(d, True)
-
-    rc, out = call("no_such_script")
-    check("an unknown script refuses with the documented 127", rc == 127, f"rc={rc}")
-    check("...and lists what it could have run", "verify_pipeline" in out, out.strip()[:120])
-
-    # A NAME, not a path. Interpolated straight into "$ROOT/scripts/$name.py", a relative path
-    # reached outside the plugin entirely.
-    rc, out = call("../../../etc/passwd")
-    check("a path is not a script name", rc == 127 and "not a script name" in out, out.strip()[:120])
-    rc, _ = call("sub/dir")
-    check("...nor is a nested one", rc == 127, f"rc={rc}")
-
-    # BASH_SOURCE holds the invoking path, not the physical file, so a symlink on PATH -- the
-    # single most likely thing anyone does with a file called cps -- pointed ROOT at the symlink's
-    # grandparent. --where named the wrong tree and --list printed nothing, exit 0.
-    d = tempfile.mkdtemp()
-    try:
-        link = os.path.join(d, "cps")
-        os.symlink(str(cps), link)
-        r = subprocess.run([link, "--where"], capture_output=True, text=True)
-        check("invoked through a symlink, --where still names the plugin root",
-              r.stdout.strip() == str(cps.parent.parent), r.stdout.strip()[:120])
-        r = subprocess.run([link, "--list"], capture_output=True, text=True)
-        check("...and --list still finds the scripts", "verify_pipeline" in r.stdout,
-              r.stdout.strip()[:120])
-    finally:
-        shutil.rmtree(d, True)
-
-    # Parity: the launcher must not change what a script does or what it returns.
-    d = tempfile.mkdtemp()
-    try:
-        rc_l, out_l = call("verify_pipeline", d)
-        r = subprocess.run([sys.executable, str(SCRIPTS / "verify_pipeline.py"), d],
-                           capture_output=True, text=True)
-        check("a script run through the launcher returns what it returns directly",
-              rc_l == r.returncode, f"launcher={rc_l} direct={r.returncode}")
-        check("...and prints what it prints", out_l.strip() == (r.stdout + r.stderr).strip(),
-              out_l.strip()[:120])
-    finally:
-        shutil.rmtree(d, True)
-
-
 def t_label_is_one_line():
     """A grouper-authored label reaches the reader as one line, or it picks the report's shape.
 
@@ -4967,7 +4854,6 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
               t_repair_stays_inside_the_pinned_component,
               t_band_header_states_what_was_verified, t_fabricated_id_stops_at_the_first_stage,
-              t_cps_launcher,
               t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
               t_out_path_echo, t_promoted_lead_gate,
               t_lead_assignment_complete, t_cps_resolver,

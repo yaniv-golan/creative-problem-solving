@@ -148,39 +148,14 @@ cps_resolve() {                    # $1 = the path you read THIS file at
   case "$HOME" in /sessions/*) SPLIT=1 ;; esac
   case "$CAND" in /sessions/*) SPLIT=0 ;; esac
 
-  # Branch 0 — ask the shell, which is the only party whose answer is already in the shell's own
-  # namespace. Claude Code puts <plugin root>/bin on the Bash tool's PATH, constructed for that
-  # shell rather than inherited, so a bare `cps` is looked up by the shell itself and NOTHING
-  # crosses the namespace boundary. On a split host that replaces the search below outright.
-  #
-  # DELIBERATELY BELOW BRANCH 1, AND GATED ON SPLIT. Branch 1 is the only branch that can promise
-  # the scripts belong to the install whose instructions you are reading; a launcher promises a
-  # working install, not THAT install. Run first, it silently preferred a marketplace copy over
-  # the checkout the model was reading -- reproduced with two installs and a `cps` pointing at the
-  # older one, which is the ordinary shape of a maintainer's own machine. Ordering it here costs
-  # nothing: where branch 1 can answer, the search never runs anyway.
-  #
-  # The SPLIT gate is the same consistency: with shared namespaces a read path that does not
-  # resolve is a WRONG path, and the single-hit case below refuses it rather than binding another
-  # copy. A launcher must not quietly do what that refusal exists to prevent.
-  #
-  # Overridable by name for the same reason ROOTS is: a branch that consults a PATH the caller
-  # cannot control cannot be tested, because the fixture cannot stop it finding the developer's
-  # own install and passing for the wrong reason.
-  #
-  # VERIFIED, not trusted, like every branch here: a PATH entry is advertised whether or not the
-  # directory behind it exists -- measured, 35 entries advertised and none present -- so a
-  # launcher that answers is still made to produce a path carrying the sentinel. `</dev/null` so
-  # an unrelated interactive `cps` cannot block the run waiting on input.
-  LAUNCHER="${CPS_LAUNCHER:-cps}"
-  if [ "$SPLIT" = 1 ] && command -v "$LAUNCHER" >/dev/null 2>&1; then
-    W=$("$LAUNCHER" --where </dev/null 2>/dev/null || true)
-    if [ -n "$W" ] && [ -f "$W/$SENTINEL" ]; then
-      B0="0: $LAUNCHER on PATH"
-      [ "$(basename "$W")" = "$PID" ] && B0="0: $LAUNCHER on PATH, id join on $PID"
-      CPS="$W"; echo "CPS=$CPS (branch $B0)"; return 0
-    fi
-  fi
+  # NO BRANCH 0. A previous version asked a `cps` launcher on PATH where the plugin root was.
+  # That launcher is no longer shipped: claude.ai-hosted plugins may not carry a top-level bin/,
+  # because a bin/ entry lands on the CLI's PATH while being invisible on the admin approval
+  # surface a reviewer reads. With nothing of ours on PATH, a `cps` that answered would belong to
+  # SOME OTHER install -- a different version, quite possibly -- and binding it is exactly the
+  # skew the refusals below exist to prevent. Measured before removal: on container the read path
+  # resolved (branch 1) and on host-loop the search answered with an id join (branch 2); the
+  # launcher branch fired on neither, so nothing here depends on it.
 
   # TWO DESIGNS WERE INVESTIGATED AND RULED OUT HERE. Recorded because both look obviously better
   # than a search, and the next person will think of them:

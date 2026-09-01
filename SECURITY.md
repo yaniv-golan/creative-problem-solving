@@ -38,15 +38,6 @@ Two install paths deliver different payloads, and the difference matters here.
   design. It writes a `.manifest.json` beside that report. Nothing writes to a path it was not
   given.
 
-  The plugin also installs **`bin/cps`**, a bash launcher. Claude Code puts a plugin's `bin/`
-  directory on the Bash tool's `PATH`, so this is callable as a bare `cps` — the widest-reach file
-  in the payload, and named here for that reason. It is a dispatcher and nothing else: it resolves
-  its own plugin root from its own location, refuses any argument that is not a bare script name,
-  checks `python3` is present and new enough, and `exec`s `python3 "<plugin>/scripts/<name>.py"`.
-  It reads no files but the scripts it lists, makes no network calls, and writes nothing. Step 0 of
-  `references/pipeline.md` uses `cps --where` to learn the plugin root on hosts where the shell and
-  the file tools disagree about paths.
-
   They are code, they execute on your machine, and they are in scope.
 
   *This list is asserted by `tools/check-repo.py` against `scripts/` and against the invocations
