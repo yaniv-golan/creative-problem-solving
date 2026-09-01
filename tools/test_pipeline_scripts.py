@@ -1578,6 +1578,38 @@ def t_over_budget_warn_names_the_task():
               f"named={sorted(named)}")
 
 
+def t_separated_pairs_warn_states_its_cost():
+    """Telling the reader to split a family must say what splitting costs.
+
+    Acting on this WARN means re-running merge_families.py, which pipeline.md states
+    invalidates steps 7 and 8 -- a re-rank plus fresh verification searches. In
+    sess-crit-6d4b9a47 the run read the named family, judged it coherent, and noted it could
+    not have acted otherwise without paying a cost the message hides.
+
+    derive_joinable is called after the rewrite for the reason its own docstring gives: the
+    joinable check runs BEFORE the relation gate, so a stale file fails the case on the wrong one.
+    """
+    print("\nverify_pipeline — the separated-pairs WARN prices its own remedy")
+    with tempfile.TemporaryDirectory() as d:
+        wd = Path(d)
+        full_fixture(wd)
+        fams = json.load(open(wd / "families.json"))
+        a, b = fams["families"][0]["members"][0], fams["families"][0]["members"][1]
+        rels = json.load(open(wd / "relations.json"))
+        rels["relations"] = [r for r in rels["relations"]
+                             if frozenset((r["a"], r["b"])) != frozenset((a, b))]
+        rels["relations"].append({"a": a, "b": b, "relation": "distinct"})
+        json.dump(rels, open(wd / "relations.json", "w"))
+        derive_joinable(wd)
+        rc, out = run("verify_pipeline.py", wd)
+        check("a WARN does not change the exit code", rc == 0, out)
+        check("the separated-pairs WARN fired", "adjudicated apart" in out, out)
+        check("the WARN says splitting means re-running merge_families",
+              "merge_families" in out, out)
+        check("the WARN names the steps that splitting invalidates",
+              "steps 7 and 8" in out, out)
+
+
 def t_merge_families():
     """A shard may split what it was given. It may not lose, invent, or reach outside it.
 
@@ -4939,7 +4971,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_malformed_relation_record_is_refused_not_absorbed, t_effective_lead,
               t_out_path_echo, t_promoted_lead_gate,
               t_lead_assignment_complete, t_cps_resolver,
-              t_over_budget_warn_names_the_task,
+              t_over_budget_warn_names_the_task, t_separated_pairs_warn_states_its_cost,
               t_merged_labels_replace_concatenation, t_heading_follows_the_lead_across_a_merge,
               t_slots_fill_and_deletion,
               t_fill_refuses_an_empty_value_and_survives_a_retry,

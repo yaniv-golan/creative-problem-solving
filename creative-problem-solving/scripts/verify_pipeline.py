@@ -346,9 +346,19 @@ def main(wd):
                     conflicts.append((f.get("id"), mem[x], mem[y], r))
     if conflicts:
         ex = "; ".join(f"{fid}: {a}~{b} = {r}" for fid, a, b, r in conflicts[:5])
+        # PRICE THE REMEDY. This line used to end "split them if not", which sends the reader at a
+        # re-run of merge_families.py -- and pipeline.md states that invalidates steps 7 and 8, a
+        # full re-rank plus fresh verification searches. A run read the named family, judged it
+        # coherent, and recorded that it could not have acted otherwise without paying a cost this
+        # message hid. Naming a remedy while withholding its price is the shape this repo keeps
+        # finding; the sentence that fixes it was already written one file away.
         warn(f"{len(conflicts)} pair(s) sit inside a family after being adjudicated apart "
              f"({ex}{'; …' if len(conflicts) > 5 else ''}). Check that the famil(ies) named group "
-             f"by one mechanism and not by wording; split them if not.")
+             f"by one mechanism and not by wording. This is a WARN, not a gate: a coherent theme "
+             f"can legitimately hold a pair that does not join. Splitting means re-running "
+             f"merge_families.py, which invalidates steps 7 and 8 — a full re-rank and fresh "
+             f"verification searches — so split only if the family genuinely names two mechanisms, "
+             f"and otherwise say in one line that you read it and it holds.")
 
     # AND THE OTHER DIRECTION: A FAMILY MAY NOT BE MOSTLY CONTRADICTIONS.
     #
