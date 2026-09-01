@@ -215,6 +215,21 @@ def main(wd, out):
         if note:
             b += ["", f"*Note — {one_line(note)}*"]
 
+        # THE RISK MARK, UNGATED BY RANK. On the run this came from, nine options worked by
+        # withholding, degrading or coercing the people the reader is trying to serve, and they
+        # sat at ranks 40 to 107 -- the band that carries no annotation at all, where a coercive
+        # option and a benign one are typographically identical. Low rank is not that warning:
+        # it reads as "less likely to survive vetting", not "this one would damage you".
+        #
+        # A note, not a veto. Phase 3's rule holds -- the reader's veto is better informed than
+        # ours and a suppressed option costs them the whole idea. This only makes the cost
+        # visible, in the same shape as the verifier note above, which already ships and works.
+        _risk = one_line((f.get("risk") or "").strip())
+        if _risk:
+            b += ["", f"*Risk — {_risk}*"]
+        for _mr in (f.get("merged_risks") or []):
+            b += ["", f"*Risk (from a family merged in) — {one_line(_mr)}*"]
+
         if lead_prose:
             # Phase 4's template, as slots. The generator used to hand the model a heading and
             # a WHY line, so the fields SKILL.md specifies for a presented option had nowhere

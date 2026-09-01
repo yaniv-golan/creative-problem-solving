@@ -318,9 +318,16 @@ def main(wd, expect):
             # absorbed side), the heading can only be chosen correctly once the lead is final.
             # Concatenating the two labels at the merge site, which is what this used to do,
             # answered both questions at the one moment neither is answerable yet.
+            # `risk` rides the SAME per-member map shape as `label`, and for the same reason:
+            # after a merge the family's heading is re-picked from the final lead, and its risk
+            # line has to follow. A single field on the family would be silently dropped by the
+            # absorbed side of every merge -- this dict is rebuilt from an explicit key set, so
+            # anything not named here is discarded without a word.
+            _risk = (f.get("risk") or "").strip()
             fams.append({"members": [lead] + [m for m in mem if m != lead],
                          "label": lab, "cid": src,
-                         "origin": {m: lab for m in mem}})
+                         "origin": {m: lab for m in mem},
+                         "origin_risk": {m: _risk for m in mem} if _risk else {}})
 
     dupes = [m for m, n in seen.items() if n > 1]
     if dupes: die(f"{len(dupes)} option(s) placed in more than one family, e.g. {sorted(dupes)[:5]}")
@@ -427,6 +434,7 @@ def main(wd, expect):
         if fams[i]["cid"] != fams[j]["cid"]: cross_merged += 1
         fams[i]["members"] = fams[i]["members"] + fams[j]["members"]
         fams[i]["origin"].update(fams[j]["origin"])
+        fams[i].setdefault("origin_risk", {}).update(fams[j].get("origin_risk") or {})
         relabel(fams[i])
         fams.pop(j); merged_back += 1
 
@@ -520,6 +528,7 @@ def main(wd, expect):
         i, j = pair
         fams[i]["members"] = fams[i]["members"] + fams[j]["members"]
         fams[i]["origin"].update(fams[j]["origin"])
+        fams[i].setdefault("origin_risk", {}).update(fams[j].get("origin_risk") or {})
         relabel(fams[i])
         fams.pop(j); forced_merged += 1
     merged_back += forced_merged
@@ -572,10 +581,43 @@ def main(wd, expect):
             f"merge_families.py; please report it with the group-result-*.json files.")
 
     order = sorted(range(len(fams)), key=lambda i: (-len(fams[i]["members"]), fams[i]["members"][0]))
-    out = [{"id": f"f{n+1:03d}", "label": fams[i]["label"], "members": fams[i]["members"],
-            "merged_labels": other_labels(fams[i]),
-            "pools": len({m.split("-")[0] for m in fams[i]["members"]})}
-           for n, i in enumerate(order)]
+    def _risk_of(f):
+        """The lead's risk line, and any distinct one from a family merged into this."""
+        _m = f.get("origin_risk") or {}
+        if not _m: return "", []
+        _lead = _m.get(f["members"][0], "")
+        _others = list(dict.fromkeys(v for k, v in _m.items() if v and v != _lead))
+        return _lead, _others
+
+    out = []
+    for n, i in enumerate(order):
+        _lead_risk, _merged_risks = _risk_of(fams[i])
+        _rec = {"id": f"f{n+1:03d}", "label": fams[i]["label"], "members": fams[i]["members"],
+                "merged_labels": other_labels(fams[i]),
+                "pools": len({m.split("-")[0] for m in fams[i]["members"]})}
+        if _lead_risk: _rec["risk"] = _lead_risk
+        if _merged_risks: _rec["merged_risks"] = _merged_risks
+        out.append(_rec)
+    # THE GATE GOES AT THE POINT OF LOSS. verify_pipeline reads only the post-drop file, so a
+    # risk line discarded here is invisible to it -- and this function rebuilds every family from
+    # an explicit key set, which is exactly how an unknown key vanishes without a word. Compare
+    # the ids a grouper marked against the ids that survived to the emitted file.
+    # AGAINST THE EMITTED RECORDS, not against what is derivable from fams. The first draft
+    # recomputed _risk_of() here and compared that to itself, so breaking the emission changed
+    # nothing and the gate stayed green -- a gate that reports more than it checked, which is the
+    # exact failure it was written to prevent one field over.
+    _marked = {m for f in fams for m, v in (f.get("origin_risk") or {}).items() if v}
+    _kept = set()
+    for _rec, _i in zip(out, order):
+        if _rec.get("risk") or _rec.get("merged_risks"):
+            _kept |= {m for m, v in (fams[_i].get("origin_risk") or {}).items() if v}
+    _lost = sorted(_marked - _kept)
+    if _lost:
+        die(f"{len(_lost)} option(s) were marked with a `risk` by a grouper and the mark did not "
+            f"reach families.json, e.g. {_lost[:4]}. The reader would see the option with no note "
+            f"that its mechanism costs someone. This is a bug in merge_families.py, not something "
+            f"the caller can fix; please report it with the group-result-*.json files.")
+
     json.dump({"families": out}, open(os.path.join(wd, "families.json"), "w", encoding="utf-8"),
               separators=(",", ":"))
 

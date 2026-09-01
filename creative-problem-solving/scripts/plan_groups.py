@@ -24,7 +24,7 @@ import json, sys, os, glob, itertools
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from robust_json import load
+from robust_json import load, load_obj
 from robust_json import where as _where
 # The share rule and the verdict vocabulary, defined once in verdicts.py. This file used to
 # carry its own copy of both plus its own share_ok, mirroring verify_pipeline.py by hand.
@@ -537,11 +537,37 @@ def main(wd, max_task, split_over):
     json.dump({"clusters": out}, open(os.path.join(wd, "clusters.json"), "w", encoding="utf-8"),
               separators=(",", ":"))
 
+    # Absent brief.json, or a run predating step 1b, yields an empty string rather than a
+    # refusal: this script's job is the partition, and verify_pipeline already gates the key.
+    actor = ""
+    _bp = os.path.join(wd, "brief.json")
+    if os.path.exists(_bp):
+        try:
+            _b = load_obj(_bp)
+            actor = " / ".join(x for x in ((_b.get("actor") or "").strip(),
+                                           (_b.get("decision") or "").strip()) if x)
+        except SystemExit:
+            actor = ""
+
     by_cid = {c["cid"]: c for c in out}
     packed = pack([c["members"] for c in out], max_task)
     for k, group in enumerate(packed, 1):
         cids = [next(c["cid"] for c in out if c["members"] == g) for g in group]
-        json.dump({"task": k, "clusters": [
+        # `actor` RIDES IN THE TASK FILE, and is the only thing about the brief a grouper sees.
+        # The risk mark it is asked for -- what an option costs the people it acts on, and what
+        # acting on it would cost the reader -- is not decidable from option text alone: on the
+        # run this came from, one option was a fund publicly pledging not to invest in anyone who
+        # used the tool, which is damaging because of who the READER is and reads as generous
+        # otherwise. A script copies the line rather than the grouper reading brief.json itself:
+        # one author so the copy cannot drift, an input the grouper cannot skip, and no second
+        # path to resolve on a split-namespace host. A file a script hands you beats a file you
+        # are told to open.
+        #
+        # One line, not the sharpened brief. The grouper's blindness to the brief is deliberate --
+        # it keeps mechanism labels from drifting into the brief's vocabulary -- so this is the
+        # minimum that makes the judgement possible, and it is the first thing to revert if
+        # labels start echoing the brief.
+        json.dump({"task": k, "actor": actor, "clusters": [
             {"cid": cid, "lead": by_cid[cid]["lead"],
              "split_candidate": by_cid[cid]["split_candidate"],
              "options": [{"id": m, "text": text[m]} for m in by_cid[cid]["members"]]}

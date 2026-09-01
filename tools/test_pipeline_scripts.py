@@ -2580,6 +2580,78 @@ def t_infeasible_lead_core():
     shutil.rmtree(tempfile.mkdtemp(), True)
 
 
+def t_risk_mark_survives_to_the_report():
+    """A grouper's `risk` reaches the reader, through a merge, at any rank -- or the run stops.
+
+    Nine options on the recorded run worked by withholding, degrading or coercing the people the
+    reader was trying to serve, and they sat at ranks 40-107 -- the band that carries no
+    annotation at all, where a coercive option and a benign one are typographically identical.
+    The mark is a note, not a veto: Phase 3's rule that the reader's veto is better informed than
+    ours is untouched.
+
+    The failure this defends against is silent. merge_families rebuilds every family from an
+    explicit key set, so a field it does not name is dropped without a word, and verify_pipeline
+    reads only the post-drop file. So the gate lives at the point of loss, and it is asserted here
+    by breaking the emission -- the first draft of that gate compared a recomputation against
+    itself and stayed green while the field vanished.
+    """
+    print("\nthe risk mark survives to the report")
+    d = tempfile.mkdtemp()
+    try:
+        # The real grouping stage, because families.json is what carries the field and
+        # full_fixture writes that file directly without ever running a grouper.
+        ids = make_pools(d)
+        json.dump({"verbatim_prompt": "An office has a 20-minute lunch queue.",
+                   "actor": "a person choosing when to eat",
+                   "decision": "whether to join the queue now",
+                   "reading": "shorten the wait", "invented": []},
+                  open(os.path.join(d, "brief.json"), "w"))
+        make_candidates(d, ids, n=90)
+        run("shard_candidates.py", d, "--probe", 20)
+        adjudicate(d); merge(d); run("plan_groups.py", d)
+
+        # Mark two families, with DISTINCT text: identical strings cannot distinguish a merge
+        # that carried both from one that dropped one -- the first run of this test planted the
+        # same string twice and could not tell the two apart.
+        marked = 0
+        tasks = sorted(glob.glob(os.path.join(d, "group-task-*.json")))
+        for t in tasks:
+            td = json.load(open(t))
+            fams = []
+            for c in td["clusters"]:
+                fam = {"cid": c["cid"], "label": f"Mechanism {c['cid']}",
+                       "lead": c["lead"], "members": [o["id"] for o in c["options"]]}
+                if marked < 2:
+                    fam["risk"] = f"RISK-{marked}: withholds from the person it targets."
+                    marked += 1
+                fams.append(fam)
+            json.dump({"families": fams},
+                      open(os.path.join(d, f"group-result-{td['task']}.json"), "w"))
+        check("the fixture marked two families", marked == 2, str(marked))
+        check("and the task file carried the actor to the grouper",
+              json.load(open(tasks[0])).get("actor", "").startswith("a person choosing"),
+              str(json.load(open(tasks[0])).get("actor"))[:60])
+
+        rc, out = run("merge_families.py", d, "--expect", str(len(tasks)))
+        fams_out = json.load(open(os.path.join(d, "families.json")))["families"]
+        surviving = {x for f in fams_out
+                     for x in ([f["risk"]] if f.get("risk") else []) + (f.get("merged_risks") or [])}
+        check("both distinct risk lines survive the merge", len(surviving) == 2,
+              f"{len(surviving)}: {sorted(surviving)}")
+
+        # ranked.json and verified-*.json, over the families merge_families actually emitted.
+        make_tail(d, fams_out)
+        rep = os.path.join(d, "report.md")
+        run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("both render in the report", body.count("*Risk") >= 2,
+              f"{body.count('*Risk')} risk line(s)")
+        check("...as their own line, like a verifier note", "\n*Risk — RISK-" in body,
+              body[:200])
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t_actor_and_decision_are_gated():
     """Phase 0 step 1b is written to brief.json and refused when absent.
 
@@ -5104,7 +5176,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_plan_groups, t_merge_families, t_forced_lead_collision,
               t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
               t_probe_advice_actually_clears, t_echo_scan_precision, t_quota_gate_fires,
-              t_actor_and_decision_are_gated,
+              t_actor_and_decision_are_gated, t_risk_mark_survives_to_the_report,
               t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
               t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
               t_repair_stays_inside_the_pinned_component,

@@ -63,6 +63,12 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
                   "merged_labels": [], "pools": 2}]}
    ```
 
+   Two keys are **absent unless a grouper marked the family**: `risk`, a one-line note that the
+   mechanism costs someone who is not choosing it, and `merged_risks`, a list carrying the same
+   from any family merged into this one. They are omitted rather than set to null, so read them
+   with `.get()`. `build_report.py` renders each as its own italic line under the option, at any
+   rank.
+
    `cid` became `id`, and **there is no `lead` key** — the grouper's choice was spent into
    *position*, so the lead is `members[0]`. Reading `lead` here gets a `KeyError`, and reading
    `fid` gets one too.

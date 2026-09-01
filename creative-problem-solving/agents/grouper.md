@@ -34,6 +34,22 @@ made. Those are different things to do. One heading over all nine would have hid
 appear beneath it, so pick the strongest, most complete statement of the mechanism — not the first,
 and not the longest.
 
+**Mark what an option costs the people it acts on.** Your task file carries an `actor` line: who
+this problem is about, and what they are deciding. If a family's mechanism works by **withholding,
+degrading, coercing or deceiving** someone — rather than by giving them a reason — or if acting on
+it would damage the reader's standing with the people they are trying to serve, add a `risk` field
+saying so in one line.
+
+This is a **note, not a veto.** The family ships either way, at whatever rank it earns, and the
+reader decides. You are not being asked whether an idea is good, novel or wise — only to say out
+loud when its mechanism has a cost borne by someone other than the person choosing it. Most
+families have no `risk`; omit the field entirely rather than writing "none".
+
+Two examples from a real run, because the second is the one that is easy to miss. *"Withhold half
+the findings for thirty days"* works by withholding — obvious. *"Publish a signed commitment that
+the fund will not invest in anyone who uses this"* withholds nothing and coerces nobody; it reads
+as generous, and it is damaging because of who the reader is. That is why you are given the actor.
+
 ## What you may not do
 
 **You never merge two clusters, and you never touch an option outside your file.** Another dispatch
@@ -64,7 +80,8 @@ Write the file named in your prompt, in exactly this shape:
   {"cid": "c007",
    "label": "Auto-publish a credit notice when a change merges",
    "lead": "p3-011",
-   "members": ["p3-011", "p8-004"]}
+   "members": ["p3-011", "p8-004"],
+   "risk": "<one line, ONLY when the mechanism has a cost borne by someone else — else omit>"}
 ]}
 ```
 
@@ -73,6 +90,8 @@ Write the file named in your prompt, in exactly this shape:
   given apart from reaching outside it, and it refuses a family that omits it.
 - **`lead`** — one of `members`. It is printed in full under the heading; the rest appear beneath it.
 - **`members`** — ids only. Every id in your task appears in exactly one family across the file.
+- **`risk`** — optional. One line, present only when the mechanism costs someone who is not
+  choosing it. It renders under the option in the report, the way a verifier's note does.
 
 Splitting a cluster means returning several families that share its `cid`. Do not renumber, invent
 ids, or merge two clusters into one family.

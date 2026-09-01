@@ -685,8 +685,22 @@ assumed: a negation round against that structure returned one search-verified op
 
    ```json
    {"families": [{"cid": "c007", "label": "...", "lead": "p3-011",
-                  "members": ["p3-011", "p8-004"]}]}
+                  "members": ["p3-011", "p8-004"],
+                  "risk": "<one line, only when the mechanism costs someone else — else omit>"}]}
    ```
+
+   **The task file carries an `actor` line** — `brief.json`'s actor and decision, copied in by
+   `plan_groups.py` — and it is the only thing about the brief a grouper sees. It is there for
+   `risk`: *tell each grouper to add that field when a family's mechanism works by withholding,
+   degrading, coercing or deceiving the people it acts on, or when acting on it would damage the
+   reader's standing with the people they are trying to serve.* Most families have no `risk` and
+   omit the field.
+
+   **It is a note, not a veto** — Phase 3's rule holds, the family ships at whatever rank it
+   earns, and the reader decides. It exists because feasibility and third-party harm are different
+   axes and this pipeline had an instrument for neither: on the run that produced this, nine
+   options worked by withholding or coercing the people the reader was trying to serve, and they
+   sat at ranks 40 to 107, rendered identically to everything around them.
 
    `cid` is copied from the task file and every family carries one — including families produced by
    splitting, which all share the `cid` they came from. That field is what lets the reassembly tell
