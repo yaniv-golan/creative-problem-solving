@@ -1294,6 +1294,28 @@ else:
         ok("all %d pinned baseline(s) resolve to a staged binary" % _pins)
 
 print()
+# TWO FILES CARRIED THE SAME WRONG SENTENCE, AND A FIX THAT EDITED ONE WOULD HAVE SHIPPED IT.
+#
+# "Output in chat unless the user asks for a file." lived in BOTH SKILL.md and references/report.md
+# while pipeline.md step 10 unconditionally requires presenting the file. The first fix drafted for
+# this edited report.md and checked report.md -- so the contradiction would have survived in
+# SKILL.md, the always-loaded one, under a green check. That is the false-green this repo exists to
+# refuse, committed by the tool meant to catch it. So this reads the LIST, and grows when a third
+# surface appears.
+print("no shipped skill text offers a chat-only default for the answer")
+_chat_only = [p for p in ("creative-problem-solving/skills/creative-problem-solving/SKILL.md",
+                          "creative-problem-solving/skills/creative-problem-solving"
+                          "/references/report.md")
+              if "unless the user asks for a file" in read_text(p)]
+if _chat_only:
+    fail("%s still carr%s the pre-pipeline chat-only default. pipeline.md step 10 unconditionally "
+         "presents the file, so the two cannot both be right. The sentence lived in TWO files: "
+         "check both, or a fix that edits one ships the contradiction in the other."
+         % (", ".join(_chat_only), "ies" if len(_chat_only) == 1 else "y"))
+else:
+    ok("neither SKILL.md nor references/report.md offers a chat-only default")
+
+print()
 if failures:
     print("FAILED (%d problem%s)" % (len(failures), "" if len(failures) == 1 else "s"))
     for line in failures:

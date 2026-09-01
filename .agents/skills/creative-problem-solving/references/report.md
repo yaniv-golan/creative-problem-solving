@@ -16,7 +16,9 @@ rather than reconstructing them.
 
 ---
 
-Output in chat unless the user asks for a file.
+The reader ends with a file they can open and keep, not only a long message. On the scripted path
+`build_report.py` writes it and step 10 presents it; on the no-script fallback you write it
+yourself. This is not conditional on the user asking.
 
 **Phases 0-3 are working state, not deliverable.** The user gets the ideas and the
 judgement — not the brief you sharpened, not the lens names, not the cluster analysis.
