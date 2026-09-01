@@ -205,8 +205,8 @@ each other.
 **Every run reports how much to trust its own grouping.** Forty-eight pairs are planted twice,
 so two adjudicators who cannot see each other judge the same pair. The agreement rate is printed
 in the answer. On the run captured in this repo it was 37 of 48 pairs — **77%** — and across the
-runs preserved during development it has ranged from **77% to 90%**, so somewhere between one
-judged pair in four and one in ten is a coin toss between two readers of the same evidence. A run where fewer
+runs on record it has ranged from **70% to 90%**, so somewhere between one judged pair in three and
+one in ten is a coin toss between two readers of the same evidence. A run where fewer
 than forty come back from two different adjudicators fails instead of printing a rate it cannot
 support.
 
