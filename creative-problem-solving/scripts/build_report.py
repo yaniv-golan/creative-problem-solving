@@ -107,13 +107,15 @@ def main(wd, out):
     # here rather than inlined because a real prompt is multiline and carries invocation
     # boilerplate. Labelled as recorded, not as exact -- only the harness can prove exactness.
     brief_p = os.path.join(wd, "brief.json")
-    prompt, invented = "", None
+    prompt, invented, actor, decision = "", None, "", ""
     if os.path.exists(brief_p):
         try:
             _b = load_obj(brief_p)
             prompt = (_b.get("verbatim_prompt") or "").strip()
             invented = _b.get("invented")
-        except SystemExit: prompt, invented = "", None
+            actor = (_b.get("actor") or "").strip()
+            decision = (_b.get("decision") or "").strip()
+        except SystemExit: prompt, invented, actor, decision = "", None, "", ""
 
     L = []
     if prompt:
@@ -123,6 +125,22 @@ def main(wd, out):
         L += ["{{QUESTION — the problem as the reader stated it, quoted}}", ""]
     L += ["{{ASSUMPTION — one line: the reading you ran with, and the counts verify_pipeline printed}}",
           ""]
+
+    # PHASE 0 STEP 1B, PRINTED. Written by the script from brief.json rather than left to a slot,
+    # for the same reason the invented premises below are: it is a fact about the run, and a fact
+    # the script holds should not be re-typed from memory. It gives the reader the yardstick --
+    # someone looking at a hundred options can say "these change the artifact, not what that
+    # person does" in one sentence, instead of discovering it entry by entry. On the run this came
+    # from, roughly a third of the options answered a different question and the report offered
+    # nothing to notice it with.
+    _actor, _decision = one_line(actor), one_line(decision)
+    if _actor or _decision:
+        L += ["## Whose behaviour this is about", ""]
+        if _actor: L += [f"**Actor:** {_actor}"]
+        if _decision: L += [f"**Decision:** {_decision}"]
+        L += ["", "Every option below is meant to change what that person does at that moment. "
+                  "One that only changes the artifact may still be worth doing — but it is "
+                  "answering a different question, and it is worth noticing how many do.", ""]
 
     # The pressures Phase 0 added, disclosed by the script.
     #

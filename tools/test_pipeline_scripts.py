@@ -64,6 +64,7 @@ def make_pools(wd, npools=4, per=8):
     register and a genuinely empty one are otherwise the same file.
     """
     json.dump({"verbatim_prompt": "An office of 200 people has a 20-minute lunch queue at noon.",
+    "actor": "a founder", "decision": "whether to act before the round",
                "reading": "how to shorten the wait, not how to feed more people",
                "invented": []},
               open(os.path.join(wd, "brief.json"), "w"))
@@ -757,7 +758,7 @@ def t_rev6_report():
     ids, fams = full_fixture(d, multi=True)
 
     # the report must say what question it answers
-    json.dump({"verbatim_prompt": "Line one of the ask.\nLine two."},
+    json.dump({"verbatim_prompt": "Line one of the ask.\nLine two.", "actor": "a founder", "decision": "whether to act before the round"},
               open(os.path.join(d, "brief.json"), "w"))
     out_md = os.path.join(d, "report.md")
     run("build_report.py", d, "--out", out_md)
@@ -812,6 +813,7 @@ def t_echo_scan_precision():
     try:
         ids, fams = full_fixture(d, multi=True)
         json.dump({"verbatim_prompt": "An office of 200 people has a 20-minute lunch queue at noon.",
+        "actor": "a founder", "decision": "whether to act before the round",
                    "reading": "shorten the wait",
                    "invented": ["every workstation is instrumented for data collection",
                                 "the team is reluctant to give up core authority"]},
@@ -852,6 +854,7 @@ def t_invention_surfaces():
     d = tempfile.mkdtemp()
     ids, fams = full_fixture(d, multi=True)
     json.dump({"verbatim_prompt": "An office of 200 people has a 20-minute lunch queue at noon.",
+    "actor": "a founder", "decision": "whether to act before the round",
                "reading": "shorten the wait",
                "invented": ["the team is reluctant to give up core authority"]},
               open(os.path.join(d, "brief.json"), "w"))
@@ -2575,6 +2578,57 @@ def t_infeasible_lead_core():
     check("with no joining verdicts at all, every family keeps its own lead",
           a3 is not None and len(a3) == 2, f"{a3}")
     shutil.rmtree(tempfile.mkdtemp(), True)
+
+
+def t_actor_and_decision_are_gated():
+    """Phase 0 step 1b is written to brief.json and refused when absent.
+
+    An un-gated Phase 0 step is a step that stops happening -- step 0c's `invented` register is
+    gated for the same reason and for the same measured failure. On the run this came from, a
+    brief that named a state of use ("get X to run Y on their own materials") rather than an actor
+    and a decision drew roughly a third of its options into improving the artifact instead of
+    changing anyone's behaviour, and no stage downstream could see it. The gate cannot check that
+    the answer is a good one; it can only make the question unanswerable-in-silence.
+    """
+    print("\nPhase 0 step 1b is recorded and gated")
+    d = tempfile.mkdtemp()
+    try:
+        full_fixture(d, multi=True)
+        rc, out = run("verify_pipeline.py", d)
+        check("CONTROL: a fixture carrying both keys passes", "OK" in out, out[-160:])
+
+        for _k in ("actor", "decision"):
+            _b = json.load(open(os.path.join(d, "brief.json")))
+            _b.pop(_k, None)
+            json.dump(_b, open(os.path.join(d, "brief.json"), "w"))
+            rc, out = run("verify_pipeline.py", d)
+            check(f"a brief with no `{_k}` is refused", rc != 0 and f"no `{_k}`" in out,
+                  f"rc={rc} {out[:120]}")
+            check(f"...and the message says what {_k} is for",
+                  "state of use" in out or "behaviour" in out, out[:200])
+            _b[_k] = "restored"
+            json.dump(_b, open(os.path.join(d, "brief.json"), "w"))
+
+        # An empty string is a forgotten key wearing a value.
+        _b = json.load(open(os.path.join(d, "brief.json")))
+        _b["actor"] = "   "
+        json.dump(_b, open(os.path.join(d, "brief.json"), "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("a blank actor is refused too, not treated as answered", rc != 0, out[:120])
+
+        # And the report hands the reader the yardstick.
+        _b["actor"] = "a maintainer choosing what to review"
+        _b["decision"] = "whether to open the queue at all this week"
+        json.dump(_b, open(os.path.join(d, "brief.json"), "w"))
+        rep = os.path.join(d, "report.md")
+        run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("the report opens with the actor and the decision",
+              "## Whose behaviour this is about" in body
+              and "a maintainer choosing what to review" in body
+              and "whether to open the queue at all this week" in body, body[:300])
+    finally:
+        shutil.rmtree(d, True)
 
 
 def t_quota_gate_fires():
@@ -5050,6 +5104,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_plan_groups, t_merge_families, t_forced_lead_collision,
               t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
               t_probe_advice_actually_clears, t_echo_scan_precision, t_quota_gate_fires,
+              t_actor_and_decision_are_gated,
               t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
               t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
               t_repair_stays_inside_the_pinned_component,

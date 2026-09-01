@@ -411,8 +411,17 @@ So record the split before anything is dispatched, in `$RUN/_work/brief.json`:
 ```json
 {"verbatim_prompt": "<the user's words, exactly as received>",
  "reading": "<the reading you settled on — the Opening's one line>",
+ "actor": "<whose behaviour has to change — SKILL.md Phase 0 step 1b>",
+ "decision": "<what they are deciding at the moment they would>",
  "invented": ["<each constraint or attribute you added that the user did not state>"]}
 ```
+
+`actor` and `decision` are Phase 0 step 1b's answer, written down where the rest of the run can
+see it. They are required and `verify_pipeline.py` refuses a run without them — an un-gated
+Phase 0 step is a step that stops happening. They also reach the reader: `build_report.py` prints
+them in the opening, so someone reading a hundred options has the yardstick to say "these change
+the artifact, not what that person does" in one sentence, rather than discovering it entry by
+entry.
 
 **The rule: an invented premise may describe the world, never the person asking.**
 

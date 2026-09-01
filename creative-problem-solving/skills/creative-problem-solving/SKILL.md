@@ -10,14 +10,13 @@ metadata:
 
 # Creative problem solving
 
-Named creativity frameworks mostly don't work on their own — in head-to-head testing,
-SCAMPER and similar scored no better than a plain prompt, and some scored worse. What has
-evidence behind it is narrower — reaching past the answer you would give first, rather than
-decorating a single sweep with headings. This pipeline does that by generating each pass blind
-under its own constraint, and by asking for enough options that the obvious ones are spent
-early.
+Named creativity frameworks mostly don't work on their own — in head-to-head testing SCAMPER
+and similar scored no better than a plain prompt, some worse. What has evidence behind it is
+narrower: reaching past the answer you would give first. This pipeline does that by generating
+each pass blind under its own constraint, and by asking for enough options that the obvious ones
+are spent early.
 
-So this is an engine, not a menu: the classic methods survive only as **constraint lenses**
+So this is an engine, not a menu — the classic methods survive only as **constraint lenses**,
 applied one at a time. *Structure that makes the next idea harder to reach for helps; structure
 that decorates a single sweep produces longer output that scores better and isn't better.*
 
@@ -37,8 +36,8 @@ two should I pick" is the same mistake in the opposite direction.
 - `references/pruning.md` — the Phase 3 steps. **Required before you prune.**
 - `references/gotchas.md` — the failure modes this produces and what each costs. Read when
   something is going wrong, or once before your first run.
-- `references/lenses.md` — worked prompts per lens, and the demoted ones. **Optional** (the
-  Phase 1 table carries both moves): read it when a lens isn't landing, not as routine.
+- `references/lenses.md` — the routing table for choosing lenses, worked prompts per lens, and
+  the demoted ones. **Read it when choosing**; the Phase 1 table carries what each lens does.
 - `references/evidence.md` — what the research supports, how strongly. Read if the user
   challenges the approach, or before skipping or changing a phase.
 
@@ -79,6 +78,12 @@ Cheap and the highest-leverage phase. Never skip it.
 **1. Find the function, not the form.** Restate the problem as the job to be done, stripped
 of any implied solution. "Design a better pill bottle" → "ensure a person takes the right
 dose at the right time." The form in the brief is the ceiling on the answer.
+
+**1b. Name the actor and the decision.** Who has to behave differently, and what are they
+deciding at the moment they would? If the problem is that someone is not doing something, say
+*who*, *at what moment*, and *what they do instead* — not what the thing they aren't using
+should be like. Step 1 strips the implied solution; this keeps the answer from drifting back
+into it.
 
 **2. Build a banned-word list.** Ban the nouns naming a **shape of answer**; never the nouns
 naming the **thing the answer is about**. Models echo the seed vocabulary, so taking the form
@@ -260,14 +265,9 @@ becomes a label.
 | Morphological | Build a dimension × option grid. **Then:** prune every mutually contradictory pair — *the pruning is the method*; without it this is a filler machine | Many independent variables |
 | Actor reversal | Whoever is the customer becomes the supplier, or vice versa. **Then:** describe what the business looks like from the other side | Business-model problems |
 
-**Choosing, by what the problem smells like:** business model → first principles, actor
-reversal, time-shift, morphological · technical bottleneck → contradiction, first principles,
-analogical transfer · "everything sounds the same" → inversion, analogical transfer,
-constraint extremity · cost structure → constraint extremity, actor reversal, contradiction ·
-improving an existing product → contradiction, constraint extremity · fast-moving tech → time-shift, first
-principles, actor reversal · organisational → actor reversal, inversion, constraint extremity.
-If two lenses would produce the same shape of answer here, drop one and take a more distant
-one.
+**Choosing:** the routing table — which lenses suit a business model, a technical bottleneck,
+a cost structure, an organisational problem — is in `references/lenses.md`. If two lenses would
+produce the same shape of answer here, drop one and take a more distant one.
 
 Two lenses are deliberately demoted: **SCAMPER** only for iterating on something that
 already exists, never a blank page; **Six Thinking Hats** only in Phase 3, where its Black
