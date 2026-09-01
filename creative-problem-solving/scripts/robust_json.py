@@ -36,8 +36,26 @@ def _author(path):
         if b.startswith(prefix): return who
     return "an earlier stage"
 
+def where(path):
+    """`<given> (resolved: <abs>, cwd: <cwd>)`, or just the path when it is already absolute.
+
+    Lives here rather than in each script because this is the failure surface that matters: 23
+    load()/load_obj() call sites funnel through die(), against four hand-wired `no <glob> in {wd}`
+    messages elsewhere. Every writing script already prints `wrote to {abspath}` on success, and
+    none of them resolved anything on failure -- so the moment the resolved path is most needed
+    was the one that withheld it. Measured: a `cd` earlier in one Bash call moved the ground under
+    a later relative argument and the message reported the argument.
+    """
+    a = os.path.abspath(path)
+    return path if a == path else f"{path} (resolved: {a}, cwd: {os.getcwd()})"
+
+
 def die(path, problem, fix):
+    # The BASENAME names which artifact is wrong, which is what the reader needs first; the
+    # resolved path answers "wrong where", which is the question a relative argument raises and
+    # this message used to leave unanswerable -- it printed neither the argument nor the cwd.
     print(f"FAIL: {os.path.basename(path)} — {problem}\n"
+          f"      looked in {where(os.path.dirname(path) or '.')}\n"
           f"      written by {_author(path)}; {fix}")
     sys.exit(1)
 

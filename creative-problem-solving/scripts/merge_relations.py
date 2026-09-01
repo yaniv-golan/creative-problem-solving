@@ -22,21 +22,9 @@ from collections import defaultdict, Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load
+from robust_json import where as _where
 from verdicts import is_id
 from progress import record
-
-def _where(wd):
-    """`<given> (resolved: <abs>, cwd: <cwd>)` — for any failure that names a path.
-
-    Every writing script already prints `wrote to {os.path.abspath(wd)}` on success, and none of
-    them resolved the path on failure. That asymmetry is the bug: the moment the resolved path is
-    most needed is the one where it was not shown. Measured: `FAIL: no pool-*.json in
-    outputs/RUN/_work` on a directory that was full of them, because an earlier `cd` in the same
-    Bash call moved the ground under a later relative argument, and the message reported the
-    argument rather than where it looked.
-    """
-    a = os.path.abspath(wd)
-    return wd if a == wd else f"{wd} (resolved: {a}, cwd: {os.getcwd()})"
 
 
 # The verdict mix of every run whose relations.json is still held: `duplicate` share and joinable

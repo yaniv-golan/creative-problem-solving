@@ -56,7 +56,7 @@ assert:
   # cassettes are ever adopted, this assertion has to move to the live lane or go.
   - max_cost_usd: 60
   # THE REPLY MUST CARRY THE REPORT, NOT A SUMMARY OF IT.
-  # `pipeline.md` step 10: "The file is the answer, and the reply is the file… Do not compose a
+  # `pipeline-report.md` step 10: "The file is the answer, and the reply is the file… Do not compose a
   # second, shorter version." Nothing enforced it. On 2026-08-28 the run shipped a 2,155-character
   # summary while `--check-reply` passed — because one Bash call did `cp report.md reply.md` and
   # checked the copy, which that same page predicts satisfies the gate by construction.

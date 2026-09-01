@@ -225,20 +225,27 @@ def probe_for(npairs, nprobe, per_shard=PER_SHARD, _limit=64):
     return None
 
 
-def main(wd, nshards, nprobe, per_shard=PER_SHARD):
-    pairs = load(os.path.join(wd, "candidates.json"), "pairs")
+def dedup(pairs):
+    """(uniq, n_dupe, n_malformed, n_self) — the one dedup, shared by main() and --dry-run.
 
-    # THREE REASONS, COUNTED SEPARATELY. These were one `continue` and the summary reported the
-    # lot as "duplicate proposal(s) dropped", so a proposer emitting records with a missing id --
-    # or pairing an option with itself -- was described to the operator as one that repeated
-    # itself. That is a different defect with a different fix, and the line named the wrong one.
-    # `is_id`, NOT truthiness. `not a or not b` passes any non-empty value, so an integer id was
-    # dealt to an adjudicator and first refused four stages later -- at which point the message
-    # could say the id was unknown but not that a proposer had invented it. Worse, an int then broke
-    # the named failure this script was already trying to print, because the unknown-id list joins
-    # its members as strings. A list or dict side raised `unhashable type` inside frozenset() before
-    # any check ran at all. The predicate lives in verdicts.py so the three readers of these records
-    # cannot drift apart again; this file used to be the second of the three that disagreed.
+    THREE REASONS, COUNTED SEPARATELY. These were one `continue` and the summary reported the
+    lot as "duplicate proposal(s) dropped", so a proposer emitting records with a missing id --
+    or pairing an option with itself -- was described to the operator as one that repeated
+    itself. That is a different defect with a different fix, and the line named the wrong one.
+    `is_id`, NOT truthiness. `not a or not b` passes any non-empty value, so an integer id was
+    dealt to an adjudicator and first refused four stages later -- at which point the message
+    could say the id was unknown but not that a proposer had invented it. Worse, an int then broke
+    the named failure this script was already trying to print, because the unknown-id list joins
+    its members as strings. A list or dict side raised `unhashable type` inside frozenset() before
+    any check ran at all. The predicate lives in verdicts.py so the three readers of these records
+    cannot drift apart again; this file used to be the second of the three that disagreed.
+
+    A FUNCTION, not a loop in main(), because --dry-run reimplemented it as a one-line set
+    comprehension and diverged in both directions: it counted 215 unique where the real run
+    counted 200 (it kept self-pairs and null-id records), and it raised the exact
+    `unhashable type: 'list'` this docstring records as fixed. The count is the sole input to
+    plan_shards, so a dry-run that dedups differently previews a sharding that will not happen.
+    """
     seen, uniq = set(), []
     n_dupe = n_malformed = n_self = 0
     for p in pairs:
@@ -253,6 +260,24 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
         if k in seen:
             n_dupe += 1; continue
         seen.add(k); uniq.append({"a": a, "b": b})
+    return uniq, n_dupe, n_malformed, n_self
+
+
+def main(wd, nshards, nprobe, per_shard=PER_SHARD):
+    pairs = load(os.path.join(wd, "candidates.json"), "pairs")
+
+    # THREE REASONS, COUNTED SEPARATELY. These were one `continue` and the summary reported the
+    # lot as "duplicate proposal(s) dropped", so a proposer emitting records with a missing id --
+    # or pairing an option with itself -- was described to the operator as one that repeated
+    # itself. That is a different defect with a different fix, and the line named the wrong one.
+    # `is_id`, NOT truthiness. `not a or not b` passes any non-empty value, so an integer id was
+    # dealt to an adjudicator and first refused four stages later -- at which point the message
+    # could say the id was unknown but not that a proposer had invented it. Worse, an int then broke
+    # the named failure this script was already trying to print, because the unknown-id list joins
+    # its members as strings. A list or dict side raised `unhashable type` inside frozenset() before
+    # any check ran at all. The predicate lives in verdicts.py so the three readers of these records
+    # cannot drift apart again; this file used to be the second of the three that disagreed.
+    uniq, n_dupe, n_malformed, n_self = dedup(pairs)
     if not uniq: sys.exit("FAIL: candidates.json proposed no usable pairs")
 
     check_ids_are_real(wd, uniq)
@@ -418,14 +443,24 @@ if __name__ == "__main__":
     if "--dry-run" in a:
         _wd, _probe, _ps = a[0], opt("--probe", 48), opt("--per-shard", PER_SHARD)
         _pairs = load(os.path.join(_wd, "candidates.json"), "pairs")
-        _uniq = {frozenset((p.get("a"), p.get("b"))) for p in _pairs if isinstance(p, dict)}
-        _n = len(_uniq)
+        _u, _d, _m, _sp = dedup(_pairs)
+        _n = len(_u)
+        _drop = ", ".join(f"{c} {w}" for c, w in
+                          ((_d, "duplicate"), (_m, "malformed"), (_sp, "self-pair")) if c)
+        _forced = opt("--shards", None)
         _ns, _want, _cap = plan_shards(_n, _probe, _ps)
-        print(f"{len(_pairs):,} proposed, {_n:,} unique after dedup")
+        print(f"{len(_pairs):,} proposed, {_n:,} unique after dedup"
+              + (f" ({_drop} dropped)" if _drop else ""))
         print(f"--probe {_probe} --per-shard {_ps}")
         print(f"  want {_want} shards ({_n} + {_probe} probe copies, ceil / {_ps} per shard)")
         print(f"  cap  {_cap} shards (the probe cross-checks --probe / 4 = {_probe // 4}, "
               f"floor {SHARDS_MIN})")
+        if _forced is not None:
+            # --shards is an explicit override that skips the budget entirely in main(), so a
+            # dry-run that ignored it previewed a different run from the one about to happen.
+            print(f"  plan {_forced} shards (--shards override; the budget below does not apply), "
+                  f"about {(_n + _probe) // max(1, _forced)} pairs each")
+            sys.exit(0)
         print(f"  plan {_ns} shards, about {(_n + _probe) // _ns} pairs each")
         if _want > _cap:
             _p = probe_for(_n, _probe, _ps)

@@ -15,24 +15,12 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, one_line
+from robust_json import where as _where
 # One definition of the rule this script exists to obey; see verdicts.py.
 from verdicts import JOINING, SHARE_MAX, share_breach
 from verdicts import relation_of
 from verdicts import share_ok as _share_ok
 from progress import record
-
-def _where(wd):
-    """`<given> (resolved: <abs>, cwd: <cwd>)` — for any failure that names a path.
-
-    Every writing script already prints `wrote to {os.path.abspath(wd)}` on success, and none of
-    them resolved the path on failure. That asymmetry is the bug: the moment the resolved path is
-    most needed is the one where it was not shown. Measured: `FAIL: no pool-*.json in
-    outputs/RUN/_work` on a directory that was full of them, because an earlier `cd` in the same
-    Bash call moved the ground under a later relative argument, and the message reported the
-    argument rather than where it looked.
-    """
-    a = os.path.abspath(wd)
-    return wd if a == wd else f"{wd} (resolved: {a}, cwd: {os.getcwd()})"
 
 
 

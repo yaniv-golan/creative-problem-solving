@@ -243,19 +243,26 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     produced this rule, two of the three premises the pipeline had invented reached the reader as
     statements *about the reader* — none of which appears that way in the checked file.
 
-    Write the reply you intend to send to a file first and check it:
+    **Have the script write the reply, then check it:**
+
+    `python3 "$CPS/scripts/build_report.py" --emit-reply "$BASE/$RUN/report.md"`
 
     `python3 "$CPS/scripts/build_report.py" --check-reply "$BASE/$RUN/reply.md" --against "$BASE/$RUN/report.md"`
 
-    It refuses a reply that does not contain the report's rendered options — a containment test,
-    not a formatting one.
+    The first writes `reply.md` from the finished report and refuses if a placeholder is still
+    unfilled. **You do not author it**, which is the point: the step becomes "send these bytes"
+    with no judgement in it, and the copy stops being something a run performs and then calls a
+    gate.
 
-    **Be clear about what that check is worth now.** With `--emit-reply` writing the file, the
-    check is tautological: it compares a script-written reply against the manifest that same
-    script built. Its honest residual purpose is catching a corrupted or truncated write, and
-    nothing more. It was never stronger — before, `cp report.md reply.md` satisfied it by
-    construction, which is the same tautology wearing a manual step — and a run did exactly that,
-    passed the check, and sent a fresh summary anyway.
+    The second refuses a reply that does not contain the report's rendered options — a containment
+    test, not a formatting one.
+
+    **What each is worth, since they are not worth the same.** Run in this order the containment
+    check is close to tautological: it compares a script-written reply against the manifest that
+    same script built, and its residual value is catching a corrupted or truncated write. It is a
+    real gate on the other path — a hand-written `reply.md` that summarises is refused, by option
+    text, with the count and examples — which is why it stays. What neither can do is read the
+    message you actually send. They read files.
 
     **Nothing this script runs can see the message you actually send.** It reads files. The only
     thing that reaches the sent message is `tests/scenarios/ideas-command.yaml`, which asserts
@@ -342,8 +349,13 @@ saying what the phase produced and what happens next, and you repeat it. Seven b
 
 Each says what the phase produced **and what is about to happen**, including how long a wait to
 expect. The forward half matters as much as the counts: silence that was predicted is a different
-experience from silence that was not, and the longest stretch in the run — adjudication — is
-announced by the line before it rather than explained by one after.
+experience from silence that was not, and every long stretch is announced by the line before it
+rather than explained by one after. **No line claims to be the longest.** Which stage that is
+depends on the architecture and has already changed once — adjudication was, until it was sharded
+N ways and pair proposal stayed a single serial agent; on the last measured run pair proposal took
+823s against adjudication's 534s, while the line before adjudication was still calling it the
+longest. The orchestrator repeats these verbatim, so a wrong forecast here is one nobody can
+correct.
 
 `verify_pipeline.py` also prints a `SAY:` line when it **refuses** the run. That is the boundary
 most easily lost: it is a gate, so a run it stops exits before printing counts, and a reader who

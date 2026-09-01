@@ -57,7 +57,8 @@ candidate causes *and* argues for each. Name them, give the test, stop. (Observe
 - Who runs it: [required whenever it needs people or a mandate the asker doesn't have]
 
 […several of these, in the rank order the pipeline produced — see `references/pipeline.md`
-step 7, which ranks by whether an option would survive vetting…]
+step 7 — in `references/pipeline-report.md` — which ranks by whether an option would
+ survive vetting…]
 
 **Checked and failed:** [only options a search refuted, each with its source]
 **What I'd look at first, and what would change that:** [your actual read + 1-2 things
@@ -123,7 +124,7 @@ survives, present it in compact form rather than cutting it.
 
 **Ordering and judgement are different jobs, and they will disagree.** The order is the
 pipeline's: families arrive ranked by whether they would survive vetting (`references/pipeline.md`
-step 7). What stops the safe idea burying the interesting ones is not the order but the rule that
+step 7, in `references/pipeline-report.md`). What stops the safe idea burying the interesting ones is not the order but the rule that
 nothing is cut — a strange option is never ranked out of existence, only ranked. Then say what
 you'd actually look at first in the closing read, often not the top-ranked one. That divergence is
 information, not an inconsistency: say both. And don't promise a ranking you don't give.

@@ -1007,7 +1007,11 @@ else:
 # nothing forbids overshoot), and that file is gitignored, so the shipped clause has to carry the
 # whole rule with no pointer.
 print("\nthe quota is documented as a target, in the shipped text")
-_q = read_text("%s/skills/%s/references/pipeline.md" % (plugin_name, skill_names[0]))
+# Comments stripped first: prepending `<!-- 30 is a target, not a bound ... -->` to the file
+# satisfied this while the operative paragraph was deleted. A gate a comment can pass is a gate
+# that checks the file contains a string, not that the reader is told anything.
+_q = re.sub(r"<!--.*?-->", "", read_text("%s/skills/%s/references/pipeline.md"
+                                        % (plugin_name, skill_names[0])), flags=re.S)
 _missing_q = [_p for _p in ("target, not a bound",
                             "Nothing anywhere\ncounts pool sizes")
               if _p.replace("\n", " ") not in " ".join(_q.split())]
@@ -1024,20 +1028,89 @@ else:
 _sizey = []
 for _f in sorted(glob.glob(os.path.join(plugin_name, "scripts", "*.py"))):
     _src = read_text(_f)
-    # The BEHAVIOUR, not a spelling: the length of something that is a pool or its items,
-    # compared against a numeric literal. Quote-agnostic, because the first draft matched only
-    # `['items']` and silently passed a planted `len(d["items"]) < 30` -- a gate that does not
-    # fire is worse than none, since it is also a claim that it looked. Requiring `items` or
-    # `pool` inside the call is what keeps it off the many legitimate `len(x) < 2` guards: the
-    # draft without that requirement flagged all eight scripts.
-    if re.search(r"""len\(\s*[^)\n]*\b(?:items|pool)\b[^)\n]*\)\s*(?:[<>]=?|[!=]=)\s*\d""",
-                 _src):
-        _sizey.append(os.path.basename(_f))
+    # AST, not a regex. The regex draft matched only an inline `len(...) < 30` whose call text
+    # contained `items`/`pool`, and six of seven natural spellings walked past it: a count bound
+    # to a variable first, a reversed comparison, `not in range(...)`, `sum(1 for _ in items)`,
+    # and a named QUOTA constant. A gate that reports more than it checked is worse than none,
+    # which is the rule the `no lead key` assertion below was written under.
+    #
+    # What is actually forbidden is comparing a pool's option count against anything. So: find
+    # names bound to a count of something pool-shaped, then flag any comparison involving either
+    # that name or such a count directly.
+    try:
+        _tree = ast.parse(_src)
+    except SyntaxError:
+        continue
+
+    # Names bound to a pool's option LIST, so `opts = pool["items"]` then `len(opts) < 30` is
+    # caught too -- the one evasion that survived the first AST draft, and the spelling a person
+    # writing this for real is most likely to use.
+    _lists = set()
+    for _pass in range(3):                       # settle chains: a = pool["items"]; b = a
+        _before = len(_lists)
+        for _n in ast.walk(_tree):
+            if not isinstance(_n, ast.Assign):
+                continue
+            _v = _n.value
+            _hit = ((isinstance(_v, ast.Subscript) and isinstance(_v.slice, ast.Constant)
+                     and _v.slice.value in ("items", "options"))
+                    or (isinstance(_v, ast.Attribute) and _v.attr in ("items", "options"))
+                    or (isinstance(_v, ast.Name) and _v.id in _lists))
+            if _hit:
+                for _t in _n.targets:
+                    if isinstance(_t, ast.Name):
+                        _lists.add(_t.id)
+        if len(_lists) == _before:
+            break
+
+    def _pool_items(node):
+        """Is this expression a pool's OPTION LIST -- not a list of pools, not family members?
+
+        `d["items"]`, `d["options"]`, `x.items`, or a bare `items`/`options` name. Deliberately
+        NOT `pools`: `len(pools) >= 3` counts how many lenses reached a family, which is the
+        convergence line and is fine. Getting this wrong in the loose direction flagged three
+        legitimate call sites -- a merge's cost comparison and that convergence count -- and a
+        gate that cries wolf is one someone deletes.
+        """
+        if isinstance(node, ast.Subscript):
+            _k = node.slice
+            return isinstance(_k, ast.Constant) and _k.value in ("items", "options")
+        if isinstance(node, ast.Attribute):
+            return node.attr in ("items", "options")
+        if isinstance(node, ast.Name):
+            return node.id in ("items", "options") or node.id in _lists
+        return False
+
+    def _is_count(node):
+        """`len(<pool items>)` or `sum(1 for _ in <pool items>)`."""
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+            return False
+        if node.func.id == "len":
+            return bool(node.args) and _pool_items(node.args[0])
+        if node.func.id == "sum" and node.args and isinstance(node.args[0], ast.GeneratorExp):
+            return any(_pool_items(g.iter) for g in node.args[0].generators)
+        return False
+
+    _counts = set()
+    for _n in ast.walk(_tree):
+        if isinstance(_n, ast.Assign) and _is_count(_n.value):
+            for _t in _n.targets:
+                if isinstance(_t, ast.Name):
+                    _counts.add(_t.id)
+
+    def _is_countish(node):
+        return _is_count(node) or (isinstance(node, ast.Name) and node.id in _counts)
+
+    for _n in ast.walk(_tree):
+        if isinstance(_n, ast.Compare) and (
+                _is_countish(_n.left) or any(_is_countish(c) for c in _n.comparators)):
+            _sizey.append("%s:%d" % (os.path.basename(_f), _n.lineno))
+            break
 if _sizey:
-    fail("a script compares a pool's option count against something: %s. No pool-size check is "
+    fail("a script compares a pool's option count: %s. No pool-size check is "
          "derivable in either direction -- see references/pipeline.md step 3." % ", ".join(_sizey))
 else:
-    ok("no script compares a pool's option count against a bound")
+    ok("no script compares a pool's option count against anything")
 
 print("\nthe families.json shape is documented as it is emitted")
 _mf = os.path.join(REPO, plugin_name, "scripts", "merge_families.py")
@@ -1357,7 +1430,7 @@ print()
 # TWO FILES CARRIED THE SAME WRONG SENTENCE, AND A FIX THAT EDITED ONE WOULD HAVE SHIPPED IT.
 #
 # "Output in chat unless the user asks for a file." lived in BOTH SKILL.md and references/report.md
-# while pipeline.md step 10 unconditionally requires presenting the file. The first fix drafted for
+# while pipeline-report.md step 10 unconditionally requires presenting the file. The first fix drafted for
 # this edited report.md and checked report.md -- so the contradiction would have survived in
 # SKILL.md, the always-loaded one, under a green check. That is the false-green this repo exists to
 # refuse, committed by the tool meant to catch it. So this reads the LIST, and grows when a third
@@ -1392,7 +1465,7 @@ _chat_only = [p for p in ("creative-problem-solving/skills/creative-problem-solv
                           "/references/report.md")
               if "unless the user asks for a file" in read_text(p)]
 if _chat_only:
-    fail("%s still carr%s the pre-pipeline chat-only default. pipeline.md step 10 unconditionally "
+    fail("%s still carr%s the pre-pipeline chat-only default. pipeline-report.md step 10 unconditionally "
          "presents the file, so the two cannot both be right. The sentence lived in TWO files: "
          "check both, or a fix that edits one ships the contradiction in the other."
          % (", ".join(_chat_only), "ies" if len(_chat_only) == 1 else "y"))

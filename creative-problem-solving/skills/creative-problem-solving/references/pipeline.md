@@ -345,10 +345,14 @@ times. Instead:
 1. Otherwise dispatch **generator 1 only**, with the bare spelling.
 2. In Bash, `ls "$BASE/$RUN/_work/pool-1.json"`.
 3. If it is there, the bare spelling is right — dispatch the remaining eight with it.
-4. If it is missing or the write was refused, your sub-agents' file tools want the absolute path.
-   Dispatch all nine — generator 1 again among them — with `$BASE/$RUN/_work/…`, and say in one
-   line that you did.
-5. **If it is missing from `$BASE/$RUN/_work` but a file of that name exists elsewhere** — look
+4. **If it is missing, first check whether it landed somewhere else (branch 5).** If it did not —
+   the write was refused, or produced nothing anywhere — your sub-agents' file tools want the
+   absolute path. Dispatch all nine, generator 1 again among them, with `$BASE/$RUN/_work/…`, and
+   say in one line that you did.
+5. **If it is missing from `$BASE/$RUN/_work` but a file of that name exists elsewhere** — this
+   is the same dispatch action as branch 4 and a **different** closing line, which is why it is
+   listed separately: a run that stops at 4 takes the right next step and never tells the reader
+   about the file it left behind. Look
    with `find "$HOME" "$(pwd)" -name "pool-1.json" -not -path "*/$BASE/*" 2>/dev/null`, and the
    likely place is `<file-tool cwd>/$RUN/_work/`, which is why step 0b echoes `HOME=` beside
    `PWD=` — then
@@ -530,8 +534,7 @@ assumed: a negation round against that structure returned one search-verified op
 
    `python3 "$CPS/scripts/progress.py" "$BASE/$RUN/_work" generated`
 
-   This is the reader's first word since the Opening, and the phase before it is the longest
-   uninterrupted one in the run. It prints nothing if no pool landed, which is itself the
+   This is the reader's first word since the Opening, and it comes after a long silence. It prints nothing if no pool landed, which is itself the
    signal that generation failed rather than finished.
 
 4. **One `pair-proposer` proposes candidate relationships.** *Tell it what its output feeds: a
@@ -637,8 +640,9 @@ assumed: a negation round against that structure returned one search-verified op
    **`verify_pipeline.py` re-derives this filter from `relations.json` and refuses an
    over-inclusive, under-inclusive or invented one**, naming the count and examples in each case.
    A mistake here stops the run rather than reaching the reader — so there is no version of this
-   step that is cheaper to guess at than to do, and a run that skipped it fails at step 9 with a
-   message saying exactly which pairs are wrong.
+   step that is cheaper to guess at than to do. A *wrong* file fails at step 9 with the count and
+   examples of the offending pairs; a *missing* one fails with a message naming the step, since
+   there are no pairs to name.
 
    **Then plan the groups:**
 

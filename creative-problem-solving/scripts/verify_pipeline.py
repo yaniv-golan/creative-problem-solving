@@ -16,30 +16,18 @@ reaching the reader as a shorter list nobody noticed.
 
 Exits non-zero and prints what is wrong. Exit 0 prints the counts the report should use.
 """
-import json, sys, glob, os, re
+import json, sys, glob, os, re, time
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, load_obj
+from robust_json import where as _where
 from build_report import effective_lead
 from progress import announced, BOUNDARIES
 # One definition of the share rule; merge_families.py bounds its merges by the same import.
 from verdicts import JOINING, SEPARATING, SHARE_MAX as SEP_SHARE_MAX, share_breach  # noqa: F401
 from verdicts import relation_of
 from verdicts import pool_index_problem, pool_index_set_problem
-
-def _where(wd):
-    """`<given> (resolved: <abs>, cwd: <cwd>)` — for any failure that names a path.
-
-    Every writing script already prints `wrote to {os.path.abspath(wd)}` on success, and none of
-    them resolved the path on failure. That asymmetry is the bug: the moment the resolved path is
-    most needed is the one where it was not shown. Measured: `FAIL: no pool-*.json in
-    outputs/RUN/_work` on a directory that was full of them, because an earlier `cd` in the same
-    Bash call moved the ground under a later relative argument, and the message reported the
-    argument rather than where it looked.
-    """
-    a = os.path.abspath(wd)
-    return wd if a == wd else f"{wd} (resolved: {a}, cwd: {os.getcwd()})"
 
 
 # The floor, against 48 planted by shard_candidates.py. The two are deliberately not equal:
@@ -358,6 +346,23 @@ def main(wd):
                 r = rel_of.get(frozenset((mem[x], mem[y])))
                 if r in SEPARATING:
                     conflicts.append((f.get("id"), mem[x], mem[y], r))
+    # WRITTEN ON EVERY PASS, including the empty one. `_work` is never deleted and the archive
+    # manifest enumerates its files as evidence, so a warn file left behind by an earlier pass
+    # reads as a live finding after the finding is gone -- measured: edit relations.json until the
+    # WARN cannot fire, re-run, and the previous pass's 16 pairs are still sitting there with no
+    # run id, no timestamp and nothing saying which pass produced them.
+    _wp = os.path.join(wd, "warn-separated-pairs.json")
+    try:
+        _body = json.dumps({"as_of": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                            "families": len(fams), "conflicts": len(conflicts),
+                            "pairs": [{"family": fid, "a": a, "b": b, "relation": r}
+                                      for fid, a, b, r in conflicts]}, indent=1)
+        with open(_wp, "w", encoding="utf-8") as _fh:
+            _fh.write(_body)
+        _full = f" Full list ({len(conflicts)}): {_wp}."
+    except Exception as _e:                                        # noqa: BLE001
+        _full = f" (could not write the full list: {_e})"
+
     if conflicts:
         ex = "; ".join(f"{fid}: {a}~{b} = {r}" for fid, a, b, r in conflicts[:5])
         # THE EVIDENCE, NOT A SAMPLE OF IT. The WARN shows five and then asks the reader to check
@@ -366,21 +371,6 @@ def main(wd):
         # be done. There is no --explain and the pairs went nowhere. A truncated list plus a task
         # that needs the whole list is a request the reader cannot fulfil. Lives in _work/, under
         # outputs/, so the never-delete rule covers it and no new disposal question is created.
-        # SERIALIZE BEFORE OPENING. `open(path, "w")` truncates first, so a failure while
-        # building the payload leaves a zero-byte file that looks like an empty result rather
-        # than a failed write -- which is how the first draft of this shipped: json was not
-        # imported here, NameError escaped an `except OSError`, and the run left behind an
-        # unparseable warn file. Advisory evidence must never fail the run, so the except is
-        # broad on purpose and the WARN degrades to naming the reason instead of the path.
-        _wp = os.path.join(wd, "warn-separated-pairs.json")
-        try:
-            _body = json.dumps({"pairs": [{"family": fid, "a": a, "b": b, "relation": r}
-                                          for fid, a, b, r in conflicts]}, indent=1)
-            with open(_wp, "w", encoding="utf-8") as _fh:
-                _fh.write(_body)
-            _full = f" Full list ({len(conflicts)}): {_wp}."
-        except Exception as _e:                                        # noqa: BLE001
-            _full = f" (could not write the full list: {_e})"
         # PRICE THE REMEDY. This line used to end "split them if not", which sends the reader at a
         # re-run of merge_families.py -- and pipeline.md states that invalidates steps 7 and 8, a
         # full re-rank plus fresh verification searches. A run read the named family, judged it
@@ -766,8 +756,15 @@ def main(wd):
             _how.append(f"{', '.join(_prog)} — one `progress.py <work-dir> <stage>` call at the "
                         f"end of that phase")
         if _script:
-            _how.append(", ".join(f"{b} — printed by {_owner[b]}, so that script did not run "
-                                  f"(or its output was not repeated)" for b in _script))
+            # NOT "so that script did not run". It cannot not have run: this check is at the end
+            # of a pass that already refused a missing relations.json and a missing families.json,
+            # so by the time we get here both scripts have demonstrably produced their output.
+            # Naming an impossible cause is the same defect as naming an unusable remedy, which is
+            # what the other half of this message was just fixed for.
+            _how.append(", ".join(f"{b} — {_owner[b]} produced its output but recorded no line, "
+                                  f"so it is an older copy of that script, or "
+                                  f"progress-announced.txt was not carried with the run"
+                                  for b in _script))
         warn(f"{len(_missed)} phase boundar(ies) never printed a line for the reader: "
              f"{', '.join(_missed)}. The run is fine; the reader was told less than the steps "
              f"say to tell them. " + "; ".join(_how) + ".")

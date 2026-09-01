@@ -86,8 +86,6 @@ def record(wd, stage):
         fh.write(stage + "\n")
 
 
-_record = record  # the pre-0.4.2 spelling, kept so an in-flight caller does not break
-
 
 def announced(wd):
     """The boundaries that printed, for verify_pipeline.py. Empty when none did."""

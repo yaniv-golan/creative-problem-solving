@@ -2577,6 +2577,70 @@ def t_infeasible_lead_core():
     shutil.rmtree(tempfile.mkdtemp(), True)
 
 
+def t_quota_gate_fires():
+    """check-repo's two quota gates must actually refuse a planted defect, in both halves.
+
+    The decision they defend -- no pool-size check in either direction -- has been re-proposed
+    five times by three readers, each time under a different word, so these are the one place a
+    written rule is backed by something that stops a commit. A gate nobody has watched fail is a
+    gate nobody has tested, and the first draft of the script half matched only `['items']` and
+    silently passed a planted `len(d["items"]) < 30`.
+    """
+    print("\nthe quota gates refuse a planted defect")
+    import shutil as _sh, subprocess as _sp, tempfile as _tf
+    src = ROOT / "creative-problem-solving" / "skills" / "creative-problem-solving" / \
+        "references" / "pipeline.md"
+    script = ROOT / "creative-problem-solving" / "scripts" / "plan_groups.py"
+    _md, _py = src.read_text(encoding="utf-8"), script.read_text(encoding="utf-8")
+
+    def _repo():
+        return _sp.run([sys.executable, str(ROOT / "tools" / "check-repo.py")],
+                       capture_output=True, text=True, cwd=str(ROOT)).stdout
+
+    try:
+        check("CONTROL: the tree passes as shipped", "no longer states that the quota" not in _repo()
+              and "option count:" not in _repo(), "clean tree already fails")
+
+        # PROSE HALF: weakening the clause, and hiding it in a comment.
+        src.write_text(_md.replace("**30 is a target, not a bound.**", "**30 is the number.**", 1),
+                       encoding="utf-8")
+        check("a weakened quota clause is refused", "no longer states that the quota" in _repo(),
+              "gate did not fire")
+        src.write_text("<!-- 30 is a target, not a bound. Nothing anywhere\ncounts pool sizes -->\n"
+                       + _md.replace("**30 is a target, not a bound.**", "**30 is the number.**", 1),
+                       encoding="utf-8")
+        check("and a comment does not satisfy it", "no longer states that the quota" in _repo(),
+              "an HTML comment passed the gate")
+        src.write_text(_md, encoding="utf-8")
+
+        # SCRIPT HALF: the spellings someone would actually write.
+        for label, body in (
+            ("inline literal", 'def _p(d):\n    return len(d["items"]) < 30\n'),
+            ("list bound first", 'def _p(pool):\n    o = pool["items"]\n    return len(o) < 30\n'),
+            ("count in a variable", 'def _p(pool):\n    n = len(pool["items"])\n    return n < 30\n'),
+            ("reversed", 'def _p(pool):\n    return 30 > len(pool["items"])\n'),
+            ("not in range", 'def _p(pool):\n    return len(pool["items"]) not in range(15, 31)\n'),
+            ("sum generator", 'def _p(items):\n    return sum(1 for _ in items) > 30\n'),
+            ("named constant", 'Q = 30\ndef _p(pool):\n    return len(pool["items"]) < Q\n'),
+        ):
+            script.write_text(_py + "\n\n" + body, encoding="utf-8")
+            check(f"a pool-size check is refused: {label}", "option count:" in _repo(),
+                  f"{label} walked past the gate")
+        script.write_text(_py, encoding="utf-8")
+
+        # And it must not fire on the counts that are legitimate.
+        script.write_text(_py + '\n\ndef _ok(pools, members):\n'
+                                '    return len(pools) >= 3 and len(members) < 2\n',
+                          encoding="utf-8")
+        check("CONTROL: counting pools and members is not flagged", "option count:" not in _repo(),
+              "the gate fires on legitimate counts")
+    finally:
+        src.write_text(_md, encoding="utf-8")
+        script.write_text(_py, encoding="utf-8")
+        _sp.run([sys.executable, str(ROOT / "tools" / "sync-mirrors.py")],
+                capture_output=True, cwd=str(ROOT))
+
+
 def t_probe_advice_actually_clears():
     """The --probe value the over-budget WARN names must clear the WARN. Swept, not spot-checked.
 
@@ -4533,6 +4597,17 @@ def t_every_phase_boundary_speaks():
               out[:200])
         check("and names the script that owns it, not a progress.py call it would refuse",
               "merge_families.py" in out, out[:240])
+
+        # THE ZERO-MISSING PATH, restored rather than dropped. The pre-0.4.2 version of this test
+        # asserted total silence and was deleted when two boundaries were added to the audit --
+        # which left nothing testing that a fully-narrated run draws NO warning, i.e. that the
+        # audit does not fire on a correct run. Record the last boundary by hand rather than
+        # re-running merge_families.py, which would invalidate the ranking by mtime.
+        _p = importlib.machinery.SourceFileLoader("progress", str(SCRIPTS / "progress.py")).load_module()
+        _p.record(d, "grouped")
+        rc, out = run("verify_pipeline.py", d)
+        check("CONTROL: a fully-narrated run draws no boundary warning",
+              "never printed a line" not in out, out[:200])
     finally:
         shutil.rmtree(d, True)
 
@@ -4974,7 +5049,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,
               t_plan_groups, t_merge_families, t_forced_lead_collision,
               t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
-              t_probe_advice_actually_clears, t_echo_scan_precision,
+              t_probe_advice_actually_clears, t_echo_scan_precision, t_quota_gate_fires,
               t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
               t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
               t_repair_stays_inside_the_pinned_component,

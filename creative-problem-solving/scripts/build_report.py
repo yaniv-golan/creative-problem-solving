@@ -385,7 +385,7 @@ def main(wd, out):
 STOPWORDS = set("""the and for with that this from they them their there here what when where
 which who whom whose will would could should have has had been being are was were you your our
 its it's not but all any can may might must into onto over under about above below between more
-most span some such than then these those very just only also because while after before each other
+most some such than then these those very just only also because while after before each other
 own same too don't isn't aren't a an as at be by do does did for from get go got had has have
 he her hers him his how i if in is it its me my no nor now of off on once one or other ought
 out own per put said say says see seen she so some soon still take than that the theirs there
@@ -726,17 +726,25 @@ def emit_reply(report_path, reply_path=None):
     """
     if not os.path.exists(report_path):
         sys.exit(f"FAIL: {report_path} does not exist — build the report before emitting a reply")
-    body = open(report_path, encoding="utf-8-sig").read()
+    # BYTES, NOT TEXT. Reading with utf-8-sig strips a BOM and universal-newline mode rewrites
+    # CRLF, so a text round-trip silently produced a DIFFERENT file while the line below said
+    # "byte-identical" -- measured at 83,375 -> 83,372 with a BOM and 84,211 -> 83,372 with CRLF.
+    # That line is the operator's instruction ("Send these bytes"), so a false identity claim in
+    # it is the same class of defect as a gate that reports more than it checked.
+    raw = open(report_path, "rb").read()
+    body = raw.decode("utf-8-sig", errors="replace")
     left = re.findall(r"\{\{[^}]*\}\}", body)
     if left:
         sys.exit(f"FAIL: {report_path} still has {len(left)} unfilled placeholder(s), e.g. "
                  f"{left[0][:60]}. Fill them with --fill before emitting the reply: a reply "
                  f"carrying a raw {{{{SLOT}}}} is what the reader would receive.")
     reply_path = reply_path or os.path.join(os.path.dirname(report_path), "reply.md")
-    with open(reply_path, "w", encoding="utf-8") as fh:
-        fh.write(body)
+    if os.path.abspath(reply_path) == os.path.abspath(report_path):
+        sys.exit(f"FAIL: refusing to write the reply over the report itself ({reply_path})")
+    with open(reply_path, "wb") as fh:
+        fh.write(raw)
     print(f"wrote {os.path.abspath(reply_path)} — {len(body.split())} words, "
-          f"byte-identical to {os.path.basename(report_path)}. Send these bytes.")
+          f"{len(raw):,} bytes, identical to {os.path.basename(report_path)}. Send these bytes.")
     return reply_path
 
 
@@ -824,8 +832,10 @@ def fill(path, slots_path):
     if not os.path.exists(slots_path):
         sys.exit(f"FAIL: {slots_path} does not exist. If a file tool wrote it, it may have landed "
                  f"in that tool's namespace rather than the shell's — see references/pipeline.md "
-                 f"step 0b. Write it at the bare path $RUN/_work/slots.json and pass this script "
-                 f"the $BASE/-prefixed form.")
+                 f"step 0b. Write it with whichever spelling that stagger settled on — bare "
+                 f"$RUN/_work/slots.json, or the absolute form — and pass this script the "
+                 f"$BASE/-prefixed form. Which one is right is host-dependent, so a message "
+                 f"naming one of them flatly sends half of all hosts back into this failure.")
     try:
         slots = json.load(open(slots_path, encoding="utf-8-sig"))
     except Exception as exc:
