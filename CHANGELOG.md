@@ -7,6 +7,57 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Two messages named a remedy and withheld what it pointed at.** Both were found by a critique
+  run (`sess-crit-6d4b9a47`) rather than by a test, because both are correct code emitting a
+  sentence a reader cannot act on. `plan_groups.py`'s over-budget WARN said *"Check its result
+  first"* while reporting only a count and the largest size — "its" had no referent, and the run
+  guessed the highest task index, guessed wrong, and sent a splitting instruction to a grouper
+  holding forty-one singletons. `pack()` is first-fit-**decreasing**, so the over-budget task is
+  near the front and the plausible guess is the last one; the index was already in hand, since
+  `group-task-<k>.json` is written by `enumerate(packed, 1)` eleven lines above. It now names every
+  offending file. The test builds three tasks rather than one on purpose: with a single task,
+  "names the only file" and "names the right file" are indistinguishable.
+
+  `verify_pipeline.py`'s separated-pairs WARN said *"split them if not"* without saying that
+  splitting means re-running `merge_families.py` — which this same release documented as
+  invalidating steps 7 and 8, a full re-rank plus fresh verification searches. The run read the
+  named family, judged it coherent, and recorded that it could not have acted otherwise without
+  paying a cost the message hid. The sentence that fixes it was already written one file away.
+
+- **Step 0b checked the sub-agent path spelling after nine dispatches had already used it.** It said
+  to confirm the files landed *"after the first dispatch that writes"*, and that dispatch is the
+  batch of nine generators — so on a host whose `Write` contract demands an absolute path, the
+  documented bare spelling is a documented failure the run has already committed nine times. It now
+  dispatches **generator 1 alone**, `ls`-es its pool, and sends the other eight with whichever
+  spelling that settled: one generator's latency, not a stage, using a write the run was going to
+  make anyway. A throwaway probe file was considered and rejected — it would have to live in
+  `_work`, where step 0b's own emptiness guard sees it, and removing it would break the rule that
+  nothing under `outputs/` is ever deleted. Two neighbouring paragraphs that asserted the bare
+  spelling unconditionally were changed in the same edit; leaving them would have reproduced, four
+  paragraphs apart, the contradiction fixed below.
+
+- **Two shipped files told the reader the answer lives in chat; step 10 said it is a file.**
+  *"Output in chat unless the user asks for a file."* sat in **both** `SKILL.md` and
+  `references/report.md`, while `pipeline.md` step 10 unconditionally requires presenting the report
+  file. The first fix drafted for this edited one file and checked one file — which would have
+  shipped the contradiction in `SKILL.md`, the always-loaded one, under a green check: the exact
+  false-green this repo exists to refuse, committed by the tool meant to catch it. Both now state
+  the promise rather than the machinery — the reader ends with a file they can open and keep —
+  because *"the pipeline always writes one"* is false on the no-script install, which
+  `pipeline.md` calls the normal case on the zip and `.agents/` routes. `check-repo.py` reads the
+  **list** of files, and was made to fail before it was trusted.
+
+### Changed
+- **The published adjudicator agreement range is 70-90% across the runs on record**, not 77-90%
+  across the two preserved ones. Seven runs with an `agreement.json` now span 71.9% to 89.6%; the
+  bound is rounded outward so it contains every run without implying a precision seven runs do not
+  support. The old sentence was scoped to *preserved* runs — both 89.6% — so it stayed literally
+  true while excluding the maintainer's own recent runs, which is the shape this release spent
+  seventy-six commits removing. **No gate is added in either direction**: `agreement_rate` is
+  reported and never gated, and a band over an 18-point spread would fire on runs that are fine —
+  the defect four commits here removed from the verdict-mix bands.
+
 ### Added
 - **A stop condition for retrying a refused stage.** Several checks say to re-dispatch only the
   stage they name; none said when to give up, and a recorded run has a structural gate failing and
