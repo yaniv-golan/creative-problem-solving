@@ -5,7 +5,7 @@ compatibility: Requires sub-agent dispatch, python3 and a Bash tool to run the f
 metadata:
   author: Yaniv Golan
   email: yaniv@golan.name
-  version: 0.3.0
+  version: 0.4.0
 ---
 
 # Creative problem solving

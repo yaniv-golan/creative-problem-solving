@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] — 2026-09-01
 
 Almost all of this release is one thing: the checks that decide whether an answer can be trusted
 were themselves untrustworthy. Gates passed while the defect they were written for was present,
