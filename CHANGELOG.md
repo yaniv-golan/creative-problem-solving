@@ -38,8 +38,13 @@ clause) are held for a separate release.
   can see the badge covers one assertion rather than the option.
 - **The ranker no longer conflates two objections.** Requiring a workflow change from people the
   reader already directs is not the same as requiring agreement from a party with no incentive.
-  On the audited run the two cheapest distribution moves in the pool ranked 55th and 47th while
-  eleven of the top twenty were product features.
+  **Measured, and it does not do what the complaint predicted.** Four ranker runs on a frozen
+  109-family set — two control, two treatment — show distribution options unmoved (pooled −0.09
+  ranks, up in one pair and down in the other) while **product features move down ~2.5 ranks in
+  both pairs** (p=0.023 and 0.056, direction pre-specified). So the clause reduces product-feature
+  dominance rather than lifting the demoted distribution moves; the seat that frees goes to a mix.
+  The single-family readout the complaint suggested is unusable: re-running the *same* criteria
+  moved one family 23 ranks, so a family needs a ~27-rank shift to clear noise.
 - **The ranker reads the brief and proves it.** Its dispatch must carry the problem as the user
   stated it and not the premises Phase 0 invented — enforced until now by nothing but the
   orchestrator typing the right field. It writes a `prompt_echo` beside `ranked` and
