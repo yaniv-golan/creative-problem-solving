@@ -12,6 +12,43 @@ surfaced seventeen defects. Waves 1 and 3 of the response; the output-surface ch
 on coercive options, a verdict for claims no search can settle, the ranker's workflow-change
 clause) are held for a separate release.
 
+### Changed
+
+- **Phase 0 names the actor and the decision.** Step 1 now asks who has to behave differently and
+  what they are deciding at the moment they would; `brief.json` records both, and the report opens
+  with them. On the audited run roughly a third of the options answered "make the artifact better"
+  rather than "make the actor act", because the brief led with a state of use — and no stage could
+  see it. The report now hands the reader the yardstick instead of leaving them to discover it
+  entry by entry. **Deliberately not** the proposed out-of-scope block in the generator prompt:
+  on that run it would have suppressed a delivered Top-3 option.
+- **A grouper may mark what an option costs the people it acts on.** An optional one-line `risk`
+  on a family, rendered under the option at any rank. Nine options on the audited run worked by
+  withholding, degrading or coercing the people the reader was trying to serve, sat at ranks
+  40–107, and were typographically identical to everything around them. It is a note, not a veto:
+  the option ships at whatever rank it earns. The grouper is given the actor line to judge it —
+  one of the nine was a fund pledging not to invest in anyone who used the tool, which is
+  damaging because of who the reader is and reads as generous otherwise.
+- **A fifth verifier verdict, `internal_claim`**, for an option whose load-bearing claim is about
+  the reader's own product, situation or data. The audited run's top-ranked option rested on one;
+  a search confirmed an incidental assertion inside it and the report printed "Checked" beneath.
+  `no_external_claim` would have been wrong the other way — it renders as "nothing to verify",
+  and there was something to verify that nobody outside could do. Carries a required note naming
+  the claim.
+- **The `Checked` badge names what was checked**, from a new optional `claim` field, so a reader
+  can see the badge covers one assertion rather than the option.
+- **The ranker no longer conflates two objections.** Requiring a workflow change from people the
+  reader already directs is not the same as requiring agreement from a party with no incentive.
+  On the audited run the two cheapest distribution moves in the pool ranked 55th and 47th while
+  eleven of the top twenty were product features.
+- **The ranker reads the brief and proves it.** Its dispatch must carry the problem as the user
+  stated it and not the premises Phase 0 invented — enforced until now by nothing but the
+  orchestrator typing the right field. It writes a `prompt_echo` beside `ranked` and
+  `verify_pipeline.py` compares it. This is the first check in the pipeline that says anything
+  about what a dispatch actually contained.
+- **Lenses are picked from SKILL.md's Phase 1 table**, which every other surface already called
+  the operative one. The contradicting instruction was introduced in the 0.2.0 pipeline rebuild,
+  six days after the one-chooser decision was recorded, and check-repo now guards it.
+
 ### Added
 
 - **`build_report.py --emit-reply`** writes `reply.md` from the finished report, refusing if a
