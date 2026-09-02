@@ -125,6 +125,18 @@ def main(wd, out):
         L += ["{{QUESTION — the problem as the reader stated it, quoted}}", ""]
     L += ["{{ASSUMPTION — one line: the reading you ran with, and the counts verify_pipeline printed}}",
           ""]
+    # WHAT THE FAMILY COUNT MEANS, IN THE REPORT ITSELF. `verify_pipeline.py` says this on its
+    # closing SAY line, and until now that was the only place it was said -- so it reached whoever
+    # watched the run and nobody who was handed the file. Measured on the 2026-09-02 live run:
+    # "distinct action" appears 0 times in report.md and 0 times in the final message; a blind
+    # grader reading only the deliverable could not tell that a family is one ACTION, and read the
+    # count the way ISSUE 17 predicted -- as a count of distinct strategies. The report is the
+    # artifact that gets saved and forwarded; a sentence that lives only in the chat is a sentence
+    # most readers never get. Written by the script, not left to a slot: it is a fact about how the
+    # pipeline groups, identical every run, and a fact the script holds is not re-typed from memory.
+    L += ["A family is one distinct action. Several families may be one strategy approached "
+          "different ways, because options are grouped by what you would *do* rather than by what "
+          "it would achieve — so the count above is not a count of distinct strategies.", ""]
 
     # PHASE 0 STEP 1B, PRINTED. Written by the script from brief.json rather than left to a slot,
     # for the same reason the invented premises below are: it is a fact about the run, and a fact

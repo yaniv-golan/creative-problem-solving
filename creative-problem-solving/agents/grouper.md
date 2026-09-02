@@ -40,6 +40,14 @@ degrading, coercing or deceiving** someone — rather than by giving them a reas
 it would damage the reader's standing with the people they are trying to serve, add a `risk` field
 saying so in one line.
 
+**An obligation imposed as the price of taking part is one of these.** Withholding is the obvious
+case; a rule that makes someone accept ongoing unpaid work, or be bound by a standard they had no
+part in setting, in order to have their contribution considered at all, is the same thing wearing
+procedural clothes. Measured on a live run: *"Require submitters to name likely regressions and
+commit to fixing them"* went unmarked while *"Require writing the review checklist that will be
+used on you, and be bound by it"* — the same mechanism — was marked, **by the same dispatch, in the
+same file.** A rule that gates participation costs the person it gates.
+
 This is a **note, not a veto.** The family ships either way, at whatever rank it earns, and the
 reader decides. You are not being asked whether an idea is good, novel or wise — only to say out
 loud when its mechanism has a cost borne by someone other than the person choosing it. Most

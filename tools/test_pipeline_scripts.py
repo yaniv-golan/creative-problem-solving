@@ -5424,6 +5424,37 @@ def t_echo_survives_a_paragraph_break():
     shutil.rmtree(d, True)
 
 
+def t_family_gloss_is_in_the_report_not_only_the_narration():
+    """The report must SAY what its family count means, not rely on the chat having said it.
+
+    `verify_pipeline.py` puts "a family is one distinct action ..." on its closing SAY line, and for
+    a while that was the only place it existed. The SAY line reaches whoever watched the run; the
+    report is what gets saved, forwarded and read a week later. Measured on the 2026-09-02 live run:
+    "distinct action" appeared 0 times in report.md and 0 times in the final message, and a blind
+    grader reading only the deliverable failed the claim -- reading "108 families" exactly the way
+    ISSUE 17 predicted, as a count of distinct strategies.
+
+    Pinned because the harness's own semantic judge PASSED that claim: it grades finalMessage +
+    transcript + authored files, so it found the sentence in the narration and could not tell the
+    deliverable lacked it. A green there did not mean the reader was told.
+    """
+    print("\nthe family gloss reaches the reader of the file")
+    d = tempfile.mkdtemp()
+    ids, fams = full_fixture(d, multi=True)
+    out_md = os.path.join(d, "report.md")
+    run("build_report.py", d, "--out", out_md)
+    body = open(out_md).read()
+    check("the report says a family is one distinct action",
+          "A family is one distinct action" in body, body[:200])
+    check("and that several families may be one strategy",
+          "one strategy approached different ways" in body, body[:200])
+    # It must be script-written, not a slot the model could leave unfilled or reword away.
+    check("the gloss is not a {{slot}}",
+          "{{" not in body.split("A family is one distinct action")[0].splitlines()[-1],
+          "the gloss must be emitted by build_report.py, not left to the model")
+    shutil.rmtree(d, True)
+
+
 TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
               t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
           t_wp4_gates, t_rev6_report, t_relation_gate, t_reply_gate,
@@ -5464,6 +5495,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
     t_denominator_counts_distinct_ids_not_entries,
     t_an_item_that_is_not_an_object_fails_by_name,
     t_echo_survives_a_paragraph_break,
+    t_family_gloss_is_in_the_report_not_only_the_narration,
     t_every_test_is_registered,
 )
 
