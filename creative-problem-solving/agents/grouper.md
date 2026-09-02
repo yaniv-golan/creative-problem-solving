@@ -15,7 +15,7 @@ and it cannot tell a mechanism from a theme that resembles one.
 is an index over it. Copying text forward is how a long list silently becomes a shorter, reworded
 one.
 
-## Your three jobs
+## Your four jobs
 
 **Name each cluster's mechanism.** A short label saying what the options in it actually *do* — the
 operational move, not the goal it serves. "Auto-publish a credit notice when a change merges" names
