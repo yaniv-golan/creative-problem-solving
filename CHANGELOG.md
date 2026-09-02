@@ -21,8 +21,9 @@ clause) are held for a separate release.
   see it. The report now hands the reader the yardstick instead of leaving them to discover it
   entry by entry. **Deliberately not** the proposed out-of-scope block in the generator prompt:
   on that run it would have suppressed a delivered Top-3 option.
-- **A grouper may mark what an option costs the people it acts on.** *(Measured on replay: the
-  mechanism works, the judgement does not yet. See the note under Fixed.)* An optional one-line `risk`
+- **A grouper may mark what an option costs the people it acts on.** *(Measured on a live run:
+  27 of 104 families marked, every mark rendered to the reader, none a mislabelled split-test
+  note.)* An optional one-line `risk`
   on a family, rendered under the option at any rank. Nine options on the audited run worked by
   withholding, degrading or coercing the people the reader was trying to serve, sat at ranks
   40–107, and were typographically identical to everything around them. It is a note, not a veto:
@@ -39,13 +40,12 @@ clause) are held for a separate release.
   can see the badge covers one assertion rather than the option.
 - **The ranker no longer conflates two objections.** Requiring a workflow change from people the
   reader already directs is not the same as requiring agreement from a party with no incentive.
-  **Measured, and it does not do what the complaint predicted.** Four ranker runs on a frozen
-  109-family set — two control, two treatment — show distribution options unmoved (pooled −0.09
-  ranks, up in one pair and down in the other) while **product features move down ~2.5 ranks in
-  both pairs** (p=0.023 and 0.056, direction pre-specified). So the clause reduces product-feature
-  dominance rather than lifting the demoted distribution moves; the seat that frees goes to a mix.
-  The single-family readout the complaint suggested is unusable: re-running the *same* criteria
-  moved one family 23 ranks, so a family needs a ~27-rank shift to clear noise.
+  **Its effect is unmeasured.** A four-run A/B was reported here and is withdrawn: the two
+  conditions differed only in `agents/ranker.md`, and a `subagent_type` dispatch loads the
+  installed plugin rather than the working tree, so control and treatment were plausibly the same
+  condition and the difference was noise. One finding from it survives, because it needs no
+  contrast: re-running the *same* criteria moved a family 23 ranks, so any single-family readout
+  needs a ~27-rank shift to mean anything.
 - **The ranker reads the brief and proves it.** It is told to read `brief.json` and rank against
   `verbatim_prompt`, and to echo the first 60 characters back in a `prompt_echo` field beside
   `ranked`. `verify_pipeline.py` refuses an echo that does not match the file; an absent or
