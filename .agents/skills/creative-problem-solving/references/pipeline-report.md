@@ -124,6 +124,12 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
      two carry no `query` field.
    - **a `confirmed` verdict requires a source URL and a short quote.** No URL means `unclear`.
      Reasoning from memory is not checking.
+   - **tell it, in the dispatch, to put the specific assertion it settled into a `claim` field on
+     every `confirmed` verdict** — one clause, the thing the search actually established, not a
+     restatement of the option. The report prints it beside the badge, so a reader can see the
+     check covers one assertion rather than the whole option. `agents/verifier.md` has asked for
+     this field since the branch opened and the dispatch never relayed it: measured **0 of 13** on
+     the run that shipped it. An agent-file contract the dispatch does not name does not arrive.
    - write to `$RUN/_work/verified-<k>.json`, its own file, where k is 1, 2 or 3. **Three
      sub-agents running at once must not share one output file** — each would read, add its
      rows and write back, and whichever finishes last erases the others' work. Nothing in a

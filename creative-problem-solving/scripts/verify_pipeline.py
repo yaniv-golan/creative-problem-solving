@@ -375,6 +375,55 @@ def main(wd):
     # reads as a live finding after the finding is gone -- measured: edit relations.json until the
     # WARN cannot fire, re-run, and the previous pass's 16 pairs are still sitting there with no
     # run id, no timestamp and nothing saying which pass produced them.
+    # RISK MARKS THAT DISAGREE WITH THE ADJUDICATORS. The grouper judges risk per shard and cannot
+    # see the other shards, so two options the adjudicators called the same mechanism can be marked
+    # in one family and unmarked in another. That was called architecturally unfixable when it was
+    # found; it is not. The link already exists in ID space -- an `implementation_variant` verdict
+    # -- so nothing here reads option text, which is the rule that made it look unfixable.
+    #
+    # NARROWED BY MEASUREMENT, not by taste. Over two live runs: "any joining verdict spanning a
+    # marked and an unmarked family" hits 54 and 70 of ~105 families -- half the report, useless.
+    # `duplicate` verdicts spanning families: 0 both runs (merge_families already joins those), and
+    # lead-to-lead links: 0. What remains is the shape the hand-found case actually had -- an
+    # UNMARKED family's LEAD adjudicated a variant of some member of a MARKED family -- which hits
+    # 25 and 19. That is a real signal at a fifth of the unmarked families, and far too much to
+    # print one line each: this repo already fixed one scan for crying wolf. So it reports a COUNT
+    # and writes the pairs to a file, the same shape as the separated-pairs WARN below.
+    #
+    # It is advisory and stays advisory. A variant can legitimately differ in exactly the dimension
+    # that removes the cost -- "the same, but opt-in" is a variant whose risk genuinely went away --
+    # so a human reads the file. This says the marking is worth checking, never that it is wrong.
+    _rp = os.path.join(wd, "warn-risk-consistency.json")
+    _lead = {f.get("id"): (f.get("members") or [None])[0] for f in fams}
+    _owner = {m: f.get("id") for f in fams for m in (f.get("members") or [])}
+    _marked = {f.get("id") for f in fams if f.get("risk")}
+    _incons = {}
+    if _marked:
+        for _r in rel:
+            if (_r.get("relation") if isinstance(_r, dict) else None) != "implementation_variant":
+                continue
+            for _x, _y in ((_r.get("a"), _r.get("b")), (_r.get("b"), _r.get("a"))):
+                _fx, _fy = _owner.get(_x), _owner.get(_y)
+                if not _fx or not _fy or _fx == _fy: continue
+                if _fx in _marked or _fy not in _marked: continue
+                if _lead.get(_fx) != _x: continue
+                _incons.setdefault(_fx, set()).add(_fy)
+    if _incons:
+        try:
+            with open(_rp, "w", encoding="utf-8") as _fh:
+                json.dump({"as_of": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                           "pairs": [{"unmarked_family": k, "lead": _lead.get(k),
+                                      "marked_families": sorted(v)}
+                                     for k, v in sorted(_incons.items())]}, _fh, indent=1)
+            _where = f" Full list: {_rp}."
+        except Exception as _e:                                            # noqa: BLE001
+            _where = f" (could not write the list: {_e})"
+        warn(f"{len(_incons)} unmarked famil(ies) lead with an option the adjudicators called an "
+             f"implementation variant of something inside a family that IS marked as costly. The "
+             f"grouper judges risk one shard at a time and cannot see the others, so a mechanism "
+             f"can be marked in one place and not another. Worth a look, not a defect: a variant "
+             f"can differ in exactly the way that removes the cost.{_where}")
+
     _wp = os.path.join(wd, "warn-separated-pairs.json")
     try:
         _body = json.dumps({"as_of": time.strftime("%Y-%m-%dT%H:%M:%S"),

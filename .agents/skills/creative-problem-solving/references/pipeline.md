@@ -692,8 +692,10 @@ assumed: a negation round against that structure returned one search-verified op
    **The task file carries an `actor` line** — `brief.json`'s actor and decision, copied in by
    `plan_groups.py` — and it is the only thing about the brief a grouper sees. It is there for
    `risk`: *tell each grouper to add that field when a family's mechanism works by withholding,
-   degrading, coercing or deceiving the people it acts on, or when acting on it would damage the
-   reader's standing with the people they are trying to serve.* Most families have no `risk` and
+   degrading, coercing or deceiving the people it acts on — **including an obligation imposed as
+   the price of taking part**: a rule that makes someone accept ongoing unpaid work, or be bound by
+   a standard they had no part in setting, in order to have their contribution considered at all —
+   or if acting on it would damage the reader's standing with the people they are trying to serve.* Most families have no `risk` and
    omit the field.
 
    **It is a note, not a veto** — Phase 3's rule holds, the family ships at whatever rank it

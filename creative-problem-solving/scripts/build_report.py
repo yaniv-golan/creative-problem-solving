@@ -134,6 +134,18 @@ def main(wd, out):
     # artifact that gets saved and forwarded; a sentence that lives only in the chat is a sentence
     # most readers never get. Written by the script, not left to a slot: it is a fact about how the
     # pipeline groups, identical every run, and a fact the script holds is not re-typed from memory.
+    # WHAT A RISK MARK DOES AND DOES NOT CLAIM. The grouper judges risk one shard at a time and
+    # cannot see the others, so an unmarked option is not an option judged safe -- it may simply
+    # have been in a different file from the dispatch that marked its twin. Measured on two live
+    # runs: 25 and 19 unmarked families lead with an option the adjudicators called a variant of
+    # something inside a marked family. A reader who reads absence as clearance is reading a
+    # guarantee the architecture does not make, and until now that caveat existed only in a commit
+    # message and a gitignored maintainer doc -- which is where the reader never looks.
+    # Printed only when a mark exists: a scope note about a feature the run did not use is noise.
+    if any(isinstance(f.get("risk"), str) and f["risk"].strip() for f in fams.values()):
+        L += ["A marked cost means the pass that read that option judged it costly to someone who "
+              "did not choose it. Options are read in separate batches, so an unmarked option is "
+              "not one judged safe — it is one nobody flagged.", ""]
     L += ["A family is one distinct action. Several families may be one strategy approached "
           "different ways, because options are grouped by what you would *do* rather than by what "
           "it would achieve — so the count above is not a count of distinct strategies.", ""]

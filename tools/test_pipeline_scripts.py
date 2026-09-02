@@ -5455,6 +5455,41 @@ def t_family_gloss_is_in_the_report_not_only_the_narration():
     shutil.rmtree(d, True)
 
 
+def t_risk_marks_carry_their_own_scope():
+    """A risk mark says one pass judged one option costly — not that the list was swept.
+
+    The grouper reads one shard and cannot see the others, so an unmarked option may simply have
+    been in a different file from the dispatch that marked its twin. Measured on two live runs: 25
+    and 19 unmarked families LEAD with an option the adjudicators called an `implementation_variant`
+    of something inside a family that IS marked. A reader who takes absence for clearance is reading
+    a guarantee the architecture does not make, and that caveat lived only in a commit message and a
+    gitignored doc until this test.
+
+    Printed only when a mark exists — a scope note about an unused feature is noise.
+    """
+    print("\nrisk marks say what they cover")
+    d = tempfile.mkdtemp()
+    ids, fams = full_fixture(d, multi=True)
+    fp = os.path.join(d, "families.json")
+    fj = json.load(open(fp))
+    fj["families"][0]["risk"] = "Withholds something the reader already asked for."
+    json.dump(fj, open(fp, "w"))
+    out = os.path.join(d, "report.md")
+    run("build_report.py", d, "--out", out)
+    body = open(out).read()
+    check("a report with a risk mark says what the mark covers",
+          "it is one nobody flagged" in body, body[:200])
+
+    # And silent when nothing is marked.
+    fj["families"][0].pop("risk", None)
+    json.dump(fj, open(fp, "w"))
+    out2 = os.path.join(d, "report2.md")
+    run("build_report.py", d, "--out", out2)
+    check("and a report with no marks carries no such note",
+          "it is one nobody flagged" not in open(out2).read(), "scope note printed with no marks")
+    shutil.rmtree(d, True)
+
+
 TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
               t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
           t_wp4_gates, t_rev6_report, t_relation_gate, t_reply_gate,
@@ -5496,6 +5531,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
     t_an_item_that_is_not_an_object_fails_by_name,
     t_echo_survives_a_paragraph_break,
     t_family_gloss_is_in_the_report_not_only_the_narration,
+    t_risk_marks_carry_their_own_scope,
     t_every_test_is_registered,
 )
 
