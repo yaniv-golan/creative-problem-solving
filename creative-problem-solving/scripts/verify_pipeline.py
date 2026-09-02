@@ -502,13 +502,24 @@ def main(wd):
     # one it trades a guaranteed input for a claimed one and is strictly worse than not reading
     # the file at all. An archived run predating the field gets the message below and one edit.
     _echo = brief_str(load_obj(rkpath) if os.path.exists(rkpath) else {}, "prompt_echo", rkpath)
+    # ABSENT IS A WARN, MISMATCHED IS A GATE, and the difference is what the evidence supports.
+    # An absent echo means nobody can tell whether the ranker read the brief -- that is a gap in
+    # the record, not a proven fault, and killing a thirty-five-minute run at the last gate over a
+    # missing audit field is disproportionate. A PRESENT echo that does not match is different:
+    # the ranker demonstrably ranked against something other than the user's own words.
+    #
+    # This is not the opt-out-by-omission the field was added to close, because the absence is now
+    # loud. Measured: a replay given the real step-7 dispatch wrote `{"ranked": [...]}` and no
+    # echo, because agents/ranker.md stated the field in prose and showed no output shape while
+    # grouper.md showed one. The shape block is the fix; this is what happens when it still misses.
     if not _echo:
-        die("ranked.json has no `prompt_echo` — the ranker is told to read brief.json and echo "
-            "back the first 60 characters of `verbatim_prompt` it saw. Without it nothing "
-            "distinguishes a ranker that read the brief from one that was handed a summary of it, "
-            "which is the only claim in this pipeline about what a dispatch actually contained. "
-            "Re-run step 7, or add the field from brief.json for a run recorded before it existed.")
-    if True:
+        warn("ranked.json has no `prompt_echo`, so nothing in this run says what the ranker was "
+             "actually given. It is told to read brief.json and echo back the first 60 characters "
+             "of `verbatim_prompt`; without it a ranker that read the brief and one handed a "
+             "summary of it are indistinguishable. The ranking is not refused — but it is the one "
+             "claim this pipeline makes about what a dispatch contained, and this run does not "
+             "make it.")
+    else:
         _want = " ".join((brief.get("verbatim_prompt") or "").split())[:len(_echo)]
         if " ".join(_echo.split()) != _want:
             die(f"ranked.json's `prompt_echo` does not match the opening of brief.json's "

@@ -1020,6 +1020,26 @@ else:
 #
 # Scoped to the body: the reference-list entry at the top legitimately names the file, and it is
 # the pointer INTO it as a source for picking that the record forbids.
+# STEP 7 MUST INSTRUCT THE ECHO, NOT DESCRIBE IT. Measured on three replays of the ranker against
+# a frozen family set: the field was specified in agents/ranker.md as prose (absent), then as a
+# worked JSON shape block there too (still absent), and appeared only when the DISPATCH told the
+# ranker to write it. A standing contract in an agent file did not survive contact with a dispatch
+# that did not mention it.
+#
+# So the load-bearing sentence is in step 7, and it is one edit from becoming a description again
+# -- which is what it was, and why two replays came back without the field. If it reverts, the
+# ranker stops producing the echo, verify_pipeline's check goes inert, and nothing says so.
+print("\nstep 7 tells the orchestrator to relay the prompt_echo requirement")
+_rep = read_text("%s/skills/%s/references/pipeline-report.md" % (plugin_name, skill_names[0]))
+_flat = " ".join(_rep.split())
+if not re.search(r"tell it, in the dispatch, to put[^.]{0,120}prompt_echo", _flat, re.I):
+    fail("references/pipeline-report.md step 7 no longer TELLS the orchestrator to relay the "
+         "`prompt_echo` requirement to the ranker. Describing the behaviour instead of "
+         "instructing it is what produced two replays with no echo at all: the agent file said "
+         "to write the field and the dispatch did not, and the dispatch won.")
+else:
+    ok("step 7 instructs the echo rather than describing it")
+
 print("\nlenses are chosen from SKILL.md, not from the reference")
 _sk_rel = "%s/skills/%s/SKILL.md" % (plugin_name, skill_names[0])
 _sk = read_text(_sk_rel)

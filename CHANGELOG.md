@@ -46,7 +46,14 @@ clause) are held for a separate release.
   dominance rather than lifting the demoted distribution moves; the seat that frees goes to a mix.
   The single-family readout the complaint suggested is unusable: re-running the *same* criteria
   moved one family 23 ranks, so a family needs a ~27-rank shift to clear noise.
-- **The ranker reads the brief and proves it.** Its dispatch must carry the problem as the user
+- **The ranker reads the brief and proves it** — *and where that instruction had to live is the
+  finding.* Three replays against a frozen family set: specified as prose in `agents/ranker.md`
+  the field never appeared; with a worked JSON shape block added there it still never appeared;
+  it appeared when the **dispatch** asked for it. An agent file's standing contract did not
+  survive contact with a dispatch that omitted it. Step 7 now instructs the orchestrator to relay
+  the requirement rather than describing the behaviour, and `check-repo` fails if that sentence
+  reverts to a description. An absent echo is a WARN (nothing can tell whether the ranker read
+  the brief); a mismatched one is refused (it demonstrably read something else). Its dispatch must carry the problem as the user
   stated it and not the premises Phase 0 invented — enforced until now by nothing but the
   orchestrator typing the right field. It writes a `prompt_echo` beside `ranked` and
   `verify_pipeline.py` compares it. This is the first check in the pipeline that says anything

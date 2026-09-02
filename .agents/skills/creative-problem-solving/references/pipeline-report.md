@@ -19,13 +19,21 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
 7. **A `ranker` orders the families** — not the options — and writes `$RUN/_work/ranked.json`.
    *Tell it what its order feeds: the top 13 families are the ones whose leads get search-checked
    and the ones the reader reads first; everything below still ships, in this order.*
-   **Tell it to read `brief.json` at the resolved path** and rank against `verbatim_prompt`,
-   never the invented premises of step 0c — see the rule there. It writes a `prompt_echo` field
-   beside `ranked` carrying the first 60 characters of what it read, and `verify_pipeline.py`
-   compares that against the file. Reading is a step a run can skip and describe having taken;
-   the echo is what makes the difference visible, and it is the only thing in this pipeline that
-   says anything about what a dispatch actually contained. An older run with no `prompt_echo`
-   passes unchanged.
+   **Tell it to read `brief.json` at the resolved path** and rank against `verbatim_prompt`, never
+   the invented premises of step 0c — see the rule there. **And tell it, in the dispatch, to put
+   the first 60 characters of `verbatim_prompt` into a `prompt_echo` field beside `ranked`.**
+
+   That second sentence used to describe the behaviour rather than instruct it — "it writes a
+   `prompt_echo` field" — and an orchestrator following this step literally never relayed the
+   requirement. Two replays confirmed it: the ranker returned a clean 109-id permutation and no
+   echo, once with the field specified in prose in `agents/ranker.md` and once with a worked JSON
+   shape there too. A standing contract in an agent file did not survive contact with a dispatch
+   that did not mention it.
+
+   `verify_pipeline.py` compares the echo against the file: a mismatch is refused, and an absent
+   one is a WARN saying this run makes no claim about what the ranker was given. Reading is a step
+   a run can skip and describe having taken; the echo is the only thing in this pipeline that says
+   anything about what a dispatch actually contained.
 
    **It returns family ids in order, ids only** — a mechanism reached by six lenses gets one slot,
    not six — plus the `prompt_echo` field above and nothing else.

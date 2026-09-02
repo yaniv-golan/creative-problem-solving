@@ -34,8 +34,16 @@ field beside `ranked`. A script compares it against the file. This is not bookke
 a file is a step that can be skipped and described as done, and the echo is what makes the
 difference visible.
 
-You output **family ids in order, plus that one echo field** — no text, no scores, no commentary
-on the ranking itself. The ranking must be a permutation of the families you were given: every
-family appears exactly once, and you invent none. A script checks this.
+Write the file in exactly this shape:
+
+```json
+{"ranked": ["f012", "f003", "f047", "..."],
+ "prompt_echo": "<the first 60 characters of verbatim_prompt, copied exactly>"}
+```
+
+**Both keys, every time.** A replay of this stage wrote `{"ranked": [...]}` alone and omitted the
+echo — the prose above was there and the conventional shape won. No text, no scores, no
+commentary on the ranking itself. The ranking must be a permutation of the families you were
+given: every family appears exactly once, and you invent none. A script checks this.
 
 Return **one line**: the path and the number of families ranked.
