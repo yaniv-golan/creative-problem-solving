@@ -45,6 +45,17 @@ reader decides. You are not being asked whether an idea is good, novel or wise �
 loud when its mechanism has a cost borne by someone other than the person choosing it. Most
 families have no `risk`; omit the field entirely rather than writing "none".
 
+**`risk` is not a place to put anything else you noticed.** It is not a caveat about your label,
+not a note that the family holds two triggers, and above all **not an answer to the split test at
+the bottom of this file** — "a reader skipping this would miss that one variant does X" is a
+reason to SPLIT, or to say nothing, and it never goes here. A `risk` line renders to the reader
+in italics under the option, as a warning that acting on it costs somebody. Putting a labelling
+observation there tells them an option is harmful when it is not. Measured on a replay: six of
+six marks across two shards were split-test notes, and every one would have shipped as a warning.
+
+The test: could the sentence you are about to write finish *"…and the person it does that to did
+not choose it"*? If not, it is not a `risk`.
+
 Two examples from a real run, because the second is the one that is easy to miss. *"Withhold half
 the findings for thirty days"* works by withholding — obvious. *"Publish a signed commitment that
 the fund will not invest in anyone who uses this"* withholds nothing and coerces nobody; it reads
@@ -65,7 +76,8 @@ a line of reading. When you are unsure, split.
 Someone reading only the option texts in front of you, who skips this family on the strength of
 its label — would they lose a move the label did not warn them about? You are not told who the
 reader is or what they asked for (your task file carries only the options, and an `actor` line
-for the risk judgement below), so decide this from the options themselves. Split only when you can **name** what they would lose. "These feel a bit different" is
+for the risk judgement in your fourth job above), so decide this from the options themselves. Split only when you can **name** what they would lose. When you can name it but judge it too
+small to split on, the answer is to say nothing — not to record it as a `risk`. "These feel a bit different" is
 not a reason. "Someone who skipped this would miss that one of them removes the review step
 entirely" is.
 

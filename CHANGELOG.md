@@ -21,7 +21,8 @@ clause) are held for a separate release.
   see it. The report now hands the reader the yardstick instead of leaving them to discover it
   entry by entry. **Deliberately not** the proposed out-of-scope block in the generator prompt:
   on that run it would have suppressed a delivered Top-3 option.
-- **A grouper may mark what an option costs the people it acts on.** An optional one-line `risk`
+- **A grouper may mark what an option costs the people it acts on.** *(Measured on replay: the
+  mechanism works, the judgement does not yet. See the note under Fixed.)* An optional one-line `risk`
   on a family, rendered under the option at any rank. Nine options on the audited run worked by
   withholding, degrading or coercing the people the reader was trying to serve, sat at ranks
   40–107, and were typographically identical to everything around them. It is a note, not a veto:
@@ -74,6 +75,18 @@ clause) are held for a separate release.
   script may compare a pool's option count against a literal. Both tested by planting the defect.
 
 ### Fixed
+
+- **The risk mark is a backstop, not yet a working instrument — measured, not assumed.** Seven
+  groupers were replayed against a frozen run's real task files. One shard marked five genuine
+  costs in both samples; two shards produced eleven marks between them and **not one was a risk** —
+  every one was the split test's answer ("p7-012 also removes the export button"), which had
+  nowhere else to go because `risk` is the only free-text field in the output shape. Two prose
+  attempts to exclude that failed, and the second raised the misuse rate. What discriminates is
+  mechanical: of ten genuine marks none named an option id, of fifteen misuses fourteen did. So
+  `merge_families.py` drops a risk naming an option id and warns, rather than showing the reader a
+  warning about an option that costs nobody. Recall is still poor — "withhold half the findings
+  for thirty days" was missed by every shard that held it. The field stops wrong marks reaching
+  the reader; it does not yet reliably produce right ones.
 
 - **The report's shrinkage guard counts generated content, not placeholder prompts.** It compares
   the finished report against a word count taken from the skeleton, and that count included the

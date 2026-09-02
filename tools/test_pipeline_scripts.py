@@ -2689,6 +2689,65 @@ def t_internal_claim_verdict():
         shutil.rmtree(d, True)
 
 
+def t_split_note_risk_is_dropped_not_shipped():
+    """A `risk` naming an option id is dropped with a WARN — the run survives, the reader is spared.
+
+    Measured across six grouper replays on frozen task files: of ten genuine risk marks NONE named
+    an option id; of fifteen misuses FOURTEEN did. A real risk is about the mechanism ("withholds
+    X from someone who did not choose it"); the misuse describes which member differs ("p7-012 also
+    removes the export button"), which is the split test's answer with nowhere else to go. Two
+    prose attempts to exclude it failed and the second raised the misuse rate, so the discriminator
+    is mechanical.
+
+    DROP, not die(): two of three shards produced these, so refusing would kill a thirty-five
+    minute run at step 6 on most runs over a line the reader is better off without either way.
+    """
+    print("\na split-note risk is dropped, not shipped")
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d)
+        json.dump({"verbatim_prompt": "x", "reading": "y", "invented": [],
+                   "actor": "a reader", "decision": "whether to act"},
+                  open(os.path.join(d, "brief.json"), "w"))
+        make_candidates(d, ids, n=90)
+        run("shard_candidates.py", d, "--probe", 20)
+        adjudicate(d); merge(d); run("plan_groups.py", d)
+        tasks = sorted(glob.glob(os.path.join(d, "group-task-*.json")))
+        first = True
+        for t in tasks:
+            td = json.load(open(t)); fams = []
+            for c in td["clusters"]:
+                fam = {"cid": c["cid"], "label": f"Mechanism {c['cid']}",
+                       "lead": c["lead"], "members": [o["id"] for o in c["options"]]}
+                if first:
+                    fam["risk"] = f"{c['lead']} also removes the export button; a reader would miss it."
+                    first = False
+                fams.append(fam)
+            json.dump({"families": fams},
+                      open(os.path.join(d, f"group-result-{td['task']}.json"), "w"))
+
+        rc, out = run("merge_families.py", d, "--expect", str(len(tasks)))
+        check("the run is not killed by it", rc == 0, f"rc={rc} {out[:140]}")
+        check("and it says so", "named an option id and were dropped" in out, out[:200])
+        fams = json.load(open(os.path.join(d, "families.json")))["families"]
+        check("the split-note never reaches families.json",
+              not any(f.get("risk") for f in fams),
+              str([f.get("risk") for f in fams if f.get("risk")])[:160])
+
+        # CONTROL: a real risk, naming no id, still ships.
+        t0 = json.load(open(tasks[0]))
+        doc = json.load(open(os.path.join(d, f"group-result-{t0['task']}.json")))
+        doc["families"][0]["risk"] = "Withholds the result from people who did not choose to wait."
+        json.dump(doc, open(os.path.join(d, f"group-result-{t0['task']}.json"), "w"))
+        rc, out = run("merge_families.py", d, "--expect", str(len(tasks)))
+        fams = json.load(open(os.path.join(d, "families.json")))["families"]
+        check("CONTROL: a mechanism-level risk still ships",
+              any("did not choose to wait" in (f.get("risk") or "") for f in fams),
+              str([f.get("risk") for f in fams if f.get("risk")])[:160])
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t_risk_mark_survives_to_the_report():
     """A grouper's `risk` reaches the reader, through a merge, at any rank -- or the run stops.
 
@@ -5304,7 +5363,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_plan_groups, t_merge_families, t_forced_lead_collision,
               t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
               t_probe_advice_actually_clears, t_echo_scan_precision, t_quota_gate_fires,
-              t_actor_and_decision_are_gated, t_risk_mark_survives_to_the_report,
+              t_actor_and_decision_are_gated, t_risk_mark_survives_to_the_report, t_split_note_risk_is_dropped_not_shipped,
               t_internal_claim_verdict, t_no_say_line_claims_to_be_longest,
               t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
               t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,

@@ -10,7 +10,7 @@ shard may do is drop an option, invent one, or reach into a cluster it was not g
 all three, because the failure they cause is silent: every count downstream still adds up, and the
 report is simply shorter than the run paid for.
 """
-import json, sys, os, glob, itertools
+import json, re, sys, os, glob, itertools
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -280,6 +280,7 @@ def main(wd, expect):
 
     fams, seen, claimed, grouper_labels = [], Counter(), set(), set()
     _marked_at_ingest = set()
+    _dropped_risks = []
     for s in shards:
         for f in (load(s, "families") or []):
             mem = f.get("members") or []
@@ -335,13 +336,33 @@ def main(wd, expect):
                     f"{type(f['risk']).__name__}. It is one sentence for the reader; a list or "
                     f"object cannot be rendered. Write one line, or omit the field.")
             _risk = one_line((f.get("risk") or "")).strip()
-            if _risk:
-                _marked_at_ingest.update(mem)
+            # AN OPTION ID IN A RISK LINE MEANS IT IS A SPLIT NOTE, NOT A RISK. Measured across
+            # six grouper replays on frozen task files: of ten genuine risks, none named an id; of
+            # fifteen misuses, fourteen did. A real risk is about the MECHANISM ("withholds X from
+            # someone who did not choose it"); the misuse is about which MEMBER differs ("p7-012
+            # also removes the export button"), which is the split test's answer with nowhere else
+            # to go. Two prose attempts to exclude it failed and the second raised the rate.
+            #
+            # Doubly justified: `risk` renders verbatim to the reader, and references/report.md
+            # already forbids internal ids reaching them — "f070, p2-046 and the like are
+            # plumbing". So this refuses a line that would break that rule even if it were a risk.
+            if re.search(r"\bp\d+-\d{3}\b", _risk):
+                # DROP AND WARN, not die(). Refusing would be the consistent choice for a
+                # malformed shard record -- but this is not rare: two of three shards on the
+                # replay produced these, so a refusal kills a thirty-five-minute run at step 6 on
+                # a majority of runs, over a line the reader is better off without either way.
+                # Dropping loses nothing that was ever a risk, and the WARN puts it in front of
+                # the operator, who is the only party who can improve the instruction.
+                _dropped_risks.append(f"{f.get('cid')}: {_risk[:70]}")
+                _risk = ""
+                _risk_was_dropped = True
+            else:
+                _risk_was_dropped = False
             if _risk.startswith("<") and _risk.endswith(">"):
                 die(f"{os.path.basename(s)}: family {f.get('cid')} returned the `risk` "
                     f"placeholder from the shape block instead of a sentence about the family. "
                     f"Omit the key when the mechanism costs nobody.")
-            if "risk" in f and f["risk"] is not None and not _risk:
+            if "risk" in f and f["risk"] is not None and not _risk and not _risk_was_dropped:
                 die(f"{os.path.basename(s)}: family {f.get('cid')} has an empty `risk`. "
                     f"Omit the field rather than sending a blank one — a present-but-empty mark "
                     f"is indistinguishable from a family nobody assessed.")
@@ -349,6 +370,21 @@ def main(wd, expect):
                          "label": lab, "cid": src,
                          "origin": {m: lab for m in mem},
                          "origin_risk": {m: _risk for m in mem} if _risk else {}})
+            # SNAPSHOT AFTER VALIDATION, not before. The loss gate compares marks recorded at
+            # ingest against marks emitted, to catch a risk a merge dropped. A line THIS loop
+            # refuses never entered, so counting it here would report the validator's own drop as
+            # a merge failure -- which is what it did, reporting 14 lost options on a run where
+            # nothing was lost.
+            if _risk:
+                _marked_at_ingest.update(mem)
+
+    if _dropped_risks:
+        print(f"WARN: {len(_dropped_risks)} `risk` line(s) named an option id and were dropped "
+              f"rather than shown to the reader — a risk is about the mechanism, not about which "
+              f"member differs, and that is the split test's answer with nowhere to go "
+              f"({'; '.join(_dropped_risks[:3])}"
+              f"{'; …' if len(_dropped_risks) > 3 else ''}). The families still ship; they carry "
+              f"no risk note. If those variants matter, the grouper should have split them.")
 
     dupes = [m for m, n in seen.items() if n > 1]
     if dupes: die(f"{len(dupes)} option(s) placed in more than one family, e.g. {sorted(dupes)[:5]}")
