@@ -155,9 +155,19 @@ assert:
   # ISSUE 13 end to end: the grouper marked it, merge_families carried it, build_report rendered
   # it. The em-dash form is `build_report.py`'s, and a summary of the report would not carry it.
   - transcript_contains: "*Risk — "
-  # ISSUE 14 end to end: a claim no outside search can settle gets its own verdict rather than
-  # being scored as a failed check. This is the line that verdict renders as.
-  - transcript_contains: "*Not checkable from outside"
+  # ISSUE 14 IS NOT ASSERTED DETERMINISTICALLY, and the reason is measured. The obvious marker is
+  # `*Not checkable from outside`, the line an `internal_claim` verdict renders as -- but whether any
+  # top-13 option happens to rest on a claim about the reader's own system is a property of the
+  # OPTIONS, not of the code. Measured across two live runs of this same prompt: 1 occurrence, then
+  # 0. It was asserted here on the strength of the first run alone and red the second, which is a
+  # false red on a $19-31 run -- the pipeline behaved correctly both times.
+  #
+  # ISSUE 14 is covered by the semantic rubric below instead, whose claim carries the vacuous-pass
+  # clause this needs ("Passes if nothing is marked as checked"). A model-dependent property belongs
+  # in a judge that can say "not applicable", not in a literal that can only say present/absent.
+  #
+  # `*Risk — ` above survives the same test (27 then 34 marks) because ~30% of a hundred-odd
+  # families carry one; the two are not comparable, and only running it twice showed which is which.
 
   # ---- the count the payload forbids ----
   # references/pipeline-report.md and README.md both refuse a "distinct options" count as false
