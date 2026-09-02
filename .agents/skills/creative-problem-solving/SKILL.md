@@ -173,8 +173,8 @@ instruction.
 stage, the file each writes, and the scripts that refuse an answer when those do not add up. You
 cannot run what follows without it.
 
-Pick the lenses from `references/lenses.md` before any generating, one per sub-agent — **every
-lens that genuinely attacks this problem differently**, not a fixed number. The file lists nine.
+Pick the lenses from the Phase 1 table below before any generating, one per sub-agent — **every
+lens that genuinely attacks this problem differently**, not a fixed number. It lists nine.
 Under dispatch they run in parallel, so a further lens costs almost no wall-clock and none of
 your context; drop one only when it would produce the same *shape* of answer as one already
 picked. Do not let the sub-agents choose: agents that pick converge on the same picks, buying

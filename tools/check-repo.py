@@ -1006,6 +1006,34 @@ else:
 # in either direction (no floor is derivable -- early stopping is licensed; no ceiling either --
 # nothing forbids overshoot), and that file is gitignored, so the shipped clause has to carry the
 # whole rule with no pointer.
+# ONE CHOOSER, IN SKILL.md. docs/DESIGN-NOTES.md:1016 records why: references/lenses.md used to
+# carry a second problem->lens table, the two drifted, and the reference recommended biomimicry on
+# rows SKILL.md deliberately omits -- a deep-only lens a fast run has no search budget to verify.
+# That note ends "check-repo.py cannot catch this one", which was true of the table itself and is
+# not true of the pointer.
+#
+# This is not hypothetical. `git show f9a6031` (initial release) has lenses.md already deferring
+# to SKILL.md and no "pick from lenses.md" sentence in SKILL.md; the sentence appears in c3d8074,
+# the pipeline rebuild, six days after the decision was recorded -- written new, against the
+# record, unnoticed. It was still there until 2026-09-02. A second instance was introduced and
+# reverted the same week, moving the routing table itself. Twice is a pattern with a cheap guard.
+#
+# Scoped to the body: the reference-list entry at the top legitimately names the file, and it is
+# the pointer INTO it as a source for picking that the record forbids.
+print("\nlenses are chosen from SKILL.md, not from the reference")
+_sk_rel = "%s/skills/%s/SKILL.md" % (plugin_name, skill_names[0])
+_sk = read_text(_sk_rel)
+_body = _sk.split("## Reference files", 1)
+_after = _body[1].split("\n## ", 1)[1] if len(_body) > 1 and "\n## " in _body[1] else ""
+_chooser = re.findall(r"[Pp]ick (?:the )?lens(?:es)?[^.\n]{0,60}`references/lenses\.md`", _after)
+if _chooser:
+    fail("%s tells the run to pick lenses from references/lenses.md (%r). The Phase 1 table is "
+         "the one chooser -- see docs/DESIGN-NOTES.md:1016: a second table in the reference "
+         "drifted and recommended a deep-only lens on rows SKILL.md omits. Point at the table."
+         % (_sk_rel, _chooser[0][:60]))
+else:
+    ok("%s picks lenses from its own Phase 1 table" % _sk_rel)
+
 print("\nthe quota is documented as a target, in the shipped text")
 # Comments stripped first: prepending `<!-- 30 is a target, not a bound ... -->` to the file
 # satisfied this while the operative paragraph was deleted. A gate a comment can pass is a gate
