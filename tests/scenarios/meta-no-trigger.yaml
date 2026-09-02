@@ -24,7 +24,7 @@
 
 name: meta-no-trigger
 session: ../sessions/default.yaml
-baseline: desktop-1.40609.0
+baseline: desktop-1.44121.1
 fidelity: container
 on_unanswered: first
 

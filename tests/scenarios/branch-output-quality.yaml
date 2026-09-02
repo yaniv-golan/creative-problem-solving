@@ -15,7 +15,7 @@
 # caught the pipeline making.
 name: branch-output-quality
 session: ../sessions/default.yaml
-baseline: desktop-1.40609.0
+baseline: desktop-1.44121.1
 fidelity: container
 on_unanswered: first
 # Same bound as ideas-command, and for the same measured reason: runs of this pipeline have taken
@@ -167,3 +167,57 @@ assert:
   # the closing read this branch added — "say what the list is missing" — is exactly the register
   # where a model writes it about something else. Match the claim.
   - transcript_not_matches: "[0-9,]+ distinct options"
+
+  # ---- THE QUALITY GRADE: the reporter's own complaints, judged ----
+  # Everything above proves a MECHANISM fired. None of it says the options got better, which is what
+  # the field report actually complained about ("8 of 109 actionable"). This block is the only thing
+  # in the suite that grades output QUALITY, and it exists because 3.3.0 made it possible to.
+  #
+  # WHY IT WAS IMPOSSIBLE BEFORE, and what changed. Authored-file capture is budgeted (64 KiB total,
+  # 16 KiB per file). This pipeline writes ~70 files and a ~87 KB report, and the budget is spent
+  # prefix-major then alphabetically — so `_work/*.json` intermediates ate it before reaching
+  # report.md, 53 files were omitted, and the judge refused to grade a partial document. Correct
+  # refusal, but it meant a `semantic_matches` here could only ever fail. 3.3.0's `evidence_files`
+  # scopes the judged set: the named files are captured FIRST and are exempt from the per-file cap.
+  #
+  # The 2026-09-02 run also predates two 3.3.0 fixes that bear on any earlier green here: a
+  # `semantic_matches` used not to arm the pre-run manifest at all (false green, every release
+  # 0.29.0-3.2.1), and a deliverable over 16 KiB was graded as a PREFIX. This scenario armed the
+  # manifest by accident — it asserts `no_delete_in_outputs` above, one of the five keys that did —
+  # which is why it refused honestly instead of false-greening.
+  #
+  # REQUIRES `COWORK_HARNESS_AUTHORED_TOTAL_BYTES=131072`: report.md alone exceeds the 64 KiB
+  # default, and scoping exempts a file from the PER-FILE cap but it still spends the shared budget.
+  # Composed-document ceiling is 262144 chars; worst case here is 32768 + 131072 + ~87000 = ~251k,
+  # so this cannot overflow into the silent-cut path 3.3.0 closed.
+  #
+  # READ THE PER-CLAIM PROFILE, NOT THE PASS/FAIL. `min_pass: 4` of 6 keeps one strict reading from
+  # redding a $31 run; the measurement is `assertions[].semanticClaims` in result.json, which records
+  # each claim's verdict either way. n=1 — this is a measurement, not a gate.
+  - semantic_matches:
+      min_pass: 4
+      evidence_files: ["outputs/*/report.md"]
+      rubric:
+        # THE HEADLINE COMPLAINT: "8 of 109 actionable". Deliberately the strictest claim here.
+        - "A reader could begin at least five of the ten highest-ranked options within a week
+           using only authority and resources the brief says they have — without needing further
+           research, a budget they were not given, or agreement from a party with no reason to say
+           yes."
+        # ISSUE 12: 46% of options answered a different question than the one asked.
+        - "Most of the ten highest-ranked options describe a change in what the named actor DOES,
+           rather than a change to the library itself, its documentation, its README or its issue
+           labels."
+        # ISSUE 16: the ranker demoted the operationally obvious in favour of the unusual.
+        - "The ten highest-ranked options are not dominated by building product or features; moves
+           that change how the project reaches, converts or retains contributors appear among them."
+        # ISSUE 13: a coercive cluster shipped unmarked and typographically identical to the rest.
+        - "Every option whose mechanism works by withholding, degrading, coercing or deceiving the
+           people it acts on carries a visible line naming that cost. Passes if the list contains no
+           such option."
+        # ISSUE 14: the "Checked" badge implied the whole option had been verified.
+        - "Every option marked as checked states which specific claim a search settled, rather than
+           implying the option as a whole was verified. Passes if nothing is marked as checked."
+        # ISSUE 17: "109 families" was read as 109 different things you could do.
+        - "The report explains that a family is one distinct action and that several families may be
+           one strategy approached different ways, rather than presenting its family count as a
+           count of distinct strategies."

@@ -242,7 +242,8 @@ at three. It is recorded because it is the only measurement taken on the baselin
 currently resolve to.
 
 **The baseline is now pinned, and the numbers above predate it.** Every scenario declares
-`baseline: desktop-1.40609.0` explicitly (moved from `desktop-1.37937.1` on 2026-09-01 — see below). Pinning began on 2026-08-24, replacing `baseline:
+`baseline: desktop-1.44121.1` explicitly (moved from `desktop-1.40609.0` on 2026-09-03, and from
+`desktop-1.37937.1` before that on 2026-09-01 — see below). Pinning began on 2026-08-24, replacing `baseline:
 latest` — a resolver over the newest baseline the installed harness ships, which moved underneath
 these numbers twice without a diff showing it. The chain is `desktop-1.30096.1` (what this table
 was measured under) → `1.32352.0` (harness 1.24.0) → `1.32885.1` → `1.34493.1` (harness 2.1.0) →
@@ -499,3 +500,19 @@ happened in a run or in fuzzing, and nearly all of them were silent at the time:
 returned 0 on a path that did not exist, a merge that pretty-printed ~17k tokens of indentation,
 a proposer that repeated itself, adjudicators that contradicted each other on the one boundary
 that decides whether two options merge.
+
+### 2026-09-03 — the pin moved to `desktop-1.44121.1`, and why it had to
+
+A Desktop update pruned agent ELF `2.1.247` **two minutes after a passing `doctor`** on 2026-09-02,
+so every scenario pinned a binary that no longer existed and `run` aborted at startup. The
+`branch-output-quality` run that day was completed with
+`COWORK_HARNESS_ALLOW_AGENT_FALLBACK=1` on ELF `2.1.255` — a deliberate, recorded drift, which means
+its figures are a claim about `2.1.255` and not about the binary the file then named.
+
+Desktop has since staged `2.1.258`, which is exactly what `desktop-1.44121.1` — shipped in
+`cowork-harness` 3.3.0 — pins. Re-pinning therefore removes the drift rather than papering over it,
+and `check-repo`'s "every scenario's pinned baseline has a staged agent binary" check went from a
+13-scenario warning back to green.
+
+**Operational rule this cost us:** re-run `doctor` immediately before a paid run. A pass two minutes
+earlier is not a pass now, and the failure lands after the launch rather than before it.

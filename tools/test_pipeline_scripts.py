@@ -3459,7 +3459,7 @@ def t_lead_search_is_numbering_invariant():
         _shim = os.path.join(_fake, "node_modules", "cowork-harness", "cli.js")
         open(_shim, "w").write("#!/bin/sh\nexit 0\n"); os.chmod(_shim, 0o755)
         os.symlink(_shim, os.path.join(_bin, "cowork-harness"))
-        for _v in ("desktop-1.37937.1", "desktop-1.40609.0"):
+        for _v in ("desktop-1.37937.1", "desktop-1.40609.0", "desktop-1.44121.1"):
             open(os.path.join(_fake, "node_modules", "cowork-harness", "baselines",
                               _v + ".json"), "w").write(_shape)
         _env = dict(os.environ, PATH=_bin + os.pathsep + os.environ.get("PATH", ""))

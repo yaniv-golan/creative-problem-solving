@@ -26,7 +26,7 @@
 #
 # ONE RUN IS NOT A MEASUREMENT (../../evals/README.md). A single green here says this run tested
 # the premise, not that the pipeline reliably does. Read the rate across reps before claiming more.
-# BASELINE: desktop-1.40609.0, the same one every scenario now pins.
+# BASELINE: desktop-1.44121.1, the same one every scenario now pins.
 #
 # This file reached that pin first, on its own merits: its product is a demo of what someone
 # installing TODAY receives, so it should run on today's platform. Until 2026-09-01 the other
@@ -36,7 +36,7 @@
 # rather than left describing a split that no longer exists.
 name: demo-retention-capture
 session: ../sessions/default.yaml
-baseline: desktop-1.40609.0
+baseline: desktop-1.44121.1
 fidelity: container
 on_unanswered: first
 

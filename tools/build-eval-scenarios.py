@@ -36,7 +36,7 @@ TEMPLATE = """\
 # {why}
 name: eval-{eid}-{name}
 session: ../sessions/default.yaml
-baseline: desktop-1.40609.0
+baseline: desktop-1.44121.1
 fidelity: container
 # The eval prompts are self-contained and several end by telling the model not to ask, so a gate
 # here is a finding rather than something to script an answer for.
