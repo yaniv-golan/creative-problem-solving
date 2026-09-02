@@ -148,8 +148,14 @@ Neither rule alone bounds the grouping.
 
 ## The judgement file went to a directory reclaimed at session end
 
-**Rule:** `pipeline.md` step 10 — write `slots.json` with file tools at the bare
-`$RUN/_work/slots.json`, and hand the script the `$BASE/`-prefixed form.
+**Rule:** `pipeline-report.md` step 10 — write `slots.json` with your file tools at whichever
+spelling Step 0b's stagger established, and hand the script the `$BASE/`-prefixed form.
+
+**Superseded once, and the supersession is the point.** This rule originally said *"at the bare
+path"*, flatly. That is wrong on a host whose file tools require an absolute path: following it
+literally there puts the run's judgement outside the run, where `--fill` cannot find it — the
+same class of loss as the incident below, by the opposite route. The rule is about the two
+spellings being host-dependent, not about either spelling being correct.
 
 One file, two spellings, per Step 0b. Left unsaid, a run wrote it through the path a script would
 use and it landed outside every directory the reader can see — the session scratchpad, which is
@@ -159,7 +165,7 @@ reclaimed when the session ends. The write succeeded and reported success.
 
 ## A green check certified a file that no longer existed
 
-**Rule:** `pipeline.md` step 10 — any edit after `--check` means running `--check` again.
+**Rule:** `pipeline-report.md` step 10 — any edit after `--check` means running `--check` again.
 
 The hedge scan exists to prompt an edit, so editing after it is the ordinary path, not an exception.
 A run went fill → check → *edit* → deliver. The edit itself was correct; what shipped was a file the
@@ -169,7 +175,7 @@ green had never seen.
 
 ## The reply was written fresh, and carried invented premises to the reader
 
-**Rule:** `pipeline.md` step 10 — the file is the answer and the reply is the file. Emit its
+**Rule:** `pipeline-report.md` step 10 — the file is the answer and the reply is the file. Emit its
 contents; do not compose a shorter version.
 
 Everything in the report has been through the checks. A summary written afterwards has been through
@@ -185,7 +191,7 @@ asking (Step 0c). The checked file honours that. Prose written after the checks 
 ## `cp report.md reply.md` satisfied the gate and the reader still got a summary
 
 **Date:** 2026-08-28.
-**Rule:** `pipeline.md` step 10 — write into `reply.md` the message you actually intend to send,
+**Rule:** `pipeline-report.md` step 10 — write into `reply.md` the message you actually intend to send,
 then check that.
 
 `build_report.py --check-reply` reads the file you wrote, not the message you send. A run copied
@@ -196,12 +202,15 @@ The script cannot reach the sent message; nothing runnable inside the pipeline c
 `tests/scenarios/ideas-command.yaml` now asserts a band heading appears in the sent message, which
 is the only surface that reaches it.
 
+---
+
 ## The line before the longest wait named the wrong stage
 
-**Rule:** `references/pipeline-report.md` §Progress — no `SAY:` line may claim to be the longest
-wait in the run, and `progress.py`'s forecasts state the shape of a wait rather than its length.
+**Rule:** `pipeline-report.md` §Progress — no `SAY:` line claims to be the longest wait in the
+run, *including the one that would currently be right*, and `progress.py`'s forecasts state the
+shape of a wait rather than its length.
 
-Run 2026-09-01. Two forward-looking claims reached the reader and neither held. `progress.py`'s
+**Date:** 2026-09-01. Two forward-looking claims reached the reader and neither held. `progress.py`'s
 `generated` line called pair proposal *"a couple of minutes"*; it took **823.6 s** — 6.9× the
 forecast. The `sharded` line then called adjudication *"the longest wait in the run — several
 minutes"*; it took **534.3 s**, which is 35% *shorter* than the stage billed as a short gap.
@@ -216,7 +225,14 @@ Closing. So a run that has measured the discrepancy is forbidden from mentioning
 that correctly stops a model inventing past-tense claims also stops it correcting a script's
 future-tense one — which means the script may not make a claim it cannot keep.
 
-The first fix attempted was a rate: *"roughly a minute per twenty options"*, fitted to this one
-run. That was rejected before shipping. The cost tracks **pairs**, which grow faster than options
-and do not exist yet at that boundary, so a 500-option run would have been told ~25 minutes while
-the pair space roughly tripled — the same defect with a citation attached.
+The field report proposed a rate as the fix — *"roughly a minute per 20 options"* — and it was
+rejected before anything shipped, for two reasons. One measurement cannot license a rate. And the
+cost tracks **pairs**, which grow faster than options and do not exist yet at that boundary, so
+the rate would have been the same defect with a citation attached.
+
+A second attempt moved the superlative rather than deleting it: `_generated` was left saying pair
+proposal is *"the longest single wait in the run"*, which is true of the measured run and was
+still a claim about the architecture. It contradicted the absolute rule stated one file over for
+two commits before a review caught it. The rule now forbids the superlative outright, and the
+`SAY:` line says the stage runs as one agent rather than a batch — which is what the reader needs
+and does not go stale.

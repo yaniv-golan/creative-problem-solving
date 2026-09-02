@@ -121,11 +121,18 @@ def _generated(wd):
     # tracks PAIRS, which grow faster than options and do not exist yet at this boundary, and one
     # measurement cannot license a rate. Say the shape of the wait, which is stable, rather than
     # its length, which is not.
+    #
+    # AND NO SUPERLATIVE EITHER. This said "the longest single wait in the run" -- moving the
+    # claim onto the stage that measured longest rather than deleting it. That is the same
+    # staleness one stage over: which stage is longest is a property of the architecture, it has
+    # already inverted once when adjudication was sharded, and sharding the pair-proposer is a
+    # live proposal that would invert it again. It also contradicted this file's own rule, which
+    # says no line claims to be the longest. Serial, and nothing prints until it returns, is true
+    # whatever else changes.
     return (f"{SAY}{n} options, from {_plural(L, 'separate angle')} run in isolation from one "
             f"another. Nothing is dropped for being similar to another. Next I look for pairs "
             f"that might be the same idea, so they can be grouped rather than deleted. That "
-            f"stage is serial and it is the longest single wait in the run — nothing prints "
-            f"until it returns.")
+            f"stage runs as one agent rather than a batch, so nothing prints until it returns.")
 
 
 def _sharded(wd):

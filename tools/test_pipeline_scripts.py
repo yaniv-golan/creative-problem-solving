@@ -2581,6 +2581,43 @@ def t_infeasible_lead_core():
     shutil.rmtree(tempfile.mkdtemp(), True)
 
 
+def t_no_say_line_claims_to_be_longest():
+    """No SAY: line claims a stage is the longest wait — including one that would be right.
+
+    Which stage is longest is a property of the architecture, not of the pipeline. It has already
+    inverted once: adjudication was longest until it was sharded N ways while pair proposal stayed
+    a single serial agent, and on the last measured run pair proposal took 823s against
+    adjudication's 534s while the line before adjudication still called it the longest. Sharding
+    the pair-proposer is a live proposal that would invert it again.
+
+    The orchestrator repeats these lines verbatim and may write nothing of its own between them,
+    so a wrong forecast is one nobody can correct. Two attempts got this wrong before a review
+    caught it: the first left the claim on adjudication, the second moved it onto pair proposal
+    rather than deleting it — true of the measured run, and still a claim about the architecture
+    that contradicted the absolute rule stated one file over.
+
+    Asserted against what the scripts EMIT, not against their comments, which discuss the rule.
+    """
+    print("\nno SAY: line claims to be the longest")
+    import ast as _ast
+    bad = []
+    for f in sorted(SCRIPTS.glob("*.py")):
+        tree = _ast.parse(f.read_text(encoding="utf-8"))
+        for node in _ast.walk(tree):
+            # every string literal that is part of an emitted line, comments excluded by ast
+            if isinstance(node, _ast.Constant) and isinstance(node.value, str):
+                if "longest" in node.value.lower():
+                    bad.append(f"{f.name}:{node.lineno} {node.value.strip()[:60]}")
+    check("no script emits a 'longest' claim", not bad, "; ".join(bad[:3]))
+
+    # And the rule is still stated where a reader looks for it.
+    rp = (ROOT / "creative-problem-solving" / "skills" / "creative-problem-solving"
+          / "references" / "pipeline-report.md").read_text(encoding="utf-8")
+    check("the rule is stated in pipeline-report.md",
+          "No line claims to be the longest" in " ".join(rp.split()),
+          "the Progress section no longer forbids it")
+
+
 def t_internal_claim_verdict():
     """The fifth verdict, across every surface that counts or renders a verdict.
 
@@ -5256,7 +5293,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
               t_cross_cluster_merge, t_cross_cluster_merge_reached, t_shard_budget,
               t_probe_advice_actually_clears, t_echo_scan_precision, t_quota_gate_fires,
               t_actor_and_decision_are_gated, t_risk_mark_survives_to_the_report,
-              t_internal_claim_verdict,
+              t_internal_claim_verdict, t_no_say_line_claims_to_be_longest,
               t_shard_coverage_check, t_infeasible_lead_core, t_source_link,
               t_merge_never_widens_past_the_share_rule, t_forced_merge_is_bounded_too,
               t_repair_stays_inside_the_pinned_component,

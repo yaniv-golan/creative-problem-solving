@@ -26,7 +26,9 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
    the echo is what makes the difference visible, and it is the only thing in this pipeline that
    says anything about what a dispatch actually contained. An older run with no `prompt_echo`
    passes unchanged.
-   family ids in order, ids only. A mechanism reached by six lenses gets one slot, not six.
+
+   **It returns family ids in order, ids only** — a mechanism reached by six lenses gets one slot,
+   not six — plus the `prompt_echo` field above and nothing else.
 
    **Rank by whether it would survive vetting, not by how unusual it is.** The reader is going
    to take the top of this list to people who will argue with it. The question for each family
@@ -43,10 +45,11 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
    agreement from a party with no incentive. The second is a real reason to rank low; the first
    is a cost, and often a small one.
 
-   *Evidence: on the run that added this, eleven of the top twenty were product features while
-   two distribution moves using a flow the reader already ran weekly sat at 47 and 55.* **Do not
-   pass that example to the ranker** — naming particular mechanisms biases it toward them on an
-   unrelated problem.
+   Evidence: on the run that added this, eleven of the top twenty were product features while the
+   two cheapest distribution moves in the pool sat at 47 and 55 — both using a flow the reader
+   already ran weekly, and both killed by *"who's going to make them do that?"*. **Do not pass
+   that example to the ranker**: naming particular mechanisms biases it toward them on an
+   unrelated problem, and this paragraph is not dispatch content.
 
    Ranks low: it needs a party with no incentive to play along; it depends on data nobody has;
    it is a restatement of the problem in mechanism form; it would embarrass the reader to
@@ -136,8 +139,9 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
    qualification goes: a source that confirms the mechanism exists but supports a *weaker* claim
    than the option makes is still `confirmed`, and the difference between that and a clean
    `confirmed` is a sentence the reader needs. On `no_external_claim` it is the only place to say
-   why nothing was checkable. *Evidence: verifiers were already writing this field before anything
-   read it, and every record was discarded.*
+   why nothing was checkable. Evidence: verifiers were already writing this field before anything
+   read it — 13 of 13 records on one preserved run and 11 of 19 on another — and every note
+   written was discarded unread.
 
    **Five verdicts, and the differences between the last three are the whole point.**
 
@@ -150,9 +154,9 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
      situation or data. No outside source could settle it, whatever you searched. No `query`,
      and a `note` is **required**: the note names the claim, and it is the whole verdict.
 
-   *Evidence: a run's top-ranked option rested on a claim about the reader's own product; a search
+   Evidence: a run's top-ranked option rested on a claim about the reader's own product; a search
    settled an incidental assertion inside it and the report printed "Checked" beneath, which reads
-   as though the option had been checked.* `no_external_claim` is wrong the other way — it renders
+   as though the option had been checked. `no_external_claim` is wrong the other way — it renders
    as "nothing to verify", and there was something to verify that nobody outside could do.
 
    An option resting on nothing external is not exempt and not a failed check: it is a proposal,
@@ -208,9 +212,10 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     `$RUN/_work/slots.json` where the stagger settled on bare, absolute where it settled on
     absolute — **and pass the script the `$BASE/`-prefixed form above.** Two spellings of one
     file, per Step 0b — you write it, a script reads it, and on a split-namespace host no single
-    string is right for both, and naming one of them flatly is wrong on half of all hosts.
-    *Evidence: left unsaid, this landed in the session scratchpad — reclaimed at session end,
-    and the write reported success.*
+    string is right for both, and naming one of them flatly is wrong wherever the file tools
+    demand the other — the judgement then lands outside the run, where `--fill` cannot find it.
+    Evidence: left unsaid, this landed outside every directory the reader can see — the session
+    scratchpad, reclaimed at session end, and the write reported success.
 
     **Overwrite it if you fill in more than one pass; never delete it.** Nothing under `outputs/`
     is deleted (Step 0b) and the harness enforces that — an in-place overwrite is fine, an `rm`
@@ -377,9 +382,11 @@ saying what the phase produced and what happens next, and you repeat it. Seven b
 Each says what the phase produced **and what is about to happen**, including how long a wait to
 expect. The forward half matters as much as the counts: silence that was predicted is a different
 experience from silence that was not, and every long stretch is announced by the line before it
-rather than explained by one after. **No line claims to be the longest** — which stage that is
-depends on the architecture and has already changed once, and the orchestrator repeats these
-verbatim, so a wrong forecast is one nobody can correct.
+rather than explained by one after. **No line claims to be the longest, including the one that
+currently would be right.** Which stage is longest is a property of the architecture: it inverted
+once when adjudication was sharded, and sharding the pair-proposer would invert it again. The
+orchestrator repeats these verbatim, so a wrong forecast is one nobody can correct — and a
+superlative is the part that goes stale while the sentence around it still reads true.
 
 `verify_pipeline.py` also prints a `SAY:` line when it **refuses** the run. That is the boundary
 most easily lost: it is a gate, so a run it stops exits before printing counts, and a reader who
