@@ -67,8 +67,15 @@ assert:
   # The grouper's task file gained an `actor` key this branch (plan_groups.py). If that write
   # broke, this is the stage that stops.
   - subagent_dispatched: "creative-problem-solving:grouper"
-  # The ranker gained a required output field (`prompt_echo`) and a new criterion.
+  # The ranker gained an expected output field (`prompt_echo`) and a new criterion.
   - subagent_dispatched: "creative-problem-solving:ranker"
+  # THE ONE ASSERTION THAT SEES THE RELAY ACTUALLY HAPPEN. `prompt_echo` is produced only if the
+  # orchestrator relays step 7's instruction into the ranker's dispatch. check-repo can assert
+  # that step 7 still CONTAINS the instruction; nothing static can assert a live orchestrator
+  # obeyed it, and the field's absence is a WARN, so a run that skipped it still exits 0 and
+  # ships. This is the live lane, so it is the only place the chain can be checked end to end.
+  # Phrased as the absence of verify_pipeline's own WARN text, the same idiom as ISSUE 11 above.
+  - tool_result_not_contains: "ranked.json has no `prompt_echo`"
   - subagent_dispatched: "creative-problem-solving:verifier"
 
   # ---- ISSUE 12: the reader is told whose behaviour this is about ----

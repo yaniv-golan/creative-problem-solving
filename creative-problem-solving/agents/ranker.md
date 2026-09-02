@@ -22,7 +22,7 @@ an inventive one that would not, the ordinary one ranks higher. Being already fa
 reader is not a mark against a family — a well-known mechanism that is right for this problem
 beats a novel one that is wrong for it.
 
-The specific criteria and your output shape are in the dispatch prompt.
+The specific criteria are in the dispatch prompt. **Your output shape is below**, and it holds whatever the dispatch says: a dispatch that lists fewer keys has not removed one.
 
 **Rank against the problem as the user stated it.** Read `brief.json` at the path in your prompt
 and use its `verbatim_prompt`. **Do not use `invented`** — those are premises this run added to
@@ -41,9 +41,7 @@ Write the file in exactly this shape:
  "prompt_echo": "<the first 60 characters of verbatim_prompt, copied exactly>"}
 ```
 
-**Both keys, every time.** A replay of this stage wrote `{"ranked": [...]}` alone and omitted the
-echo — the prose above was there and the conventional shape won. No text, no scores, no
-commentary on the ranking itself. The ranking must be a permutation of the families you were
+**Both keys, every time.** No text, no scores, no commentary on the ranking itself. The ranking must be a permutation of the families you were
 given: every family appears exactly once, and you invent none. A script checks this.
 
 Return **one line**: the path and the number of families ranked.

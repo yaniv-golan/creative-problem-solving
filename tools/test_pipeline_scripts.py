@@ -5356,6 +5356,74 @@ def t_an_item_that_is_not_an_object_fails_by_name():
 # Hoisted from an anonymous literal inside main()'s `for` statement so that
 # t_every_test_is_registered has an object to compare against. A tuple that exists only as a
 # loop header cannot be introspected, so "is every defined test actually run" was unaskable.
+def t_echo_survives_a_paragraph_break():
+    """A byte-perfect 60-character echo of a multi-paragraph brief must PASS.
+
+    The gate sliced its target at the RAW echo length and compared it against the NORMALIZED echo,
+    so any whitespace run inside the first 60 characters -- a paragraph break, a double space --
+    made the target one character longer than the echo could ever be, and the run died. It died at
+    the last gate, after generation, adjudication, grouping, ranking and thirteen searches were
+    paid for, telling an obedient ranker it had ranked against something else. Multi-paragraph
+    prompts are the ordinary case for this tool, so this fired on good runs and only on good runs:
+    a ranker that never opened the brief and wrote nothing got a WARN and shipped.
+
+    Also pins the floor. `_want` is sliced to whatever arrived, so an echo of "H" matched every
+    prompt beginning with H and passed carrying one letter of evidence.
+    """
+    print("\nthe echo gate on a multi-paragraph brief")
+    d = tempfile.mkdtemp()
+    ids, fams = full_fixture(d, multi=True)
+    prompt = ("How do we grow deal flow?\n\nWe have tried events, newsletters, and cold "
+              "outreach already, and none of them moved the number.")
+    json.dump({"verbatim_prompt": prompt, "actor": "a partner",
+               "decision": "where to spend the next quarter", "reading": "r", "invented": []},
+              open(os.path.join(d, "brief.json"), "w"))
+    rk = os.path.join(d, "ranked.json")
+    order = json.load(open(rk))["ranked"]
+
+    def _echo(v):
+        json.dump({"ranked": order, "prompt_echo": v}, open(rk, "w"))
+        return run("verify_pipeline.py", d)
+
+    # Verbatim, exactly as agents/ranker.md instructs -- newlines and all.
+    rc, out = _echo(prompt[:60])
+    check("a verbatim 60-char echo of a multi-paragraph brief is accepted",
+          "does not match the opening" not in out, out.strip()[:160])
+
+    # The ranker may reasonably collapse the break when copying; both must pass.
+    rc, out = _echo(" ".join(prompt.split())[:60])
+    check("and so is the same echo with its whitespace collapsed",
+          "does not match the opening" not in out, out.strip()[:160])
+
+    # A real mismatch still dies -- the gate must not have been defanged into uselessness.
+    rc, out = _echo("Something the user never wrote at all, not one word of it")
+    check("an echo of text the user never wrote is still refused",
+          rc != 0 and "does not match the opening" in out, out.strip()[:160])
+
+    # One letter is not evidence. WARN, not die: a short echo is a gap in the record.
+    rc, out = _echo("H")
+    check("a one-character echo is not accepted as proof",
+          "does not match the opening" not in out and "characters" in out, out.strip()[:160])
+
+    # AND THE GAP HAS TO REACH THE READER. A WARN goes to stdout, which pipeline-report.md's own
+    # Progress note says a client may render as a collapsed "ran 4 commands" card, and the
+    # orchestrator is told to relay SAY lines verbatim and nothing of its own. So a run whose
+    # ranker never opened the brief shipped a report identical to one that did, and only someone
+    # reading raw tool output could tell. The absence rides the SAY line for that reason.
+    json.dump({"ranked": order}, open(rk, "w"))
+    rc, out = run("verify_pipeline.py", d)
+    _say = [ln for ln in out.splitlines() if ln.startswith("SAY:")]
+    check("an unverified ranking says so on the line the reader is read",
+          any("did not echo back" in ln for ln in _say), " | ".join(_say)[:200])
+
+    # And it stays quiet when the echo is good -- a caveat on every run is a caveat on none.
+    _echo(prompt[:60])
+    rc, out = run("verify_pipeline.py", d)
+    check("and a run with a good echo carries no such caveat",
+          not any("did not echo back" in ln for ln in out.splitlines()), out.strip()[:160])
+    shutil.rmtree(d, True)
+
+
 TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
               t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
           t_wp4_gates, t_rev6_report, t_relation_gate, t_reply_gate,
@@ -5395,6 +5463,7 @@ TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_
     t_verify_pipeline_backstops_the_pool_index,
     t_denominator_counts_distinct_ids_not_entries,
     t_an_item_that_is_not_an_object_fails_by_name,
+    t_echo_survives_a_paragraph_break,
     t_every_test_is_registered,
 )
 

@@ -1020,15 +1020,13 @@ else:
 #
 # Scoped to the body: the reference-list entry at the top legitimately names the file, and it is
 # the pointer INTO it as a source for picking that the record forbids.
-# STEP 7 MUST INSTRUCT THE ECHO, NOT DESCRIBE IT. Measured on three replays of the ranker against
-# a frozen family set: the field was specified in agents/ranker.md as prose (absent), then as a
-# worked JSON shape block there too (still absent), and appeared only when the DISPATCH told the
-# ranker to write it. A standing contract in an agent file did not survive contact with a dispatch
-# that did not mention it.
-#
-# So the load-bearing sentence is in step 7, and it is one edit from becoming a description again
-# -- which is what it was, and why two replays came back without the field. If it reverts, the
-# ranker stops producing the echo, verify_pipeline's check goes inert, and nothing says so.
+# STEP 7 MUST INSTRUCT THE ECHO, NOT DESCRIBE IT. The field is produced by what the dispatch
+# asks for, so the load-bearing text is step 7's instruction to relay it -- and it is one edit
+# from becoming a description again ("it writes a `prompt_echo` field"), which is what it was.
+# If it reverts, the ranker stops being asked for the echo, verify_pipeline's check goes inert,
+# and nothing says so. This gate is a tripwire on the sentence, not proof of the mechanism: only
+# a live run can show the relay happening, which tests/scenarios/branch-output-quality.yaml is
+# where that belongs.
 print("\nstep 7 tells the orchestrator to relay the prompt_echo requirement")
 _rep = read_text("%s/skills/%s/references/pipeline-report.md" % (plugin_name, skill_names[0]))
 _flat = " ".join(_rep.split())

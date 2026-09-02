@@ -52,6 +52,12 @@ def die(msg):
 # bury one. They never change the exit code: a warning is for a property this script can detect but
 # not adjudicate, and a gate that fails on those teaches people to stop reading it.
 WARNINGS = []
+# Set when the run makes no claim about what the ranker read. It rides the SAY line rather than
+# the WARN list because the orchestrator relays SAY lines verbatim and nothing else -- a warning
+# on stdout reaches a maintainer reading raw tool output, not the person reading the report, and
+# an unverified ranking that only a maintainer can find out about is the state this gate exists
+# to make visible.
+ECHO_UNVERIFIED = []
 
 def warn(msg):
     WARNINGS.append(msg)
@@ -496,32 +502,44 @@ def main(wd):
     # and describe having taken, which is the failure this pipeline names as the one it cannot
     # survive. So the ranker echoes back the opening of what it read, and it is checked here.
     # This is the first thing in the pipeline that says anything about what a dispatch contained.
-    # REQUIRED, not optional. `if _echo:` made this opt-out by omission: a ranker that never
-    # opened brief.json wrote no field and passed, which is exactly the run the gate exists to
-    # catch. W2.6's stated condition was that it ships only with a working echo-back — without
-    # one it trades a guaranteed input for a claimed one and is strictly worse than not reading
-    # the file at all. An archived run predating the field gets the message below and one edit.
+    # NOT a hard refusal. `if _echo:` made this opt-out by omission -- a ranker that never opened
+    # brief.json wrote no field and passed -- but dying on an absent field kills a thirty-five
+    # minute run at the last gate over a missing audit line. Absent and too-short are WARNs;
+    # a PRESENT echo that does not match is refused, because that ranker demonstrably ranked
+    # against something other than the user's words. See the note on where the WARN surfaces.
     _echo = brief_str(load_obj(rkpath) if os.path.exists(rkpath) else {}, "prompt_echo", rkpath)
-    # ABSENT IS A WARN, MISMATCHED IS A GATE, and the difference is what the evidence supports.
-    # An absent echo means nobody can tell whether the ranker read the brief -- that is a gap in
-    # the record, not a proven fault, and killing a thirty-five-minute run at the last gate over a
-    # missing audit field is disproportionate. A PRESENT echo that does not match is different:
-    # the ranker demonstrably ranked against something other than the user's own words.
-    #
-    # This is not the opt-out-by-omission the field was added to close, because the absence is now
-    # loud. Measured: a replay given the real step-7 dispatch wrote `{"ranked": [...]}` and no
-    # echo, because agents/ranker.md stated the field in prose and showed no output shape while
-    # grouper.md showed one. The shape block is the fix; this is what happens when it still misses.
-    if not _echo:
+    # NORMALIZE BEFORE SLICING. This compared a normalized echo against a slice taken at the RAW
+    # echo's length, so any whitespace RUN inside the first 60 characters -- a paragraph break, a
+    # double space -- made `_want` one character longer than the echo could ever be, and the gate
+    # died. Reproduced on "How do we grow deal flow?\n\nWe have tried events, newsletters, ...":
+    # a byte-perfect 60-character copy was refused. Multi-paragraph briefs are the ordinary case
+    # here, so this refused honest runs at the last gate, after every search was paid for, with a
+    # message accusing the ranker of ranking against something else. A gate that punishes
+    # compliance is worse than no gate.
+    _norm = " ".join(_echo.split())
+    _full = " ".join((brief.get("verbatim_prompt") or "").split())
+    # A floor, because `_want` is sliced to whatever arrived: an echo of "H" matched any prompt
+    # starting with H and passed with the evidentiary weight of one letter. 40 sits well below the
+    # 60 asked for -- normalization only ever shrinks the echo, and never by twenty characters --
+    # so this cannot fire on an honest copy, and a short echo is a gap in the record, not a fault.
+    _floor = min(40, len(_full))
+    if _norm and len(_norm) < _floor:
+        warn(f"ranked.json's `prompt_echo` is {len(_norm)} characters; the ranker is asked for the "
+             f"first 60 of `verbatim_prompt`. Too little to tell whether it read the brief or "
+             f"guessed the opening, so this run makes no claim about what the ranker was given.")
+        ECHO_UNVERIFIED.append("short")
+        _norm = ""
+    if not _norm:
         warn("ranked.json has no `prompt_echo`, so nothing in this run says what the ranker was "
              "actually given. It is told to read brief.json and echo back the first 60 characters "
              "of `verbatim_prompt`; without it a ranker that read the brief and one handed a "
              "summary of it are indistinguishable. The ranking is not refused — but it is the one "
              "claim this pipeline makes about what a dispatch contained, and this run does not "
              "make it.")
+        ECHO_UNVERIFIED.append("absent")
     else:
-        _want = " ".join((brief.get("verbatim_prompt") or "").split())[:len(_echo)]
-        if " ".join(_echo.split()) != _want:
+        _want = _full[:len(_norm)]
+        if _norm != _want:
             die(f"ranked.json's `prompt_echo` does not match the opening of brief.json's "
                 f"verbatim_prompt.\n  echoed: {_echo[:80]!r}\n  actual: {_want[:80]!r}\n"
                 f"The ranker is dispatched against the problem as the USER stated it, never the "
@@ -863,6 +881,11 @@ def main(wd):
     # "109 different things you could do". Renaming the count is not the fix and is refused
     # elsewhere in this repo: a count of distinct options is not measurable and asserting one
     # would be false precision. So the count stays and the sentence explains it.
+    if ECHO_UNVERIFIED:
+        say += (" One thing this run cannot tell you: the ranker did not echo back the opening of "
+                "your question, so nothing here confirms it ranked against what you actually "
+                "asked rather than a summary of it. The order below may still be right — it is "
+                "unevidenced, not wrong.")
     print(say + " A family is one distinct action; several families may be one strategy "
                 "approached different ways, since options are grouped by what you would do "
                 "rather than by what it would achieve. These are counted from the files at the "
