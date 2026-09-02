@@ -1,0 +1,160 @@
+# Does the 0.5.0 work actually answer the field report — including on content, not just mechanics?
+#
+# WHY A SECOND FULL-PIPELINE SCENARIO, at ~$25-35 a run. `ideas-command` asserts that the command
+# ROUTES and says so in its own header; its prompt is a repositioning question. The field report's
+# largest finding (ISSUE 12) was specifically that an ADOPTION brief — "get these people to do this
+# thing, repeatedly" — pulled roughly a third of the options into improving the artifact instead of
+# changing anyone's behaviour, and that nothing downstream could see it. Reusing a repositioning
+# prompt cannot test the fix in the habitat that produced the defect. So: same pipeline, adoption
+# brief, and assertions on what the READER receives.
+#
+# LIMIT, read before trusting a green. Everything below is either structural or a literal a script
+# emits. Whether the OPTIONS are good is not asserted here and cannot be — that is an ../../evals/
+# question, judged. What IS asserted is that the instruments the field report asked for reach the
+# reader: the actor and decision, the family-count caveat, and the absence of two claims the report
+# caught the pipeline making.
+name: branch-output-quality
+session: ../sessions/default.yaml
+baseline: desktop-1.40609.0
+fidelity: container
+on_unanswered: first
+# Same bound as ideas-command, and for the same measured reason: runs of this pipeline have taken
+# 1634s / 2737s / 3688s. Not derived afresh — one pipeline, one envelope.
+timeout_ms: 7200000
+
+# Leading slash is load-bearing: mid-sentence slashes are not expanded by the agent binary.
+# Adoption-shaped on purpose (see header), and deliberately carries the two shapes the report says
+# a brief must survive: a spent-answer exclusion ("already written"), and a constraint stated as a
+# conclusion ("can't pay") that Phase 0 step 3b is supposed to test rather than accept.
+prompt: "/creative-problem-solving:ideas Our open-source Python library has 40k downloads a month and almost no contributors. Twelve people opened pull requests last year and nine were one-line typo fixes. I maintain it alone, evenings and weekends, and the issue backlog is 300 deep. I don't want to hand it to a foundation and I can't pay anyone. What I want is three or four people who fix real bugs without being asked and are still around in a year. I've already written a CONTRIBUTING.md and added good-first-issue labels."
+
+assert:
+  - result: success
+  # NOT SET, deliberately: `allow_undelivered_deliverables` — see ideas-command.yaml for why the
+  # warn is the only detector that can see where slots.json lands.
+  - max_cost_usd: 60
+
+  # ---- the run actually ran the pipeline, rather than answering from the skill's own source ----
+  - skill_triggered: creative-problem-solving
+  - tool_called: "Bash"                      # container tier: native Bash, not the workspace alias
+  - no_delete_in_outputs: true
+  - questions_count_max: 1
+  - computer_links_resolve: true
+  # Delivery actually went through present_files, and nothing presented stayed in the scratchpad.
+  # computer_links_resolve proves a link resolves; these prove the delivery path was taken.
+  - present_files_called: true
+  - no_scratchpad_leak: true
+  # THE SPLIT IS REACHABLE. This branch moved steps 7-10 into a new references/pipeline-report.md.
+  # Nothing else here checks the new file is reached: a run that composed the report from memory,
+  # or from a stale pipeline.md path, produces a plausible report and passes every other assertion.
+  - reference_read: "pipeline-report\\.md"
+  # Ties the Bash calls to the skill's own window. skill_triggered and tool_called are independent
+  # facts: a run that triggered the skill, answered from memory, and ran one unrelated bash passes
+  # both.
+  - skill_tool_used: {skill: "creative-problem-solving", tool: "Bash"}
+  # Runaway fan-out, which max_cost_usd only catches after the money is spent. The audited run
+  # dispatched 36 (9 generators + 1 proposer + 15 adjudicators + 7 groupers + 1 ranker + 3
+  # verifiers); 60 leaves 1.7x.
+  - dispatch_count_max: 60
+  # A run that limped — scripts dying and being retried — still ends `success`. Set loose on the
+  # first run deliberately; tighten from result.json, which the kept run dir makes free.
+  - max_tool_errors: 10
+
+  # ---- every stage that changed contract this branch actually dispatched ----
+  # A stage that silently stopped dispatching would still produce a report, and the counts would
+  # still add up, because verify_pipeline counts what is present.
+  - subagent_dispatched: "creative-problem-solving:generator"
+  # The grouper's task file gained an `actor` key this branch (plan_groups.py). If that write
+  # broke, this is the stage that stops.
+  - subagent_dispatched: "creative-problem-solving:grouper"
+  # The ranker gained a required output field (`prompt_echo`) and a new criterion.
+  - subagent_dispatched: "creative-problem-solving:ranker"
+  - subagent_dispatched: "creative-problem-solving:verifier"
+
+  # ---- ISSUE 12: the reader is told whose behaviour this is about ----
+  # build_report.py emits this heading from brief.json's actor/decision. Its presence proves the
+  # whole chain: Phase 0 answered step 1, step 0c recorded it, both gates passed, and the report
+  # printed it. A summary would not carry it, and neither would a run that skipped Phase 0.
+  - transcript_contains: "## Whose behaviour this is about"
+
+  # ---- ISSUE 17: the family count no longer overstates distinctness ----
+  # verify_pipeline's closing SAY line. The reporter's complaint was that "109 families" invites
+  # "109 different things you could do"; renaming the count is forbidden elsewhere in the payload,
+  # so the fix was to say what a family counts.
+  - transcript_contains: "A family is one distinct action"
+
+  # ---- ISSUE 11: the two boundaries that could not be audited now record themselves ----
+  # NOT the SAY lines. Those are byte-identical on main (`git show main:…/merge_families.py`), and
+  # the audited run SAID both while exhibiting the defect — the reporter's own words: "both absent
+  # even though I did repeat their SAY: lines". Asserting them passes on the defect.
+  # What changed is that step 9 can now SEE a boundary that never spoke. This is the negative that
+  # reds on main and greens here. It reads a tool result, not assistant text, so it is checking the
+  # script rather than the model's relay of it.
+  - tool_result_not_contains: "never printed a line for the reader"
+  # And that verify_pipeline reached its summary at all, rather than dying somewhere quieter.
+  - tool_result_matches: "generated=[0-9]+ presented=[0-9]+"
+  # The relay half, kept deliberately and labelled for what it is: pytest already proves these
+  # sentences are EMITTED (tools/test_pipeline_scripts.py). Only a live run proves they reach the
+  # reader, which is model-mediated instruction-following no unit test can check. A red here means
+  # the orchestrator stopped relaying — not that a script broke.
+  - transcript_matches: "(The adjudicators agreed on|No pair was judged by two adjudicators)"
+  - transcript_contains: "clusters became"
+
+  # ---- ISSUE 4: the reply is the file, not a summary of it ----
+  # Same two markers as ideas-command, and for the same measured reason: a summary drops the band
+  # caveat, and "Assumption I ran with" appears in both so it passes vacuously.
+  - transcript_contains: "## The rest, in rank order"
+  # SUBSTRING OF BOTH BRANCHES. build_report.py:339-352 renders "*Mostly not checked by search…"
+  # when any below-rank-13 lead carries a verdict, and "*Not checked by search…" otherwise — one
+  # of three preserved runs takes the Mostly branch, so pinning "*Not" reds a correct run about a
+  # third of the time. The shared tail keeps the summary-vacuity property that made this the right
+  # marker in the first place.
+  - transcript_contains: "checked by search. Verification covers"
+
+  # ---- ISSUE 10: no line claims to be the longest wait ----
+  # Two forecasts were materially wrong on the audited run, and the orchestrator must repeat them
+  # verbatim, so nobody could correct them. Which stage is longest is a property of the
+  # architecture and has already inverted once. This is the negative that proves the fix.
+  - transcript_not_contains: "longest wait in the run"
+
+  # ---- THE ASSERTION THAT JUSTIFIES A SECOND FULL RUN ----
+  # Everything above is prompt-independent: it would grade the same on ideas-command.yaml's
+  # repositioning prompt and could be pasted there for $0. These two claims cannot — they are
+  # about whether an ADOPTION brief still pulls the answer toward improving the artifact, which is
+  # the defect ISSUE 12 named and the reason this prompt plants a CONTRIBUTING.md and a label
+  # scheme as things the reader has already spent. If this item is ever removed, delete the file
+  # and move its literals into ideas-command.yaml.
+  #
+  # The judge grades the union of the final message, the transcript, and the ON-DISK content of
+  # files the run authored — so brief.json and report.md are both in the document. Claims about
+  # whether a tool was CALLED can never grade true there; these are about content only.
+  # min_pass equals the claim count deliberately: both halves are the point.
+  - semantic_matches:
+      min_pass: 2
+      rubric:
+        - "The actor recorded as the one whose behaviour must change is a person or role — a
+           maintainer, a contributor, a downstream user — and not a document, a label, a
+           repository, a process, or the library itself."
+        - "Most of the highest-ranked options change what that actor does, rather than improving
+           the library, its documentation, its README or its issue labels."
+  # ISSUE 13 and 14, softer on purpose: both depend on a model choosing to mark something, so a
+  # legitimate run may have nothing to mark. Each claim is written to pass vacuously in that case,
+  # and min_pass is 1 so one strict reading does not red a $30 run — the per-claim profile is
+  # recorded in result.json either way, which is what makes this worth asserting at all.
+  - semantic_matches:
+      min_pass: 1
+      rubric:
+        - "Any option whose mechanism works by withholding, degrading, coercing or deceiving the
+           people it acts on carries a visible line naming that cost. Passes if the list contains
+           no such option."
+        - "Every option marked as checked states which specific claim a search settled, rather
+           than implying the whole option was verified. Passes if nothing is marked as checked."
+
+  # ---- the count the payload forbids ----
+  # references/pipeline-report.md and README.md both refuse a "distinct options" count as false
+  # precision. Nothing gated it; a run that invents one would have shipped.
+  # A COUNT of distinct options is what the payload forbids, not the words. The collocation
+  # appears innocently in this repo's own eval output ("Eight mechanically distinct options"), and
+  # the closing read this branch added — "say what the list is missing" — is exactly the register
+  # where a model writes it about something else. Match the claim.
+  - transcript_not_matches: "[0-9,]+ distinct options"

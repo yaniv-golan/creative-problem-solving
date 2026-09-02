@@ -1316,7 +1316,13 @@ def transcript_markers(texts):
 _texts = [(os.path.relpath(_f, REPO), read_text(os.path.relpath(_f, REPO)))
           for _f in sorted(glob.glob(os.path.join(REPO, "tests", "scenarios", "*.yaml")))]
 _markers = transcript_markers(_texts)
-_br = read_text(os.path.join(plugin_name, "scripts", "build_report.py"))
+# EVERY script, not just build_report.py. A transcript marker is a string the orchestrator relays
+# into the sent message, and the `SAY:` lines it is required to repeat verbatim come from
+# progress.py, merge_relations.py, merge_families.py and verify_pipeline.py as well as from the
+# report build. Scanning one file rejected `clusters became` -- emitted by merge_families.py and
+# relayed like every other boundary line -- as a mistyped assertion.
+_br = "\n".join(read_text(os.path.relpath(_f, REPO))
+                for _f in sorted(glob.glob(os.path.join(REPO, plugin_name, "scripts", "*.py"))))
 # Guarded on finding none, which the version before this did not do: deleting or rewording the
 # assertion made the whole check evaporate silently. Ten lines above, this same file states the
 # rule -- "a rule that examined nothing must not look clean" -- and enforces it.
@@ -1328,12 +1334,12 @@ if not _markers:
 else:
     _bad = [(l, w) for l, w in _markers if l not in _br]
     for _lit, _where in _bad:
-        fail("%s asserts the sent message contains %r, and build_report.py never emits that "
+        fail("%s asserts the sent message contains %r, and no script in scripts/ emits that "
              "string. Either the heading was reworded or the assertion was mistyped; both red a "
              "live run at full price and neither is visible until it is spent."
              % (_where, _lit))
     if not _bad:
-        ok("all %d transcript marker(s) are emitted by build_report.py" % len(_markers))
+        ok("all %d transcript marker(s) are emitted by a pipeline script" % len(_markers))
 
 # A host-path literal anywhere in shipped skill text becomes model-visible the moment the model
 # reads the file, and Cowork's runtime host-path guard fires on it. That is not hypothetical: a

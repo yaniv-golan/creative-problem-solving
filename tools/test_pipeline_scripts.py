@@ -223,7 +223,19 @@ def make_families(wd, ids, multi=False):
 
 def make_tail(wd, fams, leads=None):
     order = [f["id"] for f in fams]
-    json.dump({"ranked": order}, open(os.path.join(wd, "ranked.json"), "w"))
+    # `prompt_echo` is required by verify_pipeline: the ranker reads brief.json and echoes back the
+    # opening of verbatim_prompt, which is the only evidence in the pipeline about what a dispatch
+    # actually contained. A fixture that omits it is not a conformant run, so it writes one --
+    # read from the brief on disk so it matches whatever the calling test set.
+    _bp = os.path.join(wd, "brief.json")
+    _vp = ""
+    if os.path.exists(_bp):
+        try:
+            _vp = (json.load(open(_bp)).get("verbatim_prompt") or "")[:60]
+        except Exception:                                              # noqa: BLE001
+            _vp = ""
+    json.dump({"ranked": order, "prompt_echo": _vp},
+              open(os.path.join(wd, "ranked.json"), "w"))
     by = {f["id"]: f for f in fams}
     leads = leads or [by[i]["members"][0] for i in order[:13]]
     json.dump({"checked": [{"id": i, "query": "q", "verdict": "unclear"} for i in leads]},

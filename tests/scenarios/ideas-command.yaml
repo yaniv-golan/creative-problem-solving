@@ -79,7 +79,12 @@ assert:
   #
   # Deliberately NOT asserting family headings or the closing read: headings are model-authored
   # per run and the closing line is a filled slot, so neither is a literal this file can name.
-  - transcript_contains: "*Not checked by search. Verification covers"
+  # SUBSTRING OF BOTH BRANCHES. build_report.py:339-352 renders "*Mostly not checked by search…"
+  # when any below-rank-13 lead carries a verdict, and "*Not checked by search…" otherwise — one
+  # of three preserved runs takes the Mostly branch, so pinning "*Not" reds a correct run about a
+  # third of the time. The shared tail keeps the summary-vacuity property that made this the right
+  # marker in the first place.
+  - transcript_contains: "checked by search. Verification covers"
   # The command routed INTO the skill. This is the whole point of the scenario: a run where the
   # command expands to prose the model then answers directly would still be `success`, and this
   # is the only assertion that separates those two outcomes.
