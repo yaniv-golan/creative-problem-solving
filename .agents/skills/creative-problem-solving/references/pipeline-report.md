@@ -40,14 +40,16 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
    **A workflow change is not a missing counterparty.** An option whose only objection is *"someone
    would have to change how they already work"* ranks on the value of the change, not on the
    objection — requiring it of people the reader already directs is not the same as requiring
-   agreement from a party with no incentive. The second half of that distinction is in the list
-   below; the first was missing, and the criterion collapsed them. On the run that produced this,
-   the two cheapest distribution moves in the whole pool — have the fund's associates run the
-   teardown on decks they pass on and send the raw output back as the pass letter, and put it in
-   the hands of the lawyers and bookkeepers who already hold the numbers — ranked 55th and 47th,
-   while eleven of the top twenty were product features. Both use a flow the reader already runs
-   weekly. Both die to "who's going to make them do that?", which is exactly what the criterion
-   predicts and also the answerable objection.
+   agreement from a party with no incentive. The second is a real reason to rank low; the first
+   is a cost, and often a small one.
+
+   *Why, kept out of the dispatch deliberately: on the run that added this, the two cheapest
+   distribution moves in the pool ranked 55th and 47th while eleven of the top twenty were
+   product features — both used a flow the reader already ran weekly, and both died to "who's
+   going to make them do that?". **Do not pass this paragraph to the ranker.** A worked example
+   naming particular mechanisms biases a ranker toward those mechanisms on an unrelated problem,
+   and it made the first attempt to measure this clause worthless: the treatment prompt named the
+   two families the test was measuring.*
 
    Ranks low: it needs a party with no incentive to play along; it depends on data nobody has;
    it is a restatement of the problem in mechanism form; it would embarrass the reader to

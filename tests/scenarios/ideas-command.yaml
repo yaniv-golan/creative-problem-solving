@@ -69,18 +69,17 @@ assert:
   # `report.md` and NOT in that run's sent message, so this assertion reds it. Note what was
   # rejected — "Assumption I ran with" appears in BOTH, so the obvious marker passes vacuously.
   - transcript_contains: "## The rest, in rank order"
-  # A SECOND marker, from the other end of the document. "## The rest, in rank order" is the
-  # tail; a reply truncated part-way -- the shape a token budget produces -- keeps the head and
-  # drops it, which this catches. "## Top 3" catches the inverse, and both are literals
-  # build_report.py emits (check-repo asserts that for every marker here, so an invented one
-  # reds the build rather than passing vacuously).
+  # A SECOND marker, chosen for what a SUMMARY would not contain rather than for position.
+  # "## Top 3" was the first candidate and is a bad one: a summary of a hundred families would
+  # very plausibly write that heading, so the assertion would pass on exactly the output it
+  # exists to catch -- the same vacuity that ruled out "Assumption I ran with", which appears in
+  # both a full reply and a summary. This caveat sentence is the opposite: it introduces the
+  # unverified band, it is meaningless in a document that does not carry that band, and a
+  # summariser has no reason to reproduce it.
   #
   # Deliberately NOT asserting family headings or the closing read: headings are model-authored
   # per run and the closing line is a filled slot, so neither is a literal this file can name.
-  # And deliberately not "Assumption I ran with" -- that appears in both a full reply and a
-  # plausible summary, so it would pass vacuously, which is the failure the marker above was
-  # chosen to avoid in the first place.
-  - transcript_contains: "## Top 3"
+  - transcript_contains: "*Not checked by search. Verification covers"
   # The command routed INTO the skill. This is the whole point of the scenario: a run where the
   # command expands to prose the model then answers directly would still be `success`, and this
   # is the only assertion that separates those two outcomes.

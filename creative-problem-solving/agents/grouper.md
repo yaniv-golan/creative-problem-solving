@@ -62,8 +62,10 @@ a line of reading. When you are unsure, split.
 
 ## The test to apply after labelling each family
 
-A reader who skips this family on the strength of its label — would they lose anything they would
-have wanted? Split only when you can **name** what they would lose. "These feel a bit different" is
+Someone reading only the option texts in front of you, who skips this family on the strength of
+its label — would they lose a move the label did not warn them about? You are not told who the
+reader is or what they asked for (your task file carries only the options, and an `actor` line
+for the risk judgement below), so decide this from the options themselves. Split only when you can **name** what they would lose. "These feel a bit different" is
 not a reason. "Someone who skipped this would miss that one of them removes the review step
 entirely" is.
 
