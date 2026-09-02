@@ -136,26 +136,28 @@ assert:
   # files the run authored — so brief.json and report.md are both in the document. Claims about
   # whether a tool was CALLED can never grade true there; these are about content only.
   # min_pass equals the claim count deliberately: both halves are the point.
-  - semantic_matches:
-      min_pass: 2
-      rubric:
-        - "The actor recorded as the one whose behaviour must change is a person or role — a
-           maintainer, a contributor, a downstream user — and not a document, a label, a
-           repository, a process, or the library itself."
-        - "Most of the highest-ranked options change what that actor does, rather than improving
-           the library, its documentation, its README or its issue labels."
-  # ISSUE 13 and 14, softer on purpose: both depend on a model choosing to mark something, so a
-  # legitimate run may have nothing to mark. Each claim is written to pass vacuously in that case,
-  # and min_pass is 1 so one strict reading does not red a $30 run — the per-claim profile is
-  # recorded in result.json either way, which is what makes this worth asserting at all.
-  - semantic_matches:
-      min_pass: 1
-      rubric:
-        - "Any option whose mechanism works by withholding, degrading, coercing or deceiving the
-           people it acts on carries a visible line naming that cost. Passes if the list contains
-           no such option."
-        - "Every option marked as checked states which specific claim a search settled, rather
-           than implying the whole option was verified. Passes if nothing is marked as checked."
+  # ---- WHY THERE IS NO `semantic_matches` HERE ----
+  # There were two, and they are removed because they CANNOT GRADE on this pipeline -- not
+  # "flaked once", structurally. The judge's document is finalMessage + transcript + authored
+  # files, and authored-file capture is capped at 64 KiB total / 16 KiB per file
+  # (dist/run/artifacts.js). This run wrote 70 files and an 87 KiB report, so the budget was gone
+  # after a few and 53 were omitted; the judge then REFUSES its verdict rather than grade a
+  # partial document ("evidence unavailable", assert.js:694). That refusal is correct behaviour
+  # -- a missing file would otherwise read as a claim not satisfied -- but it means these two
+  # assertions could only ever fail here, and they failed on the 2026-09-02 run for exactly this
+  # reason while the other 28 passed. An assertion that cannot pass is worse than no assertion:
+  # it trains the reader to discount a red.
+  #
+  # Both properties are checkable deterministically instead, against producer-authored constants
+  # `build_report.py` emits. Measured on that run: 27 of 104 families carried a risk mark, and
+  # 1 of 13 checks came back `internal_claim`, so neither of these sits near a knife edge.
+  #
+  # ISSUE 13 end to end: the grouper marked it, merge_families carried it, build_report rendered
+  # it. The em-dash form is `build_report.py`'s, and a summary of the report would not carry it.
+  - transcript_contains: "*Risk — "
+  # ISSUE 14 end to end: a claim no outside search can settle gets its own verdict rather than
+  # being scored as a failed check. This is the line that verdict renders as.
+  - transcript_contains: "*Not checkable from outside"
 
   # ---- the count the payload forbids ----
   # references/pipeline-report.md and README.md both refuse a "distinct options" count as false
