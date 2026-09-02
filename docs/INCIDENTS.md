@@ -195,3 +195,28 @@ instead. The gate was green and the reader got none of the checked content.
 The script cannot reach the sent message; nothing runnable inside the pipeline can.
 `tests/scenarios/ideas-command.yaml` now asserts a band heading appears in the sent message, which
 is the only surface that reaches it.
+
+## The line before the longest wait named the wrong stage
+
+**Rule:** `references/pipeline-report.md` §Progress — no `SAY:` line may claim to be the longest
+wait in the run, and `progress.py`'s forecasts state the shape of a wait rather than its length.
+
+Run 2026-09-01. Two forward-looking claims reached the reader and neither held. `progress.py`'s
+`generated` line called pair proposal *"a couple of minutes"*; it took **823.6 s** — 6.9× the
+forecast. The `sharded` line then called adjudication *"the longest wait in the run — several
+minutes"*; it took **534.3 s**, which is 35% *shorter* than the stage billed as a short gap.
+
+Both claims were probably true once. Adjudication is sharded N ways and runs in parallel; pair
+proposal is a single serial agent that reads every pool and emits every candidate pair. Sharding
+adjudication inverted the ordering and nothing revisited the sentences.
+
+What makes this worth a rule rather than a correction: `SKILL.md` requires the orchestrator to
+repeat every `SAY:` line verbatim and to write nothing of its own between the Opening and the
+Closing. So a run that has measured the discrepancy is forbidden from mentioning it. The design
+that correctly stops a model inventing past-tense claims also stops it correcting a script's
+future-tense one — which means the script may not make a claim it cannot keep.
+
+The first fix attempted was a rate: *"roughly a minute per twenty options"*, fitted to this one
+run. That was rejected before shipping. The cost tracks **pairs**, which grow faster than options
+and do not exist yet at that boundary, so a 500-option run would have been told ~25 minutes while
+the pair space roughly tripled — the same defect with a citation attached.
