@@ -42,10 +42,11 @@ The full method and numbers are kept with the maintainers and are not published.
 **So: this release changes what the report tells you. It does not claim the ideas improved.**
 
 
-**Known unverified in this release:** the opening gate has not been run on Cowork. Cowork can ask
-through its own elicitation form instead of the question tool, and the harness cannot reproduce that
-path, so whether your answers reach the report there is unobserved. Tested and working on Claude
-Code and Desktop. `INSTALL.md` carries the same caveat.
+**The gate is verified on Cowork by hand**, not only in the test harness: it asks through Cowork's
+question box, the answer is recorded, and the run's stated reading is rewritten to match it before
+any work begins — *"Already tried or ruled out, in your words: … Recorded. Starting now."* One path
+remains unexercised: Cowork can in principle collect answers through its own elicitation form rather
+than the question box, and that branch has not been observed.
 
 ### Changed
 - **The plugin description and the skill description are now two different strings.** The skill
