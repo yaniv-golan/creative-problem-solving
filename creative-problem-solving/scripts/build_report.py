@@ -31,11 +31,16 @@ from brief_gate import SKIP_REASONS
 # The report's sentence for each way the gate can be skipped, keyed on the reasons brief_gate.py
 # writes. The run-time sentences live there in the run's voice ("I am starting"); these are the
 # same facts in the report's voice, and the assertion keeps the two sets of keys from drifting.
+# The CAUSE only. What follows it depends on whether anything was captured anyway: on the skip
+# path the run may still have read a ruled-out set out of the user's own problem statement, and
+# "you said not to ask, so the run started without putting these two questions to you" printed
+# directly under "Already tried or ruled out (your words)" reads as a flat contradiction. It is
+# not one — those words came from the prompt, not from an answer — but the reader has to be told
+# which, and the old sentence told them the opposite. Measured on both live runs of 2026-09-03,
+# where the skip path populated `tried_or_ruled_out` from the prompt in each.
 _SKIP_REPORTED = {
-    "user-said-dont-ask": "you said not to ask, so the run started on the reading above "
-                          "without putting these two questions to you.",
-    "no-ask-mechanism": "nothing here could wait for an answer, so the run started on the "
-                        "reading above without putting these two questions to you.",
+    "user-said-dont-ask": "you said not to ask",
+    "no-ask-mechanism": "nothing here could wait for an answer",
 }
 assert set(_SKIP_REPORTED) == set(SKIP_REASONS), "a skip reason without a report sentence"
 
@@ -57,6 +62,16 @@ def source_link(url):
         return host or url
     dest = f"<{url}>" if any(c in url for c in "() \t") else url
     return f"[{host or url}]({dest})"
+
+
+def _plural(n, one, many=None):
+    """`1 family` / `109 families`. The irregular plural is passed in rather than guessed.
+
+    Same shape as progress.py's, and deliberately a second copy rather than an import: that one
+    belongs to the narration and this one to the document, and a shared helper between them would
+    be the third thing this repo has had to un-share after it drifted.
+    """
+    return f"{n} {one}" if n == 1 else f"{n} {many or one + 's'}"
 
 
 def effective_lead(members, rejected):
@@ -120,7 +135,7 @@ def main(wd, out):
     # boilerplate. Labelled as recorded, not as exact -- only the harness can prove exactness.
     brief_p = os.path.join(wd, "brief.json")
     prompt, invented, actor, decision = "", None, "", ""
-    solved, tried, gate = "", [], None
+    solved, tried, gate, _b = "", [], None, {}
     if os.path.exists(brief_p):
         try:
             _b = load_obj(brief_p)
@@ -147,8 +162,37 @@ def main(wd, out):
         L += ["> " + ln for ln in prompt.splitlines()] + [""]
     else:
         L += ["{{QUESTION — the problem as the reader stated it, quoted}}", ""]
-    L += ["{{ASSUMPTION — one line: the reading you ran with, and the counts verify_pipeline printed}}",
-          ""]
+    # THE ASSUMPTION LINE IS RENDERED, NOT RETYPED — the last leg of the seam.
+    #
+    # This was a {{slot}} the model filled from memory, and on the live run of 2026-09-03 it did
+    # not survive: brief.json's reading said "what function four physical premises and the people
+    # who staff them can perform for their towns that a screen cannot", and the report said "what
+    # business four physical premises and the people who staff them should be in, if the margin on
+    # the book as an object is not what closes the gap". The substance carried; the words did not.
+    #
+    # That matters here more than it would elsewhere. The gate at step 0d shows the reader a
+    # reading and promises that the run they approved is the run that happened, and this line is
+    # where a reader checks that promise against the deliverable. brief.json -> readback,
+    # brief.json -> the generators' PROBLEM block: both rendered by a script and hash-checked.
+    # This was the one leg written from memory, so it was the one leg that drifted. Same rule as
+    # the actor and decision lines above: a fact the script holds is not re-typed.
+    #
+    # The counts come from the same files the rest of this function reads, so they cannot
+    # disagree with the list below them the way a remembered number can.
+    _n_opt, _n_fam = len(text), len(fams)
+    _n_lens = len({v for v in lens_of.values() if v and v != "?"})
+    _n_var = max(_n_opt - _n_fam, 0)
+    _reading = one_line(brief_str(_b, "reading", brief_p)) if os.path.exists(brief_p) else ""
+    if _reading:
+        L += [f"Assumption I ran with: {_reading}. {_plural(_n_opt, 'option')} generated across "
+              f"{_plural(_n_lens, 'separate lens', 'separate lenses')}, grouped into "
+              f"{_plural(_n_fam, 'family', 'families')}; {_n_var} sit nested as variants.", ""]
+    else:
+        # A run whose brief predates the gate, or one whose brief.json would not load. The slot
+        # is the honest fallback: better a placeholder the check refuses than a sentence this
+        # script invents about a reading it does not have.
+        L += ["{{ASSUMPTION — one line: the reading you ran with, and the counts verify_pipeline "
+              "printed}}", ""]
     # WHAT THE FAMILY COUNT MEANS, IN THE REPORT ITSELF. `verify_pipeline.py` says this on its
     # closing SAY line, and until now that was the only place it was said -- so it reached whoever
     # watched the run and nobody who was handed the file. Measured on the 2026-09-02 live run:
@@ -210,10 +254,12 @@ def main(wd, out):
     if _skipped:
         # Branched on the reason: "you said not to ask" on a host that simply could not wait
         # tells the reader they gave an instruction they never gave.
-        _why = _SKIP_REPORTED.get(gate.get("skip_reason"),
-                                  "the run started on the reading above without putting these "
-                                  "two questions to you.")
-        _gate_lines.append(f"- **Not asked:** {_why}")
+        _why = _SKIP_REPORTED.get(gate.get("skip_reason"), "the gate was skipped")
+        _tail = ("so anything above came out of your problem statement rather than out of a "
+                 "question I put to you." if (solved or tried) else
+                 "so the run started on the reading above without putting these two questions "
+                 "to you.")
+        _gate_lines.append(f"- **Not asked:** {_why}, {_tail}")
     elif _asked:
         _missing = [n for n, v in (("what counts as solved", solved),
                                    ("what you had already tried or ruled out", tried)) if not v]
@@ -335,8 +381,18 @@ def main(wd, out):
         _risk = one_line((f.get("risk") or "").strip())
         if _risk:
             b += ["", f"*Risk — {_risk}*"]
+        # NAME THE FAMILY THE LINE CAME FROM. "from a family merged in" told the reader the
+        # provenance was elsewhere and not where, so a mis-attributed line -- one describing a
+        # mechanism the printed lead does not have -- was indistinguishable from a real cost.
+        # Measured: three of seven such lines on the 2026-09-02 run were inverses or belonged to
+        # a nested variant. Older records hold plain strings; both shapes render.
         for _mr in (f.get("merged_risks") or []):
-            b += ["", f"*Risk (from a family merged in) — {one_line(_mr)}*"]
+            _txt = _mr.get("risk") if isinstance(_mr, dict) else _mr
+            _src = (_mr.get("from") or "").strip() if isinstance(_mr, dict) else ""
+            if not (_txt or "").strip(): continue
+            _who = f' "{one_line(_src)}"' if _src else ""
+            b += ["", f"*Risk — carried from{_who or ' another option'} merged into this "
+                      f"family, and it may not describe the option above — {one_line(_txt)}*"]
 
         if lead_prose:
             # Phase 4's template, as slots. The generator used to hand the model a heading and

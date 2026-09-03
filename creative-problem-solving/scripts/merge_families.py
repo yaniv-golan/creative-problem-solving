@@ -639,11 +639,26 @@ def main(wd, expect):
 
     order = sorted(range(len(fams)), key=lambda i: (-len(fams[i]["members"]), fams[i]["members"][0]))
     def _risk_of(f):
-        """The lead's risk line, and any distinct one from a family merged into this."""
+        """The lead's risk line, and any distinct one from a family merged into this.
+
+        A merged risk is carried WITH THE LABEL OF THE FAMILY IT CAME FROM. Without that the
+        report prints an absorbed member's risk under the LEAD's heading with nothing saying it
+        describes a different mechanism -- and measured on the 2026-09-02 run, three of the seven
+        leads whose only mark was merged-in named a mechanism the printed lead does not have. One
+        publishes a changelog of past rejections and carried "Withholds prior diagnostic
+        knowledge", the exact inverse; another marks invariants in code comments and carried
+        "Removes human review permanently". The reader could see the line came from a merge and
+        not WHICH merge, so there was no way to tell a real cost from a mis-attributed one.
+        """
         _m = f.get("origin_risk") or {}
         if not _m: return "", []
         _lead = _m.get(f["members"][0], "")
-        _others = list(dict.fromkeys(v for k, v in _m.items() if v and v != _lead))
+        _lbl = f.get("origin") or {}
+        _seen, _others = set(), []
+        for _k, _v in _m.items():
+            if not _v or _v == _lead or _v in _seen: continue
+            _seen.add(_v)
+            _others.append({"risk": _v, "from": _lbl.get(_k) or ""})
         return _lead, _others
 
     out = []

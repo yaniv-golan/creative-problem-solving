@@ -488,12 +488,24 @@ reader's problem.
 
 ### Closing — the assumption line, immediately before the Top 3
 
-> Assumption I ran with: <the reading you picked, in a clause>. <N> options generated across
-> <L> separate lenses, grouped into <F> families; <V> sit nested as variants.
+> Assumption I ran with: <the reading>. <N> options generated across <L> separate lenses,
+> grouped into <F> families; <V> sit nested as variants.
 
-Yes, this restates the assumption you opened with, and that is deliberate: the answer has to
+**`build_report.py` writes this line; you do not.** It quotes `reading` from `brief.json` and
+counts the rest off the same files it builds the list from. It used to be a slot you filled, and
+on a live run the reading did not survive being retyped — the substance carried and the words
+did not. This is the line where a reader checks the gate's promise that the run they approved is
+the run that happened, so it is the last place a paraphrase belongs.
+
+Yes, this restates the reading the gate opened with, and that is deliberate: the answer has to
 stand on its own for someone who scrolls straight to it, or reads it later, or is handed it by
-the person who ran it. Use the counts `verify_pipeline.py` printed.
+the person who ran it.
+
+**`## Before the run started`** sits in the opening, under the actor and the decision. The script
+writes it from `brief.json` and `gate.json` together: the user's two answers in their own words
+when they gave them, and otherwise which of the two silences applies — *not answered* when the
+gate asked and they declined, *not asked* when it skipped. A reader has to be able to tell those
+apart, and only `gate.json` knows which it was.
 
 **Between those two, nothing of your own.** Not an acknowledgement, not a plan, not a note that
 a stage finished — the scripts report the stages, and a summary of what a script just printed is

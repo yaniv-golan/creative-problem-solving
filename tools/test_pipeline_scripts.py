@@ -2844,8 +2844,14 @@ def t_risk_mark_survives_to_the_report():
 
         rc, out = run("merge_families.py", d, "--expect", str(len(tasks)))
         fams_out = json.load(open(os.path.join(d, "families.json")))["families"]
+        # `merged_risks` entries are {"risk": ..., "from": <label of the family it came from>}
+        # since 2026-09-03 -- the report must be able to name which merge a carried line came
+        # from, because a line describing a mechanism the printed lead does not have is otherwise
+        # indistinguishable from a real cost. Older records hold plain strings; accept both.
+        def _risk_text(x): return x.get("risk") if isinstance(x, dict) else x
         surviving = {x for f in fams_out
-                     for x in ([f["risk"]] if f.get("risk") else []) + (f.get("merged_risks") or [])}
+                     for x in ([f["risk"]] if f.get("risk") else [])
+                              + [_risk_text(m) for m in (f.get("merged_risks") or [])]}
         check("both distinct risk lines survive the merge", len(surviving) == 2,
               f"{len(surviving)}: {sorted(surviving)}")
         # The merge actually happened -- assert it, so this cannot quietly become a no-merge test
@@ -2853,6 +2859,16 @@ def t_risk_mark_survives_to_the_report():
         check("and one arrived via merged_risks, so a merge really occurred",
               any(f.get("merged_risks") for f in fams_out),
               str([f.get("merged_risks") for f in fams_out if f.get("merged_risks")]))
+
+        # AND IT NAMES WHERE IT CAME FROM. Measured on the 2026-09-02 live run: of the seven
+        # leads whose only mark was merged-in, three described a mechanism the printed lead does
+        # not have -- one publishes a changelog of past rejections and carried "Withholds prior
+        # diagnostic knowledge", the exact inverse. The reader could see a line came from a merge
+        # and not WHICH merge, so a mis-attribution read exactly like a real cost.
+        _carried = [m for f in fams_out for m in (f.get("merged_risks") or [])]
+        check("a carried risk records the family it came from",
+              _carried and all(isinstance(m, dict) and m.get("from") for m in _carried),
+              str(_carried[:2]))
 
         # ranked.json and verified-*.json, over the families merge_families actually emitted.
         make_tail(d, fams_out)
@@ -5881,6 +5897,22 @@ def t_the_report_says_what_it_was_told():
         check("a gate skipped because nothing could wait says so",
               "**Not asked:** nothing here could wait for an answer" in body
               and "you said not to ask" not in body, body[:60])
+
+        # AND IT DOES NOT CONTRADICT THE LINE ABOVE IT. On the skip path the run may still read a
+        # ruled-out set out of the user's own problem statement -- both live runs of 2026-09-03
+        # did -- and "without putting these two questions to you" printed directly under
+        # "Already tried or ruled out (your words)" reads as a flat contradiction.
+        b = json.load(open(os.path.join(d, "brief.json")))
+        b["tried_or_ruled_out"] = ["a second till"]
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        os.remove(os.path.join(d, "gate.json"))
+        run("brief_gate.py", d, "skip", "--reason", "user-said-dont-ask")
+        run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("a skipped run that captured words says where they came from",
+              "**Already tried or ruled out (your words):** a second till" in body
+              and "came out of your problem statement" in body
+              and "without putting these two questions to you" not in body, body[:60])
     finally:
         shutil.rmtree(d, True)
 
@@ -6022,6 +6054,57 @@ def t_an_answer_the_user_never_saw_is_refused():
         shutil.rmtree(d, True)
 
 
+def t_the_assumption_line_is_rendered_not_retyped():
+    """The report's assumption line quotes brief.json's reading, and is not a {{slot}}.
+
+    MEASURED, on the live run of 2026-09-03: as a slot the model filled it from memory and the
+    reading did not survive. brief.json said "what function four physical premises and the people
+    who staff them can perform for their towns that a screen cannot"; the report said "what
+    business four physical premises and the people who staff them should be in, if the margin on
+    the book as an object is not what closes the gap". The substance carried and the words did
+    not -- and this line is exactly where a reader checks the gate's promise that the run they
+    approved is the run that happened.
+
+    It was the last leg of the seam written from memory. brief.json -> the readback and
+    brief.json -> the generators' PROBLEM block are both script-rendered and hash-checked; this
+    one was not, so this one drifted.
+    """
+    print("\nthe assumption line is rendered from the brief")
+    d = tempfile.mkdtemp()
+    try:
+        full_fixture(d, multi=True)
+        b = json.load(open(os.path.join(d, "brief.json")))
+        b["reading"] = "whether the queue is a throughput problem or a seating one"
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        pass_the_gate(d)
+        rep = os.path.join(d, "report.md")
+        run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("the reading is quoted verbatim",
+              "Assumption I ran with: whether the queue is a throughput problem or a seating one."
+              in body, body[:400])
+        check("...and it is no longer a slot for the model to fill",
+              "{{ASSUMPTION" not in body, "the placeholder survived")
+        # The counts come off the same files the list below them is built from, so they cannot
+        # disagree with it the way a remembered number can.
+        fams = json.load(open(os.path.join(d, "families.json")))["families"]
+        n_opt = sum(len(json.load(open(p))["items"])
+                    for p in glob.glob(os.path.join(d, "pool-*.json")))
+        check("the counts are the run's own",
+              f"{n_opt} options generated across" in body
+              and f"grouped into {len(fams)} families" in body
+              and f"{n_opt - len(fams)} sit nested as variants" in body,
+              [l for l in body.splitlines() if l.startswith("Assumption")][:1])
+        # A brief with no reading keeps the slot rather than inventing a sentence.
+        b.pop("reading")
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        run("build_report.py", d, "--out", rep)
+        check("a brief with no reading falls back to the slot",
+              "{{ASSUMPTION" in open(rep).read(), "no fallback placeholder")
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t_the_reading_that_dispatched_is_the_one_that_stands():
     """No correcting after `go`, and no dispatch block before the gate resolves.
 
@@ -6050,7 +6133,7 @@ def t_the_reading_that_dispatched_is_the_one_that_stands():
         shutil.rmtree(d, True)
 
 
-TESTS = (t_brief_gate_asks_once, t_a_fabricated_gate_record_is_refused,
+TESTS = (t_brief_gate_asks_once, t_the_assumption_line_is_rendered_not_retyped, t_a_fabricated_gate_record_is_refused,
          t_an_answer_the_user_never_saw_is_refused,
          t_the_reading_that_dispatched_is_the_one_that_stands, t_brief_gate_renders_the_dispatch_block,
          t_the_gate_is_verified_at_the_end, t_the_report_says_what_it_was_told,
