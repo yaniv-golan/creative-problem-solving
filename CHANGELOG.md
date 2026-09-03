@@ -33,11 +33,16 @@ clause) are held for a separate release.
   entry by entry. **Deliberately not** the proposed out-of-scope block in the generator prompt:
   on that run it would have suppressed a delivered Top-3 option.
 - **A grouper may mark what an option costs the people it acts on.** *(Measured: 27 of 104 and 34 of
-  108 families marked across two live runs — 41 leads as the report renders them, since a merged
-  family's risk prints under the lead that absorbed it. Then measured against three raters who judged
-  every option blind, with the marks and the ranking stripped out: in the **bottom half of the list
-  the mark catches 20 of 22**; in the **top 60 it has never caught one, 0 of 6**. Treat an unmarked
-  option near the top as unexamined, not as cleared.)* An optional one-line `risk`
+  108 families marked across two live runs, none a mislabelled split-test note. On the 108-family run
+  — one run, one prompt — that is 41 leads as rendered, since a merged family's risk prints under the
+  lead that absorbed it, and three raters then judged every option blind with the marks and the
+  ranking stripped out. **The marking rate collapses toward the top of the list:** the last 48 entries
+  carry 36 marks, and 19 of the 22 options the raters called coercive are among them by the family's
+  own mark, 20 counting the merged-in lines the report also prints. The top 60 carry 5 marks between
+  them — 2 of them own marks — and none lands on the 6 coercive options there. **That is too few
+  marks at that end to say whether the mark can discriminate; it is not evidence that it cannot.** So
+  near the top an unmarked option is not one judged safe, it is one nothing looked at.)* An optional
+  one-line `risk`
   on a family, rendered under the option at any rank. Nine options on the audited run worked by
   withholding, degrading or coercing the people the reader was trying to serve, sat at ranks
   40–107, and were typographically identical to everything around them. It is a note, not a veto:
