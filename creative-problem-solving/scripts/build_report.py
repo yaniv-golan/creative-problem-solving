@@ -26,6 +26,18 @@ import json, os, re, sys, glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import brief_str, fence_spans, load, load_obj, one_line
+from brief_gate import SKIP_REASONS
+
+# The report's sentence for each way the gate can be skipped, keyed on the reasons brief_gate.py
+# writes. The run-time sentences live there in the run's voice ("I am starting"); these are the
+# same facts in the report's voice, and the assertion keeps the two sets of keys from drifting.
+_SKIP_REPORTED = {
+    "user-said-dont-ask": "you said not to ask, so the run started on the reading above "
+                          "without putting these two questions to you.",
+    "no-ask-mechanism": "nothing here could wait for an answer, so the run started on the "
+                        "reading above without putting these two questions to you.",
+}
+assert set(_SKIP_REPORTED) == set(SKIP_REASONS), "a skip reason without a report sentence"
 
 def source_link(url):
     """A source rendered as its domain, linking to the full URL.
@@ -196,8 +208,12 @@ def main(wd, out):
     if tried: _gate_lines.append("- **Already tried or ruled out (your words):** "
                                  + "; ".join(tried))
     if _skipped:
-        _gate_lines.append("- **Not asked:** you said not to ask, so the run started on the "
-                           "reading above without putting these two questions to you.")
+        # Branched on the reason: "you said not to ask" on a host that simply could not wait
+        # tells the reader they gave an instruction they never gave.
+        _why = _SKIP_REPORTED.get(gate.get("skip_reason"),
+                                  "the run started on the reading above without putting these "
+                                  "two questions to you.")
+        _gate_lines.append(f"- **Not asked:** {_why}")
     elif _asked:
         _missing = [n for n, v in (("what counts as solved", solved),
                                    ("what you had already tried or ruled out", tried)) if not v]

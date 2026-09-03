@@ -142,11 +142,14 @@ def render(mode, brief, reason=None, path="brief.json"):
             body.append(f"What would count as solved, in your words: {solved}.")
         if tried:
             body.append("Already tried or ruled out, in your words: " + "; ".join(tried) + ".")
-        body.append(f"Corrected. Starting now; {STARTING[0].lower()}{STARTING[1:]}")
+        # "Recorded", not "Corrected": this block also closes the ordinary exchange, where the
+        # user answered the two questions and corrected nothing, and "Corrected." there tells
+        # them they changed something they did not.
+        body.append(f"Recorded. Starting now; {STARTING[0].lower()}{STARTING[1:]}")
         return [f"SAY: {ln}" for ln in body]
 
     return [f"ASK: {ln}" for ln in head + [
-        "Two things only you can tell me, each in a phrase or skip it: What have you already "
+        "Two things only you can tell me, each in a phrase, or say skip: What have you already "
         "tried or ruled out? What would count as solved?",
         "Say \"go\" to start, or correct anything above. I will fix it once and start, and I "
         "will not ask again."]]

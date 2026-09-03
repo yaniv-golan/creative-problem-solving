@@ -128,7 +128,8 @@ thing to fall off, and pipeline.md step 0c has the mechanism.
 Record what you added, separately from what you were told, in `references/pipeline.md`
 step 0c.
 
-Keep the sharpened brief as working state — it goes into the passes, not into the answer.
+The sharpened brief is `reading`, `actor` and `decision` (step 0c); it reaches the passes only
+as the `render-brief` block, never the answer.
 
 **Ground inward before you ask, and before you search.** If the user has connected data sources
 — a CRM, a project or customer database, internal documents — describe the *current state* from
@@ -138,8 +139,7 @@ apart from the neighbours below: those are a ban list, this is the starting posi
 
 **Show the reading once, before research, and ask two things.** The run's only pause, and it is
 scripted. It asks for what the model cannot fabricate: **what have you already tried or ruled
-out**, and **what would count as solved**. Two runs are why (`references/evidence.md`): the
-pipeline sharpens a one-line prompt as confidently as a rich one, then invents the rest.
+out**, and **what would count as solved**. Two runs are why (`references/evidence.md`).
 Write their answers into `brief.json`: a run that asks and records nothing dispatches like one
 that never asked.
 
@@ -153,7 +153,7 @@ non-obvious option.
 to ask, in any phrasing, gets the reading and a start — same where this host cannot wait. Never
 wait on a run nobody is watching.
 
-The lines come from `brief_gate.py`; the procedure is `references/pipeline.md` step 0d.
+Lines: `brief_gate.py`; procedure: `references/pipeline.md` step 0d.
 
 **Research happens here.** Search for what already exists and build a list of 8-15
 **retrieved neighbours** — the current known approaches. Hand these to each pass as a
@@ -187,7 +187,7 @@ Then dispatch **one sub-agent per lens, in a single parallel batch** — to the 
 sub-agent type if your host offers it, which carries Write and no search tool so a pass cannot
 spend its run looking things up instead of generating. Give each only:
 
-- the sharpened brief from Phase 0
+- the `render-brief` block, pasted under one line of your own phrasing of the function
 - **its one assigned lens**, named, with the instruction to use that lens and no other
 - the obvious answer from Phase 0 as a **banned category** — nothing resembling it
 - the retrieved-neighbour list from Phase 0, as a further difference constraint
@@ -219,8 +219,7 @@ consensus answer.
 
 <one line: your own phrasing of the function, different for each pass>
 
-<the PROBLEM block from `brief_gate.py render-brief` — pasted, not retyped. Identical for
-every pass; only the line above it changes.>
+<the `render-brief` block — pasted, not retyped; identical for every pass>
 
 BANNED VOCABULARY: <5-10 seed words>
 Describe the mechanism instead of reaching for the label.

@@ -86,7 +86,7 @@ assert:
   - transcript_contains: "What counts as solved (your words):"
   # And the correction path ran rather than the run treating a two-part answer as a bare "go".
   # `brief_gate.py` prints this on the corrected block and the orchestrator relays it.
-  - transcript_contains: "Corrected. Starting now"
+  - transcript_contains: "Recorded. Starting now"
   # The run started after the answer and went all the way through. These two markers are the same
   # ones ideas-command uses, chosen because a summary of the report would not carry them.
   - transcript_contains: "## The rest, in rank order"

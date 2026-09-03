@@ -204,6 +204,20 @@ def main(wd):
         # print, which is the failure robust_json.py:56 records as already fixed once.
         die("brief.json's `invented` is not a list of strings, so the reading the gate printed "
             "cannot be re-rendered to check it. Write each added premise as its own string.")
+    # THE TWO ANSWERS, TYPED -- here, with this file's die(), and before the renderer below reads
+    # them. On the skip path nothing else ever reads them: unshown_answers() returns early, the
+    # skip readback carries neither, so a list where a string should be reached build_report.py,
+    # where brief_str's refusal is caught and turned into an empty opening -- prompt, actor,
+    # decision and pressures all gone, with no line saying why. A TYPE check is not a check on
+    # length or content; those stay unchecked on purpose, because declining is an answer.
+    _cs = brief.get("counts_as_solved")
+    if _cs is not None and not isinstance(_cs, str):
+        die(f"brief.json's `counts_as_solved` is a {type(_cs).__name__}, not a string. It is the "
+            f"user's answer in their words: one string, or \"\" if they did not say.")
+    _tr = brief.get("tried_or_ruled_out")
+    if _tr is not None and (not isinstance(_tr, list) or any(not isinstance(x, str) for x in _tr)):
+        die("brief.json's `tried_or_ruled_out` is not a list of strings. Write each thing the "
+            "user ruled out as its own string, or [] if they named none.")
     if sha1_of(gate_readback(gate, brief, bpath)) != gate.get("readback_sha1"):
         die("brief.json changed after the reading was shown; what the user approved is not what "
             "dispatched. The gate's readback and the dispatched brief are one file rendered "

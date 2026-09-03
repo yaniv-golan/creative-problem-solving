@@ -5581,7 +5581,7 @@ def t_brief_gate_asks_once():
         # the run hangs in front of a question nobody was asked.
         check("a correction prints once more, ending in Starting now",
               rc == 0 and len(lines) == 3 and all(l.startswith("SAY: ") for l in lines)
-              and lines[-1].startswith("SAY: Corrected. Starting now"), out.strip()[:250])
+              and lines[-1].startswith("SAY: Recorded. Starting now"), out.strip()[:250])
         check("...and does not re-ask what the user just answered",
               "already tried or ruled out?" not in out.lower(), out.strip()[:250])
         g2 = json.load(open(os.path.join(d, "gate.json")))
@@ -5797,6 +5797,27 @@ def t_the_gate_is_verified_at_the_end():
         rc, out = run("verify_pipeline.py", d)
         check("and present-and-empty passes, because declining is an answer",
               "OK" in out, out.strip()[-200:])
+
+        # WRONG-TYPED ANSWERS ARE REFUSED HERE, NAMING THE KEY -- on the skip path, which is the
+        # one where nothing else reads them. Before this check a list where a string should be
+        # passed the gate and this script, and then blanked the whole report opening silently.
+        for _k, _bad, _what in (("counts_as_solved", ["a", "b"], "not a string"),
+                                ("tried_or_ruled_out", "a second till", "not a list of strings")):
+            b = json.load(open(os.path.join(d, "brief.json")))
+            good = b[_k]; b[_k] = _bad
+            json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+            os.remove(os.path.join(d, "gate.json"))
+            rc, out = run("brief_gate.py", d, "skip", "--reason", "no-ask-mechanism")
+            assert rc == 0, f"fixture: skip refused -- {out[:200]}"
+            rc, out = run("verify_pipeline.py", d)
+            check(f"a wrong-typed `{_k}` is refused by name, even on the skip path",
+                  rc != 0 and f"`{_k}`" in out and _what in out, out.strip()[:200])
+            b[_k] = good
+            json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+            pass_the_gate(d)
+        rc, out = run("verify_pipeline.py", d)
+        check("...and the fixture verifies again once the types are right",
+              "OK" in out, out.strip()[-200:])
     finally:
         shutil.rmtree(d, True)
 
@@ -5849,6 +5870,17 @@ def t_the_report_says_what_it_was_told():
         check("a skipped gate is reported as not asked",
               "**Not asked:** you said not to ask" in body
               and "**Not answered at the start:**" not in body, body[:60])
+
+        # AND THE OTHER SKIP IS NOT BLAMED ON THE READER. A host that could not wait is not a
+        # user who said not to ask, and the report used to say the second whenever it meant
+        # either.
+        os.remove(os.path.join(d, "gate.json"))
+        run("brief_gate.py", d, "skip", "--reason", "no-ask-mechanism")
+        run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("a gate skipped because nothing could wait says so",
+              "**Not asked:** nothing here could wait for an answer" in body
+              and "you said not to ask" not in body, body[:60])
     finally:
         shutil.rmtree(d, True)
 
