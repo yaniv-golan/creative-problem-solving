@@ -71,10 +71,24 @@ prompt: "/creative-problem-solving:ideas We run a 40-bed independent hotel two h
 assert:
   - result: success
   - skill_triggered: creative-problem-solving
-  # THE GATE FIRED, AND IT SHOWED THE READING. Zero gates recorded fails this key rather than
-  # passing vacuously, which is what makes it the assertion this scenario is for.
-  - question_context:
-      matches: "Reading this as"
+  # THE GATE FIRED, AND THE READING REACHED THE READER — asserted as two separate facts, because
+  # they land on two different surfaces and the model chooses which.
+  #
+  # MEASURED 2026-09-03, and this replaces a `question_context: {matches: "Reading this as"}` that
+  # RED a run in which the skill behaved correctly. Two live runs of this scenario put the reading
+  # in different places: one said it as assistant text and asked only the last two ASK: lines in
+  # the gate (its options still offered "Correct the reading"), the other put the whole block in
+  # the gate payload. The reading reached the reader BOTH times — the transcript carried it in
+  # both runs, the gate payload in only one. So `question_context` pins a surface the model picks
+  # run to run, and is flaky by construction; the transcript is the surface that is stable.
+  #
+  # Which is what the test plan said before this file was written. The switch to `question_context`
+  # was reasoned from the harness docs — `transcript_contains` excludes `tool_use`, so a reading
+  # delivered inside a gate would be invisible to it — and that reasoning was sound but the premise
+  # was wrong: the model narrates the reading as text and asks a shorter question, rather than
+  # packing four lines into a question label.
+  - gate_answer_count_min: 1
+  - transcript_contains: "Reading this as"
   # ONE QUESTION. The gate is the run's one question: step 0d puts its four lines to the user as a
   # SINGLE question, so a run that splits the two asks into separate sub-questions counts 3 here
   # and reds — which is the violation, not a technicality. Same ceiling as every other scenario.
