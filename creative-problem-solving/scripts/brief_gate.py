@@ -15,7 +15,7 @@ WHY A SCRIPT HOLDS THE SENTENCES. Every other line the reader hears is printed b
 repeated verbatim, for the reason in references/pipeline-report.md: a model that skipped a stage
 narrates having run it exactly as fluently as one that ran it. The gate is a weaker case of the
 same thing -- a readback retyped from memory is a readback of what the model remembers, not of
-what is in the file that dispatches -- so the four lines live here, in one copy, and the
+what is in the file that dispatches -- so the five lines live here, in one copy, and the
 orchestrator retypes none of them. The same file also renders the dispatch block at
 `render-brief`, so the words a generator receives and the words the user approved come from one
 place.

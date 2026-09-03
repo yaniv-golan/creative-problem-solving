@@ -507,8 +507,12 @@ will not supply them on its own:
   message they may have scrolled past. The reading is what they are being asked to approve.
 - **The two asks are separately answerable.** They are two different questions and a reader
   answers them one at a time. Collapsed into a single prompt they read as one vague request and
-  get skipped, which is why the script now prints them as two lines. Three or four things asked in
-  total, and no more: past that a gate stops being one interruption.
+  get skipped, which is why the script now prints them as two lines.
+- **Count the things that want an answer, not the lines.** Of the five, two state (the reading,
+  the pressures) and **three want a response** — the two asks and the go-or-correct line. Three or
+  four is the ceiling; past that a gate stops being one interruption. The scenarios assert
+  `questions_count_max: 4` for this, which counts sub-questions, so a gate at three leaves one
+  spare and a SECOND gate reds it whatever it asks.
 - **Answering is not a correction.** Whatever route supplies what they have tried or what would
   count as solved may not be labelled, described or grouped as fixing a mistake. Correcting the
   reading is a different act and gets its own route.
