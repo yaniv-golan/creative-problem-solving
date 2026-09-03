@@ -7,6 +7,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.5.0] — 2026-09-03
+
 Field report from run `20260901-100305` — a full, undegraded run that passed every gate and still
 surfaced seventeen defects.
 
@@ -38,6 +42,11 @@ The full method and numbers are kept with the maintainers and are not published.
 **So: this release changes what the report tells you. It does not claim the ideas improved.**
 
 ### Changed
+- **The plugin description and the skill description are now two different strings.** The skill
+  description in `SKILL.md` is the routing surface and stays long on purpose — the explicit-only
+  trigger contract lives in it. The plugin description is catalogue copy and is capped at 500
+  characters, because Claude Desktop and Cowork refuse a `.plugin` upload above that. `check-repo`
+  now enforces each against its own canonical source instead of requiring them to match.
 
 - **The run shows its reading and asks two things before starting.** One pause, before the web
   search: it states the reading, the actor, the decision and the pressures it invented, then asks
@@ -133,6 +142,14 @@ The full method and numbers are kept with the maintainers and are not published.
   script may compare a pool's option count against a literal. Both tested by planting the defect.
 
 ### Fixed
+- **A risk line carried from a merged family now names where it came from.** When two families merge,
+  the absorbed one's risk line prints under the surviving lead — and it used to say only "from a
+  family merged in", so a line describing a mechanism the printed option does not have was
+  indistinguishable from a real cost. Measured on a live run: of seven leads whose only mark was
+  carried, three named a mechanism the lead does not have — one publishes a changelog of past
+  rejections and carried *"withholds prior diagnostic knowledge"*, the exact inverse. The line now
+  reads *"carried from "<the other option>" merged into this family, and it may not describe the
+  option above"*.
 
 - **The risk mark is a backstop, not yet a working instrument — measured, not assumed.** Seven
   groupers were replayed against a frozen run's real task files. One shard marked five genuine
