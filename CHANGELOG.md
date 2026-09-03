@@ -53,10 +53,12 @@ clause) are held for a separate release.
   `no_external_claim` would have been wrong the other way — it renders as "nothing to verify",
   and there was something to verify that nobody outside could do. Carries a required note naming
   the claim.
-- **The `Checked` badge can name what was checked**, from a new optional `claim` field. *(Not
-  yet observed: 0 of 13 confirmed verdicts carried one on the run that shipped it, because the
-  field was specified in `agents/verifier.md` and the dispatch never asked for it. The dispatch
-  now does; until a run shows otherwise, the badge still reads as it did.)* So a reader
+- **The `Checked` badge names what was checked**, from a new optional `claim` field. *(Observed
+  live on two prompts once the dispatch relayed it: 15 of 15 verdicts and 6 of 6 confirmed ones
+  carry a populated clause — "granting limited, visible account access before verification
+  finishes". It fired 0 of 13 before that, because the field was specified in `agents/verifier.md`
+  and step 8 never asked for it; an agent-file contract the dispatch does not name does not
+  arrive.)* So a reader
   can see the badge covers one assertion rather than the option.
 - **The ranker no longer conflates two objections.** Requiring a workflow change from people the
   reader already directs is not the same as requiring agreement from a party with no incentive.
