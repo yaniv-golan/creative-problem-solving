@@ -56,6 +56,16 @@ The only large method-vs-method head-to-head — Carichon et al., *IDEAFix* (arX
 - The largest single manipulation was in the *brief*, not the method: surprising and
   negatively-valenced attributes. That's Phase 0 step 4.
 
+**User-supplied ruled-out set and success criterion [observed, n=2, one confounded].** Two runs
+of this pipeline, not an experiment. On a one-line prompt Phase 0 invented a world pressure, and
+the run ranked a family third on the bet that the pressure drove the work. On a prompt whose
+author had already written down what was ruled out and what would count as solved, the invented
+pressures stayed at world level and the reader judged the run better. The sharpening step's own
+output was of the same quality in both, which is what points at the inputs rather than at the
+step — but n is 2, the two prompts were different problems, and the judgement was not blind. It
+is why the gate asks for those two things (Phase 0). What would strengthen it: a run where the
+gate's answers change the reading, graded blind against the same run without them.
+
 A separate study of 35 prompting strategies — Meincke, Mollick & Terwiesch, *Prompting Diverse
 Ideas* (arXiv:2402.01727) — measured idea diversity (lower cosine = more diverse): human groups 0.243, task decomposition 0.255, "think like Steve Jobs" 0.368,
 base prompt 0.377, **published creativity tools 0.387 — worse than the base prompt.**

@@ -19,6 +19,7 @@ facts belong here. Quality judgements belong in `../evals/`.
 | `ideas-command.yaml` | `/creative-problem-solving:ideas` **routes into** the skill | the command expanding to prose the model answers directly — indistinguishable from success on the verdict line, and the only place dispatch is worth asserting |
 | `deliverable-composition.yaml` | a strategic run's **file** deliverable exists and still carries load-bearing-assumption language | Phase 3's annotations dropping out when the answer is composed into a document |
 | `demo-retention-capture.yaml` | **not a regression test** — a capture whose product is the README's worked example, re-run on current code; its `semantic_matches` rubric is copied verbatim from eval-5 | a README demo that describes an architecture the skill no longer has |
+| `brief-gate.yaml` | the run **shows its reading and waits**: one gate fires, it carries the reading the script printed, and answering it finishes the run | the brief gate quietly stopping — or asking in prose nobody on Cowork can answer, which hangs the run |
 
 `deliverable-composition` guards the boundary the others never cross: the point where the
 answer stops being a chat report and becomes a file. Phases 0-3 constrain generation; composition
@@ -87,20 +88,21 @@ the implicit one stays shut, including on the strongest possible knock. A
 description edit that only widens is easy; the pair is what shows it widened in the right
 direction. Both verified on the tool stream (`skillActivity`), not just on the verdict line.
 
-**The question ceiling, and what it half-covers.** `SKILL.md` states a hard rule — *"One
-question, and only about meaning"*, where scope, emphasis, target segment, detail level and
-output format all fail its bar. Both `pipeline-*` scenarios now assert `questions_count_max: 1`,
-which counts **sub-questions**, so a single `AskUserQuestion` bundling three of them counts as 3.
-That is not hypothetical: an earlier generation (`skillHash f8566139f7`) raised gates on the deep
-scenario bundling four and three sub-questions — including *"What should the deliverable look
-like?"* and *"What should I hand you?"*, output-format questions the rule excludes by name — on a
-prompt that explicitly told the model not to ask anything.
+**The question ceiling, and what it half-covers.** The skill asks exactly once, at the brief gate
+(`references/pipeline.md` step 0d): it shows its reading and asks two named things — what you have
+already tried or ruled out, and what would count as solved — as a **single** question. Scope,
+emphasis, target segment, detail level and output format are still excluded by name. Every
+pipeline scenario asserts `questions_count_max: 1`, which counts **sub-questions**, so a run that
+splits the gate into three counts 3 and reds. That is not hypothetical: an earlier generation
+(`skillHash f8566139f7`) raised gates on the deep scenario bundling four and three sub-questions —
+including *"What should the deliverable look like?"* and *"What should I hand you?"* — on a prompt
+that explicitly told the model not to ask anything.
 
-Read the green for exactly what it is: the assertion sees `AskUserQuestion` gates **only**. The
-skill mandates no gate tool, and `SKILL.md` contemplates prose asking outright (*"If you can't
-ask, pick the likeliest reading"*), so a run that asks three meaning questions in plain chat
-records zero gates and passes. A maximum is also satisfied by zero. It is a partial guard on the
-rule, not coverage of it — the rest is an `../evals/` question, judged.
+Read the green for exactly what it is: the assertion sees `AskUserQuestion` gates **only**. Step
+0d names no gate tool — it says "ask the user", in plain words, because each host has different
+machinery — so a run that asks in plain chat records zero gates, and a maximum is also satisfied
+by zero. It is a partial guard on the rule, not coverage of it — the rest is an `../evals/`
+question, judged.
 
 `negative-trigger.yaml` is the one scenario that deliberately omits it: the skill must not fire
 there at all, which `no_skill_triggered` already asserts, so a question ceiling would add nothing
@@ -289,9 +291,19 @@ flaky — the dispatch-era mode gate ran 2/3, then 1/3, then 1/3. They are **not
 failure rate: with zero failures in three runs the rule-of-three 95% upper bound is ~63% per
 scenario, which is what n=3 buys.
 
-A prompt that makes the agent ask a clarifying question before generating cannot be measured
-here at all — the run ends at the gate. If a scenario starts failing that way, the fix is the
-prompt, not the assertions; `../evals/README.md` has the worked case.
+**A prompt that makes the agent ask before generating is now the designed case, and
+`brief-gate.yaml` is how it is measured.** That paragraph used to say the opposite — that such a
+prompt could not be measured here at all, because the run ends at the gate — and it was right
+about the mechanics and wrong about the remedy. A scripted answer resolves the gate and the run
+continues, so the asking path is testable; what is *not* testable is a gate raised in prose,
+because the harness sees structured gates only. `brief-gate.yaml` carries that ceiling in its own
+header, and reds when it is hit — which is the correct outcome, since a prose gate on Cowork is a
+run hanging in front of a user with no way to answer.
+
+Every other pipeline scenario carries a "don't ask me any questions" clause, which takes the
+gate's skip path: the reading is still said and the run does not stop. That is what keeps them
+unattended and deterministic, and it is the only measured fix for gate drift (`../evals/README.md`
+records 0 gates in 6 of 6 runs with that clause).
 
 Re-run this after any change to `SKILL.md`'s frontmatter or Phase 1, and pin the model — an
 unpinned session silently tests the harness default instead of the target.

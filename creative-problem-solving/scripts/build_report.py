@@ -108,6 +108,7 @@ def main(wd, out):
     # boilerplate. Labelled as recorded, not as exact -- only the harness can prove exactness.
     brief_p = os.path.join(wd, "brief.json")
     prompt, invented, actor, decision = "", None, "", ""
+    solved, tried, gate = "", [], None
     if os.path.exists(brief_p):
         try:
             _b = load_obj(brief_p)
@@ -115,7 +116,18 @@ def main(wd, out):
             invented = _b.get("invented")
             actor = brief_str(_b, "actor", brief_p)
             decision = brief_str(_b, "decision", brief_p)
-        except SystemExit: prompt, invented, actor, decision = "", None, "", ""
+            solved = brief_str(_b, "counts_as_solved", brief_p)
+            tried = [one_line(x) for x in (_b.get("tried_or_ruled_out") or [])
+                     if isinstance(x, str) and x.strip()]
+        except SystemExit:
+            prompt, invented, actor, decision, solved, tried = "", None, "", "", "", []
+    # The gate's own record, read separately because it answers a different question: brief.json
+    # says what the user told the run, gate.json says whether the run ever asked. An empty answer
+    # and an unasked question look identical in the brief and read very differently in a report.
+    _g = os.path.join(wd, "gate.json")
+    if os.path.exists(_g):
+        try: gate = load_obj(_g)
+        except SystemExit: gate = None
 
     L = []
     if prompt:
@@ -169,6 +181,34 @@ def main(wd, out):
         L += ["", "Every option below is meant to change what that person does at that moment. "
                   "One that only changes the artifact may still be worth doing — but it is "
                   "answering a different question, and it is worth noticing how many do.", ""]
+
+    # WHAT THE USER SAID AT THE GATE, AND WHAT THEY DID NOT.
+    #
+    # These two are the only inputs at the start of a run that the model cannot fabricate, which
+    # is why step 0d asks for them and why they are printed here in the user's own words rather
+    # than folded into the reading. They also carry the run's honesty about its own start:
+    # unanswered and never-asked are different facts, and a reader judging a hundred options
+    # deserves to know which one applies before deciding what the list was aimed at.
+    _asked = bool(gate and gate.get("asked"))
+    _skipped = bool(gate and gate.get("outcome") == "skipped")
+    _gate_lines = []
+    if solved: _gate_lines.append(f"- **What counts as solved (your words):** {one_line(solved)}")
+    if tried: _gate_lines.append("- **Already tried or ruled out (your words):** "
+                                 + "; ".join(tried))
+    if _skipped:
+        _gate_lines.append("- **Not asked:** you said not to ask, so the run started on the "
+                           "reading above without putting these two questions to you.")
+    elif _asked:
+        _missing = [n for n, v in (("what counts as solved", solved),
+                                   ("what you had already tried or ruled out", tried)) if not v]
+        if _missing:
+            _gate_lines.append("- **Not answered at the start:** " + " and ".join(_missing)
+                               + ". The options below were generated without it.")
+    if _gate_lines:
+        # A HEADING TRUE IN ALL THREE STATES. "What you told me" asserts the reader told you
+        # something, which is false on the two lines that say they were never asked and false
+        # again on the line that says they did not answer.
+        L += ["## Before the run started", ""] + _gate_lines + [""]
 
     # The pressures Phase 0 added, disclosed by the script.
     #
@@ -511,6 +551,11 @@ def _echo_scan(body, man, brief, label):
     Words that entered through Phase 0's inventions and are not in the reader's own prompt.
     Deliberately not a gate: `decision` and `request` are weak hits, false positives are
     expected, and a hard gate on those is one people learn to switch off.
+
+    THE SUSPECT VOCABULARY IS BUILT FROM `invented` ALONE, and `counts_as_solved` and
+    `tried_or_ruled_out` must never be folded into it. Those two are the user's own words, given
+    at the gate; a report that echoes them is doing exactly what it was asked to do, and adding
+    them here would flag the run's best-grounded lines as inventions.
     """
     invented = " ".join(brief.get("invented") or [])
     if not invented.strip(): return

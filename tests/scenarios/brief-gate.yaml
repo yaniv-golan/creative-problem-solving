@@ -1,0 +1,96 @@
+# THE ASKING PATH. Every other pipeline scenario carries "don't ask me any questions" and takes
+# the gate's skip path, because a run that stops for an answer nobody gives measures nothing. That
+# leaves the behaviour the gate exists for — showing the reading and WAITING — measured nowhere.
+# This scenario is where it is measured, and it is the only one whose prompt omits that clause.
+#
+# WHAT IT ASSERTS: that a gate fires, that it fires exactly once, that what it put in front of the
+# user carries the reading the script printed, and that the ANSWER the user gives reaches the
+# report in their own words — the seam the gate exists to hold open, end to end and live.
+#
+# THE CEILING, stated so a green is not over-read. The harness sees STRUCTURED gates only —
+# `AskUserQuestion` and the `can_use_tool` channel behind it. references/pipeline.md step 0d
+# deliberately names no tool ("ask the user", in plain words), so a run that asks in prose and
+# waits records no gate here: `question_context` fails on zero gates, and the run stalls until the
+# timeout. That red is CORRECT and must not be softened. On Cowork an un-answerable prose gate is
+# not a stylistic difference — it is a run that hangs in front of a user who has no way to reply.
+#
+# WHY `question_context` AND NOT `transcript_contains`. `transcript_contains` sees top-level
+# assistant text only and excludes every `tool_use`, so the reading — which on this path lands
+# inside the gate payload — can never match it at any phrasing. `question_context` reads the
+# ask-time payload across the question text, the option labels and their descriptions, which is
+# the whole surface the reader was shown. `pipeline-bounded.yaml` asserts the transcript form
+# instead, because on ITS path the reading is a relayed SAY: line and does reach the transcript.
+#
+# WHY NO `file_exists: .../_work/gate.json`. The run directory is a timestamp and `file_exists`
+# takes a literal path with no glob support (measured, and recorded in `ideas-command.yaml`), so
+# no assertion here can name it. `verify_pipeline.py` refuses a run whose `gate.json` is missing
+# or whose brief changed after the readback, and it runs inside every one of these runs — so a
+# green `result: success` already carries that check. Asserting the file here would add nothing
+# and would red a correct run on the path spelling.
+#
+# Re-run `cowork-harness doctor` before spending this: the pinned baseline has been pruned from
+# the machine mid-session before.
+name: brief-gate
+session: ../sessions/default.yaml
+baseline: desktop-1.44121.1
+fidelity: container
+# A full run, same envelope as ideas-command and branch-output-quality: one pipeline, one bound,
+# derived from runs of 1634s / 2737s / 3688s.
+timeout_ms: 7200000
+
+# `first` backstops any gate the rule below does not match, so an unanticipated sub-question does
+# not stall a $30 run. It does NOT rescue a `choose:` that names an option the run never offered —
+# that fails loud and reports the offered labels, which is the diagnosis worth having the first
+# time this is spent.
+on_unanswered: first
+
+# THE ANSWER IS FREE TEXT, NOT "go", and that is deliberate. `choose: go` would measure the
+# cheapest possible reply and leave the path the gate exists for — user answers → `brief.json` →
+# the generators' PROBLEM block → the report's "(your words)" → the ranker — untested end to end.
+# Cowork offers a free-text "Other" on every gate (`scenario.md` "Free-text Other"), and `answer:`
+# is how a scenario uses it, so this supplies both asks the way a real user would and lets the run
+# take the correction path: record, re-run 3b and 4, print the answers back, start.
+#
+# The anchor is deliberately wide. `when_question` matches the QUESTION text only, and the gate's
+# four lines are bundled into one model-composed question — so anchoring on one exact sentence
+# would silently miss if the model put that sentence into an option description instead, and
+# `on_unanswered: first` would answer in its place with nothing recording that it had. Three
+# producer-authored fragments, any of which lands the rule.
+answers:
+  - when_question: 'Reading this as|already tried or ruled out|Say "go" to start'
+    answer: "Already ruled out: cutting the midweek rate, and a corporate rate card. Solved means midweek at 60% without moving anyone off the weekend. That's everything — go."
+
+
+# Leading slash is load-bearing: mid-sentence slashes are not expanded by the agent binary. The
+# command form is used for trigger reliability — a trigger flake here wastes a full pipeline run,
+# the same trade `pipeline-strategic` and `deliverable-composition` make.
+#
+# NO DON'T-ASK CLAUSE, and that is the entire point of the file. Do not add one.
+prompt: "/creative-problem-solving:ideas We run a 40-bed independent hotel two hours from the nearest city. Midweek occupancy is 30% and weekends are full. Discounting midweek just moved weekend guests, and a corporate rate card brought nobody. What else could midweek be?"
+
+assert:
+  - result: success
+  - skill_triggered: creative-problem-solving
+  # THE GATE FIRED, AND IT SHOWED THE READING. Zero gates recorded fails this key rather than
+  # passing vacuously, which is what makes it the assertion this scenario is for.
+  - question_context:
+      matches: "Reading this as"
+  # ONE QUESTION. The gate is the run's one question: step 0d puts its four lines to the user as a
+  # SINGLE question, so a run that splits the two asks into separate sub-questions counts 3 here
+  # and reds — which is the violation, not a technicality. Same ceiling as every other scenario.
+  - questions_count_max: 1
+  # THE ANSWER SURVIVED THE WHOLE PIPELINE. This is the assertion the scenario was rewritten for:
+  # `build_report.py` prints this heading only when `counts_as_solved` is non-empty, so it is true
+  # only if the run heard the answer, wrote it into `brief.json`, and carried it forty minutes to
+  # the report. A run that asks, is told, and records nothing reds here and nowhere else.
+  - transcript_contains: "What counts as solved (your words):"
+  # And the correction path ran rather than the run treating a two-part answer as a bare "go".
+  # `brief_gate.py` prints this on the corrected block and the orchestrator relays it.
+  - transcript_contains: "Corrected. Starting now"
+  # The run started after the answer and went all the way through. These two markers are the same
+  # ones ideas-command uses, chosen because a summary of the report would not carry them.
+  - transcript_contains: "## The rest, in rank order"
+  - subagent_dispatched: "creative-problem-solving:generator"
+  - no_delete_in_outputs: true
+  - computer_links_resolve: true
+  - max_cost_usd: 60

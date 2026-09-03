@@ -26,7 +26,9 @@ baseline: desktop-1.44121.1
 fidelity: container
 # Same trade the pipeline-* pair documents: no gate here is load-bearing for what is asserted
 # (this prompt tells the model not to ask), so `first` buys re-record robustness at the price of
-# a nonDeterministic flag, rather than an exact-label anchor that drifts.
+# a nonDeterministic flag, rather than an exact-label anchor that drifts. Since the brief gate at
+# references/pipeline.md step 0d, that clause also takes the gate's skip path — the reading is
+# said and the run does not stop — which is what keeps this scenario unattended.
 on_unanswered: first
 
 # Deliberately a strategic problem — the tier whose answers are long enough that composition has

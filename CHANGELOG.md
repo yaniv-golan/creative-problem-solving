@@ -14,6 +14,17 @@ clause) are held for a separate release.
 
 ### Changed
 
+- **The run shows its reading and asks two things before starting.** One pause, before the web
+  search: it states the reading, the actor, the decision and the pressures it invented, then asks
+  what you have already tried or ruled out and what would count as solved. Say "go" or correct it
+  once. Two runs are the reason — on a one-line prompt the pipeline invented a world pressure and
+  ranked a family third on the bet that the pressure drove the work, while a prompt that already
+  carried those two answers kept its invented pressures at world level and produced a different
+  top of the list. Both are recorded in `brief.json`, printed in the report opening in your own
+  words, and read by the ranker. Say "don't ask me any questions" in the problem and the run says
+  the reading and starts instead. The one-question ceiling is unchanged: this gate is the one
+  question, and the meaning ambiguity that used to be asked separately is now folded into the
+  reading line.
 - **Phase 0 names the actor and the decision.** Step 1 now asks who has to behave differently and
   what they are deciding at the moment they would; `brief.json` records both, and the report opens
   with them. On the audited run roughly a third of the options answered "make the artifact better"

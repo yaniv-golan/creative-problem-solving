@@ -147,14 +147,15 @@ without one runs it as sequential passes in a single context and says so in a li
 
 **The plugin — the above plus the machinery the pipeline runs on:** `commands/ideas.md`, six
 sub-agent definitions in `agents/` (one per pipeline role, each carrying only the tools its role
-needs), and nine stdlib-only Python scripts in `scripts/`. Step 0 of `references/pipeline.md`
+needs), and ten stdlib-only Python scripts in `scripts/`. Step 0 of `references/pipeline.md`
 locates those scripts for the shell, which matters on hosts where the shell and the file tools
-disagree about paths. The pipeline runs seven of them through
-your host's Bash tool to shard the candidate pairs, merge the adjudicators' verdicts, partition
+disagree about paths. The pipeline runs eight of them through
+your host's Bash tool to show you the reading it settled on and take your answer, shard the
+candidate pairs, merge the adjudicators' verdicts, partition
 the options into clusters, reassemble those into families, say at each phase boundary what that
 phase produced, build the report, and check the
-finished run's integrity before a word of the answer is written — the other three are a shared JSON
-loader, a progress-line builder and the shared verdict vocabulary the six import. They
+finished run's integrity before a word of the answer is written — the other two are a shared JSON
+loader and the shared verdict vocabulary the rest import. They
 read and write JSON under one directory — except the report builder, which writes the report in
 Markdown to the `--out` path it is given, deliberately outside that directory — make no network
 calls and spawn no subprocesses.

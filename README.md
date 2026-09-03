@@ -86,6 +86,11 @@ In Claude Code and Claude Desktop that decision is a command:
 Most hosts accept the bare `/ideas` when nothing else claims the name. On hosts without slash
 commands, asking plainly does the same job: *"use creative problem solving on this"*.
 
+Before it starts, it shows you what it thinks you are asking, who has to act, and the pressures
+it invented, and it asks two things: what you have already ruled out, and what would count as
+solved. Say "go" or correct it. It asks once. Put *"don't ask me any questions"* in your problem
+and it says the reading and starts.
+
 **It will not offer itself.** Asking for ideas, options, angles or approaches — or naming a
 method like SCAMPER, TRIZ or first principles — gets you a direct answer, which for most
 questions is the right one. When you want the pipeline, say so, and put the problem in the same

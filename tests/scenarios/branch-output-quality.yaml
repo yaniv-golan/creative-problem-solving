@@ -23,10 +23,16 @@ on_unanswered: first
 timeout_ms: 7200000
 
 # Leading slash is load-bearing: mid-sentence slashes are not expanded by the agent binary.
+# THE DON'T-ASK CLAUSE ALSO SKIPS THE BRIEF GATE, and that is now its main job. Since the gate at
+# references/pipeline.md step 0d, the skill asks by design: it shows its reading and asks two
+# things before dispatching. The clause takes the skip path, so this run stays unattended and
+# deterministic — and the reading is still SAID on that path, so transcript assertions can see it.
+# `brief-gate.yaml` is where the asking path itself is measured.
+#
 # Adoption-shaped on purpose (see header), and deliberately carries the two shapes the report says
 # a brief must survive: a spent-answer exclusion ("already written"), and a constraint stated as a
 # conclusion ("can't pay") that Phase 0 step 3b is supposed to test rather than accept.
-prompt: "/creative-problem-solving:ideas Our open-source Python library has 40k downloads a month and almost no contributors. Twelve people opened pull requests last year and nine were one-line typo fixes. I maintain it alone, evenings and weekends, and the issue backlog is 300 deep. I don't want to hand it to a foundation and I can't pay anyone. What I want is three or four people who fix real bugs without being asked and are still around in a year. I've already written a CONTRIBUTING.md and added good-first-issue labels."
+prompt: "/creative-problem-solving:ideas Our open-source Python library has 40k downloads a month and almost no contributors. Twelve people opened pull requests last year and nine were one-line typo fixes. I maintain it alone, evenings and weekends, and the issue backlog is 300 deep. I don't want to hand it to a foundation and I can't pay anyone. What I want is three or four people who fix real bugs without being asked and are still around in a year. I've already written a CONTRIBUTING.md and added good-first-issue labels. Don't ask me any questions — just run."
 
 assert:
   - result: success

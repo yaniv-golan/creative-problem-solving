@@ -13,8 +13,9 @@ name: ideas-command
 session: ../sessions/default.yaml
 baseline: desktop-1.44121.1
 fidelity: container
-# The command tells the model not to ask, but mode choice can still legitimately raise one gate;
-# `first` buys re-record robustness at the price of a nonDeterministic flag, as in the pipeline-* pair.
+# The prompt tells the model not to ask, which since step 0d also takes the brief gate's skip
+# path — the reading is said and the run does not stop. `first` remains as a backstop for any gate
+# raised anyway, at the price of a nonDeterministic flag, as in the pipeline-* pair.
 on_unanswered: first
 # A full run is tens of minutes across roughly eighteen dispatches — far longer than the other
 # scenarios here, which is why this one sets its own budget.
@@ -39,7 +40,7 @@ on_unanswered: first
 timeout_ms: 7200000
 
 # Leading slash is load-bearing: mid-sentence slashes are not expanded by the agent binary.
-prompt: "/creative-problem-solving:ideas Our four independent bookshops are losing footfall, we cannot match online on price, and author events and a loyalty card are already spent. What else could we be?"
+prompt: "/creative-problem-solving:ideas Our four independent bookshops are losing footfall, we cannot match online on price, and author events and a loyalty card are already spent. What else could we be? Don't ask me any questions — just run."
 
 assert:
   - result: success

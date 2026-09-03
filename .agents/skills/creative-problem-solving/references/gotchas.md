@@ -23,6 +23,9 @@ executed in order, and a run that never hits any of them is a run that went well
 - **The user's framing is the strongest anchor in the room.** Attack the brief before the
   solution space, and generate before showing anything — once they've seen your first
   three ideas, everything after is a variation on them.
+- **The gate at the start shows a reading, not ideas.** That is the one thing shown before
+  generating, and it is shown so it can be corrected. A restatement of the problem carries no
+  option for the user to anchor on; the evidence above is about exposure to ideas.
 - **Elaboration is not creativity.** A long, detailed, thoroughly-specified obvious idea is
   still the obvious idea. Check distance from baseline, not word count.
 - **Novices are who this hurts.** Model assistance widens the gap between experienced and

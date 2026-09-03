@@ -23,6 +23,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robust_json import load, load_obj, brief_str
 from robust_json import where as _where
 from build_report import effective_lead
+# One implementation of the readback, not two. The renderer that printed the text to the user is
+# the renderer this check re-runs; a second copy here would drift and the drift would look like
+# tampering.
+from brief_gate import readback as gate_readback, sha1_of, unshown_answers
+from brief_gate import SKIP_REASONS as GATE_SKIP_REASONS
 from progress import announced, BOUNDARIES
 # One definition of the share rule; merge_families.py bounds its merges by the same import.
 from verdicts import JOINING, SEPARATING, SHARE_MAX as SEP_SHARE_MAX, share_breach  # noqa: F401
@@ -149,6 +154,76 @@ def main(wd):
                 f"nothing later in the run can tell that happened. Add `{_k}` to "
                 f"{os.path.basename(bpath)} from Phase 0 step 1 and re-run this check; a run "
                 f"archived before this key existed needs it filled in from its own brief.")
+
+    # THE BRIEF GATE RAN, AND WHAT IT SHOWED IS WHAT DISPATCHED.
+    #
+    # Step 0d prints the reading to the user before anything is dispatched and records here that
+    # it did. Gated for the same reason `actor` and `decision` are: an un-gated Phase 0 step is a
+    # step that stops happening, and this one costs more than the others when it stops — a run
+    # that skipped it spent forty minutes on a reading nobody confirmed.
+    gpath = os.path.join(wd, "gate.json")
+    if not os.path.exists(gpath):
+        die("gate.json missing — the brief gate never ran. Step 0d prints the reading to the "
+            "user and records it here. A run that skipped the gate spent forty minutes on a "
+            "reading nobody confirmed.")
+    gate = load_obj(gpath)
+    if gate.get("outcome") not in ("go", "skipped"):
+        die(f"gate.json records outcome {gate.get('outcome')!r} — the gate never resolved, so "
+            "this run dispatched while it was still waiting for the user. It resolves as `go` "
+            "(the user said go) or `skipped` (the user said not to ask, or nothing here can "
+            "wait for an answer).")
+    # THE RECORD HAS TO BE ONE brief_gate.py COULD HAVE WRITTEN, and every field below is checked
+    # rather than any one of them. An earlier version gated the hash on `asked` being truthy and
+    # checked nothing else, so `{"asked": false, "outcome": "skipped"}` — nine bytes any model
+    # with Write can produce — passed the whole block without the script ever running. The skip
+    # path is the one five of seven scenarios take, so the unchecked case was the common case.
+    _asked, _skip = gate.get("asked"), gate.get("skip_reason")
+    if (_asked is True) == bool(_skip):
+        die("gate.json says neither that the user was asked nor that the gate was skipped, or it "
+            "says both. Exactly one is true of any run: `asked: true` with no `skip_reason`, or "
+            "`asked: false` with one. This record was not written by brief_gate.py.")
+    if _skip is not None and _skip not in GATE_SKIP_REASONS:
+        die(f"gate.json records skip_reason {_skip!r}, which is not one brief_gate.py writes "
+            f"({', '.join(sorted(GATE_SKIP_REASONS))}). A run does not get to invent a reason "
+            f"for not asking.")
+    if gate.get("prints") not in (1, 2):
+        die(f"gate.json records {gate.get('prints')!r} prints. The gate prints once, or twice "
+            f"when a correction was shown; any other count is a record no run produced.")
+    # AND THE TEXT STILL RENDERS TO THE HASH THAT WAS STORED. Unconditional: the skip path prints
+    # a readback too, and exempting it left the commonest path unchecked. This is what a
+    # fabricated record cannot satisfy — it would have to carry the sha1 of a rendering of the
+    # brief as it stands, which is a thing only the renderer produces.
+    #
+    # WHAT IT PROVES, exactly: the gate ran and brief.json has not moved since it printed. It
+    # cannot prove a person read the text — no hash over rendered output can — and no sentence in
+    # this repo should claim otherwise.
+    if not isinstance(brief.get("invented"), list) or \
+            any(not isinstance(x, str) for x in brief.get("invented")):
+        # Checked HERE, with this file's die(), rather than left to the renderer's: a refusal
+        # raised inside the imported module exits without the SAY: line this gate is required to
+        # print, which is the failure robust_json.py:56 records as already fixed once.
+        die("brief.json's `invented` is not a list of strings, so the reading the gate printed "
+            "cannot be re-rendered to check it. Write each added premise as its own string.")
+    if sha1_of(gate_readback(gate, brief, bpath)) != gate.get("readback_sha1"):
+        die("brief.json changed after the reading was shown; what the user approved is not what "
+            "dispatched. The gate's readback and the dispatched brief are one file rendered "
+            "twice, and they no longer agree.")
+    # An answer the user was never shown back is a value only this run has seen, and it reaches
+    # the generators as "the user's words" and the report as "(your words)".
+    _unshown = unshown_answers(gate, brief, bpath)
+    if _unshown:
+        die("brief.json carries " + " and ".join(f"`{k}`" for k in _unshown) + " that the gate "
+            "never showed back. Those are presented downstream as the user's own words, so a "
+            "value the user did not see recorded is one they cannot have confirmed; step 0d "
+            "prints them with `ask --corrected`.")
+    # Present, possibly empty. The user may decline either question — that is a real answer and
+    # the report says so — but an absent key is a step that stopped happening.
+    for _k, _q in (("tried_or_ruled_out", "what they had already tried or ruled out"),
+                   ("counts_as_solved", "what would count as solved")):
+        if _k not in brief:
+            die(f"brief.json has no `{_k}` key. Step 0d asks the user {_q} and records the "
+                f"answer here; an empty value is fine and means they did not say, but an absent "
+                f"key cannot be told apart from a question that was never put.")
 
     rpath = os.path.join(wd, "relations.json")
     if not os.path.exists(rpath): die("relations.json missing")

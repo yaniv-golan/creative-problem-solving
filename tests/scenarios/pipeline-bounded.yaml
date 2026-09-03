@@ -26,20 +26,23 @@ session: ../sessions/default.yaml
 baseline: desktop-1.44121.1
 fidelity: container
 
-# The skill legitimately raises one clarifying gate here — "account-verification" is
-# ambiguous by design, and eval 2 asserts the skill handles that ambiguity rather than
-# guessing silently. `first` is the deliberate choice, not laziness: the answer is
-# immaterial to what this scenario asserts (whichever reading it takes, a bounded product
-# question must not fan out), and the harness's own guidance is to label-anchor only the
-# gates whose choice drives an assertion. Pinning a label here would buy nothing and add a
-# re-record flake every time the model rewords its options.
+# THE MEANING GATE THIS FILE USED TO DOCUMENT NO LONGER FIRES, and the prompt now says so.
+# "Account-verification" is still ambiguous by design — that is why this prompt was chosen — but
+# since references/pipeline.md step 0d the skill no longer raises meaning as a separate question:
+# it picks the likeliest reading, states it in the reading line of the brief gate, and lets the
+# user correct it there. The measured record of the old behaviour is kept because it is what the
+# change replaced: the released-tree run (skillHash 6d73ce525e) raised exactly one gate — "What
+# actually happens at the account-verification step?" — answered by `first` and flagged
+# non-deterministic.
 #
-# The cost is that the run is flagged non-deterministic. Accepted, for the reason above.
+# So the prompt carries the don't-ask clause, which takes the gate's skip path, and the run stays
+# unattended. The reading is still SAID on that path, which is what the new
+# `transcript_contains: "Reading this as"` assertion below checks — the disclosure survived the
+# change even though the question did not. `brief-gate.yaml` measures the asking path.
 #
-# This is measured, not assumed: the released-tree run (skillHash 6d73ce525e) raised exactly
-# one gate — "What actually happens at the account-verification step?" — answered by `first`
-# and flagged non-deterministic. `tests/README.md` used to claim no gate was auto-answered in
-# the measured batch; that sentence was wrong and has been corrected against these records.
+# `first` stays as a backstop for any gate raised anyway: the answer is immaterial to what this
+# scenario asserts (whichever reading it takes, a bounded product question must not fan out), and
+# the harness's guidance is to label-anchor only the gates whose choice drives an assertion.
 on_unanswered: first
 
 # THE COMMAND PREFIX IS LOAD-BEARING — do not "tidy" it away.
@@ -73,7 +76,7 @@ on_unanswered: first
 prompt: |
   Our onboarding flow has a 60% drop-off at the account-verification step. We've already
   tried shortening the form and adding a progress bar. I'm out of ideas — use creative
-  problem solving on this.
+  problem solving on this. Don't ask me any questions — just run.
 
 assert:
   - result: success
@@ -92,8 +95,14 @@ assert:
   # that class coming back.
   #
   # CEILING, stated so a green is not over-read: this sees `AskUserQuestion` gates only. The
-  # skill mandates no gate tool — SKILL.md contemplates prose asking explicitly ("If you
-  # can't ask, pick the likeliest reading") — so a run that asks three meaning questions in
-  # plain chat records zero gates and passes. It is a partial guard on the rule, not
-  # coverage of it. A maximum is also satisfied by zero, so it never requires a gate to fire.
+  # skill mandates no gate tool — step 0d says "ask the user" and names no mechanism — so a run
+  # that asks three questions in plain chat records zero gates and passes. It is a partial guard
+  # on the rule, not coverage of it. A maximum is also satisfied by zero, so it never requires a
+  # gate to fire — which is the expected shape here, since the prompt takes the skip path.
   - questions_count_max: 1
+  # THE READING IS SAID EVEN WHEN NOTHING IS ASKED. The skip path prints the same reading line the
+  # asking path does; a run that skipped the gate ENTIRELY, rather than skipping the question,
+  # would drop it. That is the failure this catches, and it is the one the whole gate exists to
+  # prevent: forty minutes spent on a reading the reader never saw.
+  - transcript_contains: "Reading this as"
+

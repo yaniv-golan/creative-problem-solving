@@ -24,6 +24,14 @@ runs: every stage below is a thing a model does, and only the checks between the
 What you lose is worth naming to the reader in one line, because these are the guarantees this
 skill advertises:
 
+- **The brief gate** (`brief_gate.py`, step 0d). The sentences are scripted precisely so that a
+  readback is of the file that dispatches rather than of what you remember, and without the
+  script you are typing them. Still do it, in your own words and in this order: the reading, the
+  actor and the decision; the pressures you added that the user did not state, or "none"; then
+  the two asks — what they have already tried or ruled out, and what would count as solved; then
+  that saying "go" starts the run, that you will correct it once, and that you will not ask
+  again. Write both answers into `brief.json`. Skip the asking, but still say the reading, if the
+  prompt told you not to ask or nothing here can wait for an answer.
 - **The integrity check** (`verify_pipeline.py`). Nothing proves `generated == presented +
   rejected`. Do the arithmetic yourself and state the three numbers; a count you did by hand is
   weaker evidence than a count a script refused to skip, and the reader should know which they got.
@@ -410,11 +418,24 @@ So record the split before anything is dispatched, in `$RUN/_work/brief.json`:
 
 ```json
 {"verbatim_prompt": "<the user's words, exactly as received>",
- "reading": "<the reading you settled on — the Opening's one line>",
+ "reading": "<the reading you settled on, AS A CLAUSE: the gate prints it after the words
+             'Reading this as ', so it must finish that sentence and start lower-case>",
  "actor": "<whose behaviour has to change — SKILL.md Phase 0 step 1>",
  "decision": "<what they are deciding at the moment they would>",
- "invented": ["<each constraint or attribute you added that the user did not state>"]}
+ "invented": ["<each constraint or attribute you added that the user did not state>"],
+ "tried_or_ruled_out": ["<what the user says they have already tried — may be empty>"],
+ "counts_as_solved": "<what the user says would count as solved — may be empty>"}
 ```
+
+**The last two are the user's answers at step 0d, and they are recorded separately from
+`invented` for the same reason `invented` is recorded separately from `verbatim_prompt`.** Once
+three kinds of sentence are in one list nothing downstream can tell them apart: a pressure this
+run supposed, a fact the reader stated, and a bar the reader set are three different warrants and
+they license three different things. The two are written before the first dispatch and are
+**empty when the user declined to answer** — an empty value is a real answer and the report says
+so, while an absent key is a question that was never put. `verify_pipeline.py` refuses a brief
+that is missing either key and never looks at what is in them: their length and their content are
+the user's business.
 
 `actor` and `decision` are Phase 0 step 1's answer, written down where the rest of the run can
 see it. They are required and `verify_pipeline.py` refuses a run without them — an un-gated
@@ -454,6 +475,98 @@ means nine passes answering nine different hypothetical problems, and the pool c
 against itself. The *phrasing* must differ: `SKILL.md` asks for "a different phrasing of the same
 function" per pass because identical sentences give five copies of one starting point. Same
 constraints, different words.
+
+---
+
+## Step 0d — show the reading and ask, once
+
+**When.** After Phase 0 steps 1-4 and after grounding inward on anything the user has connected,
+and **before the web search**. Two reasons and they point the same way: the retrieved-neighbour
+list makes a reading feel settled, so a reading confirmed after research is confirmed by a run
+that has already committed to it; and a pause that arrives after minutes of searching reads as
+stalling rather than as a question.
+
+**Everything the user sees here is printed by a script.** You retype none of it. The sentences
+live in `brief_gate.py` in one copy, which is also what renders the block the generators get and
+what the integrity check re-derives at the end — the readback, the dispatch and the record are
+one file rendered three times, and a retyped copy is how they stop agreeing.
+
+```
+python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" ask
+```
+
+It prints four `ASK:` lines. **Put them to the user as a single question, markers stripped, and
+wait.** Where your host offers a structured way to ask with a default answer, "go" is the
+default; the run must never depend on having one. No tool is named here on purpose: use whatever
+this host has.
+
+**There are two replies, and only one of them is "go".**
+
+**"Go", and nothing else** — or anything that plainly means it:
+
+```
+python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" go
+```
+
+**Anything else the user says** — a correction to the reading, the actor, the decision or a
+pressure, *and equally an answer to either question*. Answering is the expected reply, not the
+exception: they were asked two things, and the words they give back are the whole reason the
+gate exists. Do all four of these, in order:
+
+1. **Write what they said into `brief.json`**, in their words: `counts_as_solved` and
+   `tried_or_ruled_out` (step 0c), plus any correction they made. **This is the step that is
+   easiest to skip and the one that makes the gate worth having** — a run that asks, is told,
+   and records nothing dispatches exactly like a run that never asked, and the report then tells
+   the reader they did not answer.
+2. **Re-run Phase 0 steps 3b and 4** on the corrected brief — cheap, no dispatch and no search.
+   Step 3b matters here in particular: whatever they just said they had ruled out becomes a hard
+   ban in every generator dispatch, and 3b is the step that asks whether the ruled-out answer
+   survives before it is banned. Accepting it untested is the skill's known losing move.
+3. Print it back:
+   ```
+   python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" ask --corrected
+   ```
+   Those are `SAY:` lines — the corrected reading, their two answers quoted back, and that the
+   run is starting. **Repeat them and do not wait**; nothing is being asked. Do not ask a third
+   time: the script refuses a third exchange, and it is right to.
+4. Then `go`, in the same turn:
+   ```
+   python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" go
+   ```
+
+**If the user's prompt said not to ask** — "don't ask me any questions", "no questions, just
+run", any phrasing to that effect — or if this host has no way to put a question to anyone and
+wait, run **one** of these and no `go` after it:
+
+```
+python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" skip --reason user-said-dont-ask
+```
+```
+python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" skip --reason no-ask-mechanism
+```
+
+Either prints three `SAY:` lines: the reading is still said, and the run does not stop. **Never
+wait on a run nobody is watching.**
+
+**The block the generators get** is printed by the same script and pasted into each dispatch:
+
+```
+python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" render-brief
+```
+
+**The path is the shell's spelling** — `"$BASE/$RUN/_work"`, as with every other script call, and
+not the bare `$RUN` a sub-agent's file tools may want (step 0b).
+
+**`verify_pipeline.py` refuses a run with no `gate.json`**, one whose record is not a shape
+`brief_gate.py` writes, one whose `brief.json` changed after the reading was shown, and one
+carrying an answer the gate never printed back. The record holds a hash of the exact text
+printed, so a run that shows one reading and then edits the file it dispatches from is caught at
+the last gate — and `render-brief` refuses to hand out the dispatch block at all until the gate
+has resolved, so there is no ordering in which the generators run before the reading is shown.
+
+**What none of that proves is that a person read it.** No hash over rendered text can tell a
+reading put in front of someone from one rendered into a pipe. It proves the gate ran and that
+the brief has not moved since. The rest is yours: put the block to the user and wait for them.
 
 ---
 
@@ -497,9 +610,9 @@ other, grouped into labelled families, is a different situation, and it was meas
 assumed: a negation round against that structure returned one search-verified option in seven.
 `docs/DESIGN-NOTES.md` carries the numbers and what would reopen it.
 
-1. Run Phase 0 yourself: sharpen the brief, name the obvious answer. Then, **before you
-   dispatch anything**, say which reading you settled on — see **Opening** below. It is the
-   only moment in this run where being wrong is still cheap to fix.
+1. Run Phase 0 yourself: sharpen the brief, name the obvious answer. The reading has already
+   been shown and confirmed at step 0d; **do not restate it.** That was the moment in this run
+   where being wrong was still cheap to fix, and it has passed.
 2. Choose the lenses from `references/lenses.md`. **Use ALL of them that genuinely attack this
    problem differently** — the file lists nine, and under dispatch they run in parallel, so a
    further lens costs almost no wall-clock and no context of yours. Drop a lens only if it
@@ -509,7 +622,8 @@ assumed: a negation round against that structure returned one search-verified op
 3. **N Task calls in one parallel batch, to `generator`.** *Tell each one what its pool feeds:
    nothing downstream ever rewrites an option, so the sentence it writes is the sentence the reader
    gets, and a pool that stops early shortens the final list rather than being topped up later.*
-   Each gets the brief, its single
+   Each gets the `PROBLEM` block printed by `brief_gate.py render-brief` — pasted, not retyped —
+   under one line of your own phrasing of the function, plus its single
    assigned lens, the obvious answer as a banned category, and **a quota of 30 options**. Tell
    it the first ten or so will be obvious and the quota exists to push past them — but that an
    option nobody would act on is not worth a slot, so it should stop reaching once the lens is

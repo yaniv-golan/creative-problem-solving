@@ -23,9 +23,9 @@ Two install paths deliver different payloads, and the difference matters here.
   and `VERSION`. No executable code.
 - **The plugin** (Claude Code/Desktop/Cowork, Cursor, Codex) additionally installs
   `commands/ideas.md`, a sub-agent definition in `agents/` for each pipeline role, and **the
-  Python scripts in `scripts/`**. The `/ideas` pipeline runs seven of them through the host's Bash
+  Python scripts in `scripts/`**. The `/ideas` pipeline runs eight of them through the host's Bash
   tool as `python3 "$CPS/scripts/<name>.py"`, where `$CPS` is the plugin root it resolves once at
-  step 0 from the path it read `references/pipeline.md` at: `shard_candidates.py`,
+  step 0 from the path it read `references/pipeline.md` at: `brief_gate.py`, `shard_candidates.py`,
   `merge_relations.py`, `plan_groups.py`, `merge_families.py`, `verify_pipeline.py`,
   `build_report.py` and `progress.py` — the last of these three times, once at each phase
   boundary where no other script runs, and it only reads and prints. `robust_json.py`

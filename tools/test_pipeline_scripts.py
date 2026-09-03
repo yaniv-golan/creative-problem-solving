@@ -66,9 +66,37 @@ def make_pools(wd, npools=4, per=8):
     json.dump({"verbatim_prompt": "An office of 200 people has a 20-minute lunch queue at noon.",
     "actor": "a founder", "decision": "whether to act before the round",
                "reading": "how to shorten the wait, not how to feed more people",
-               "invented": []},
+               "invented": [],
+               # Step 0d's two asks. Present and empty is the honest fixture value for the same
+               # reason `invented: []` is: nothing was asked of anybody here, and a forgotten key
+               # and a declined question must not render as the same file.
+               "tried_or_ruled_out": [], "counts_as_solved": ""},
               open(os.path.join(wd, "brief.json"), "w"))
+    pass_the_gate(wd)
     return _make_pools(wd, npools, per)
+
+
+def pass_the_gate(wd):
+    """Run the brief gate the way a run does, so a fixture reaches verify_pipeline gated.
+
+    Called rather than hand-written, and that is the point: `gate.json` carries a hash of the
+    exact text the gate printed, so a fixture that fabricates the record would pin whatever this
+    file happened to believe the sentences were. Any test that edits brief.json after this must
+    call it again -- which is itself the invariant under test.
+    """
+    g = os.path.join(wd, "gate.json")
+    if os.path.exists(g): os.remove(g)
+    rc, out = run("brief_gate.py", wd, "ask")
+    assert rc == 0, f"fixture: brief gate refused the ask — {out}"
+    # A brief that already carries the two answers has to take the correction path, because the
+    # gate refuses to start on an answer it never showed back. That is the invariant, not a
+    # fixture convenience: the same two values reach the generators as the user's words.
+    b = json.load(open(os.path.join(wd, "brief.json")))
+    if (b.get("counts_as_solved") or "").strip() or (b.get("tried_or_ruled_out") or []):
+        rc, out = run("brief_gate.py", wd, "ask", "--corrected")
+        assert rc == 0, f"fixture: brief gate refused the correction — {out}"
+    rc, out = run("brief_gate.py", wd, "go")
+    assert rc == 0, f"fixture: brief gate refused go — {out}"
 
 
 def _make_pools(wd, npools=4, per=8):
@@ -5376,8 +5404,13 @@ def t_echo_survives_a_paragraph_break():
     prompt = ("How do we grow deal flow?\n\nWe have tried events, newsletters, and cold "
               "outreach already, and none of them moved the number.")
     json.dump({"verbatim_prompt": prompt, "actor": "a partner",
-               "decision": "where to spend the next quarter", "reading": "r", "invented": []},
+               "decision": "where to spend the next quarter", "reading": "r", "invented": [],
+               "tried_or_ruled_out": [], "counts_as_solved": ""},
               open(os.path.join(d, "brief.json"), "w"))
+    # Re-gate: the readback is hashed against brief.json, so replacing the brief after
+    # full_fixture leaves a record of a reading nobody was shown -- which verify_pipeline refuses,
+    # correctly, and which would otherwise fail this test on the wrong gate.
+    pass_the_gate(d)
     rk = os.path.join(d, "ranked.json")
     order = json.load(open(rk))["ranked"]
 
@@ -5490,7 +5523,506 @@ def t_risk_marks_carry_their_own_scope():
     shutil.rmtree(d, True)
 
 
-TESTS = (t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
+
+GATE_BRIEF = {"verbatim_prompt": "Our four bookshops are losing footfall.",
+              "reading": "what else the shops could be, not how to discount harder",
+              "actor": "the owner", "decision": "what to change before the autumn season",
+              "invented": ["high-street rents are still rising",
+                           "publishers are shortening event budgets"],
+              "tried_or_ruled_out": [], "counts_as_solved": ""}
+
+
+def _gate_dir(**over):
+    d = tempfile.mkdtemp()
+    b = dict(GATE_BRIEF); b.update(over)
+    json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+    return d
+
+
+def t_brief_gate_asks_once():
+    """Step 0d's four lines, its one correction, and the two ways out of it.
+
+    The gate is the run's one question and there is no second, so the refusals matter as much as
+    the prints: a run that can ask again can interview, and an interview is not a divergence
+    pass. Every sentence asserted here lives in exactly one place -- brief_gate.py -- because the
+    readback, the dispatch block and the report opening are the same brief rendered three times,
+    and a retyped copy is how they stop agreeing.
+    """
+    print("\nthe brief gate asks once and corrects once")
+    d = _gate_dir()
+    try:
+        rc, out = run("brief_gate.py", d, "ask")
+        lines = [l for l in out.splitlines() if l.strip()]
+        check("the ask is four lines and nothing else",
+              rc == 0 and len(lines) == 4 and all(l.startswith("ASK: ") for l in lines),
+              out.strip()[:200])
+        check("it opens with the reading", lines[0].startswith("ASK: Reading this as what else"),
+              lines[0][:90])
+        check("it names the two things only the user can supply",
+              "already tried or ruled out" in lines[2] and "count as solved" in lines[2],
+              lines[2][:120])
+        check("and it says how to start and that it will not ask again",
+              'Say "go" to start' in lines[3] and "not ask again" in lines[3], lines[3][:120])
+        g = json.load(open(os.path.join(d, "gate.json")))
+        check("the gate records one print, asked", g["asked"] is True and g["prints"] == 1
+              and g["outcome"] is None and g["readback_sha1"], g)
+
+        # A SECOND PLAIN ASK IS REFUSED, AND CHANGES NOTHING. A refusal that still wrote the
+        # record would let a run reach `prints: 1` from any state.
+        rc, out = run("brief_gate.py", d, "ask")
+        check("a second ask is refused", rc == 1 and "third exchange" in out, out.strip()[:120])
+        check("...and the record is untouched",
+              json.load(open(os.path.join(d, "gate.json"))) == g, "gate.json was rewritten")
+
+        rc, out = run("brief_gate.py", d, "ask", "--corrected")
+        lines = [l for l in out.splitlines() if l.strip()]
+        # SAY:, NOT ASK: — the corrected block asks nothing, and the marker is what tells the
+        # orchestrator whether to wait. Marked ASK: it inherits "put it to the user and wait" and
+        # the run hangs in front of a question nobody was asked.
+        check("a correction prints once more, ending in Starting now",
+              rc == 0 and len(lines) == 3 and all(l.startswith("SAY: ") for l in lines)
+              and lines[-1].startswith("SAY: Corrected. Starting now"), out.strip()[:250])
+        check("...and does not re-ask what the user just answered",
+              "already tried or ruled out?" not in out.lower(), out.strip()[:250])
+        g2 = json.load(open(os.path.join(d, "gate.json")))
+        check("...and is recorded as the second print",
+              g2["prints"] == 2 and g2["outcome"] == "corrected", g2)
+        rc, out = run("brief_gate.py", d, "ask", "--corrected")
+        check("a second correction is refused", rc == 1 and "third exchange" in out,
+              out.strip()[:120])
+
+        rc, out = run("brief_gate.py", d, "go")
+        check("go after a correction starts the run",
+              rc == 0 and out.strip() == "SAY: Starting. This takes about half an hour, and I "
+              "will tell you what each stage produced as it finishes.", out.strip()[:160])
+        check("...and the gate is resolved",
+              json.load(open(os.path.join(d, "gate.json")))["outcome"] == "go", "not go")
+    finally:
+        shutil.rmtree(d, True)
+
+    # NO PRESSURES IS A WORD, NOT AN EMPTY TAIL. A sentence that stops after its colon reads as a
+    # rendering fault, and the reader cannot tell it from a run that forgot to say.
+    d = _gate_dir(invented=[])
+    try:
+        rc, out = run("brief_gate.py", d, "ask")
+        check("an empty invented list says none",
+              out.splitlines()[1].endswith("which you did not state: none."),
+              out.splitlines()[1][:120])
+    finally:
+        shutil.rmtree(d, True)
+
+    # THE SKIP PATH SAYS THE READING AND DOES NOT STOP.
+    for _reason, _phrase in (("user-said-dont-ask", "You asked me not to ask"),
+                             ("no-ask-mechanism", "I cannot wait for an answer here")):
+        d = _gate_dir()
+        try:
+            rc, out = run("brief_gate.py", d, "skip", "--reason", _reason)
+            lines = [l for l in out.splitlines() if l.strip()]
+            check(f"skip ({_reason}) says three SAY lines",
+                  rc == 0 and len(lines) == 3 and all(l.startswith("SAY: ") for l in lines),
+                  out.strip()[:200])
+            check(f"...opening with the reading and closing with {_phrase!r}",
+                  lines[0].startswith("SAY: Reading this as") and _phrase in lines[2],
+                  out.strip()[:200])
+            g = json.load(open(os.path.join(d, "gate.json")))
+            check(f"...and records it as skipped, not asked ({_reason})",
+                  g["asked"] is False and g["outcome"] == "skipped"
+                  and g["skip_reason"] == _reason, g)
+            rc, out = run("brief_gate.py", d, "go")
+            # The refusal has to be TRUE. It used to say nothing had been shown yet — false on
+            # this path, the reading was said — and then name two commands that both refuse.
+            check(f"go after skip is refused ({_reason})",
+                  rc == 1 and "took the skip path" in out and "already said the reading" in out,
+                  out.strip()[:160])
+        finally:
+            shutil.rmtree(d, True)
+
+    d = _gate_dir()
+    try:
+        rc, out = run("brief_gate.py", d, "go")
+        check("go before any ask is refused", rc == 1 and "follows the gate" in out,
+              out.strip()[:140])
+        check("...and no record is invented for it",
+              not os.path.exists(os.path.join(d, "gate.json")), "gate.json was written anyway")
+        rc, out = run("brief_gate.py", d, "skip")
+        check("skip without a reason is refused", rc == 1 and "--reason" in out, out.strip()[:140])
+    finally:
+        shutil.rmtree(d, True)
+
+    # A WRONG PATH IS NOT AN ORDINARY REFUSAL. Exit 2, so a caller cannot read it as "the gate
+    # said no" and re-run the same wrong command.
+    rc, out = run("brief_gate.py", os.path.join(tempfile.gettempdir(), "no-such-dir-here"), "ask")
+    check("a work dir that is not there exits 2", rc == 2 and "not a directory" in out,
+          f"rc={rc} {out.strip()[:120]}")
+
+
+def t_brief_gate_renders_the_dispatch_block():
+    """`render-brief` is the words a generator gets, and the reason it is a script.
+
+    A generator has Write and no reader (agents/generator.md), so whatever the orchestrator types
+    is what it gets -- and the brief the user approved is on disk. This renders it once so the
+    readback and the dispatch cannot disagree.
+    """
+    print("\nthe dispatch block is rendered from the brief, not retyped")
+    d = _gate_dir()
+    try:
+        # BEFORE THE GATE RESOLVES THERE IS NO BLOCK. Without this a run could dispatch nine
+        # generators and print the reading afterwards, which satisfies every other check while
+        # the user's one chance to correct arrives after the money is spent.
+        rc, out = run("brief_gate.py", d, "render-brief")
+        check("render-brief before the gate resolves is refused",
+              rc == 1 and "has not resolved" in out, f"rc={rc} {out.strip()[:140]}")
+        pass_the_gate(d)
+        rc, out = run("brief_gate.py", d, "render-brief")
+        check("it opens with the reading, the actor and the decision",
+              rc == 0 and out.startswith("PROBLEM: what else the shops could be")
+              and "The person who has to act: the owner." in out, out.strip()[:160])
+        check("the two user-stated sections are omitted when empty",
+              "WHAT COUNTS AS SOLVED" not in out and "ALREADY TRIED" not in out,
+              out.strip()[:300])
+        check("the pressures are there, one per line",
+              "- high-street rents are still rising" in out, out.strip()[:300])
+        # THE BLOCK IS THE READING, NOT THE PROMPT. Two statements of the problem in one dispatch
+        # is a pass choosing between them.
+        check("and the raw prompt is never in it", "bookshops are losing footfall" not in out,
+              out.strip()[:300])
+    finally:
+        shutil.rmtree(d, True)
+
+    d = _gate_dir(counts_as_solved="footfall back to last spring by October",
+                  tried_or_ruled_out=["a loyalty card", "author events"])
+    try:
+        pass_the_gate(d)
+        rc, out = run("brief_gate.py", d, "render-brief")
+        check("what counts as solved is carried verbatim",
+              "WHAT COUNTS AS SOLVED (the user's words): footfall back to last spring by October"
+              in out, out.strip()[:300])
+        check("and what was ruled out is carried as a do-not list",
+              "ALREADY TRIED OR RULED OUT — do not hand these back:" in out
+              and "- a loyalty card" in out and "- author events" in out, out.strip()[:400])
+    finally:
+        shutil.rmtree(d, True)
+
+    # WRONG TYPES ARE REFUSALS THAT NAME THE KEY, never a traceback: brief.json is model-authored,
+    # and iterating a string yields one premise per letter.
+    for _key, _bad in (("invented", "rents are rising"), ("counts_as_solved", ["a", "b"]),
+                       ("tried_or_ruled_out", "a loyalty card")):
+        d = _gate_dir(**{_key: _bad})
+        try:
+            # Gated by hand rather than through pass_the_gate: the wrong type is what is under
+            # test, and the gate would refuse it on the way in.
+            json.dump({"asked": True, "skip_reason": None, "prints": 1, "outcome": "go",
+                       "readback_sha1": "x"}, open(os.path.join(d, "gate.json"), "w"))
+            rc, out = run("brief_gate.py", d, "render-brief")
+            check(f"a wrong-typed `{_key}` is refused by name",
+                  rc == 1 and f"`{_key}`" in out and "Traceback" not in out,
+                  f"rc={rc} {out.strip()[:140]}")
+        finally:
+            shutil.rmtree(d, True)
+
+
+def t_the_gate_is_verified_at_the_end():
+    """verify_pipeline refuses an ungated run, and refuses a brief edited after the readback.
+
+    THE SECOND HALF IS WHAT MAKES THE RECORD WORTH KEEPING. `gate.json` exists is satisfied by an
+    empty object; `readback_sha1 matches the brief as it now stands` is not. A run that shows one
+    reading and then edits the file it dispatches from has had the gate and the freedom both, and
+    that is the only way to fake having asked.
+    """
+    print("\nthe brief gate is checked at the last gate")
+    d = tempfile.mkdtemp()
+    try:
+        full_fixture(d, multi=True)
+        rc, out = run("verify_pipeline.py", d)
+        check("CONTROL: a gated fixture passes", "OK" in out, out.strip()[-200:])
+
+        gp = os.path.join(d, "gate.json")
+        keep = open(gp).read()
+        os.remove(gp)
+        rc, out = run("verify_pipeline.py", d)
+        check("a run with no gate record is refused",
+              rc != 0 and "gate.json missing" in out and "nobody confirmed" in out,
+              out.strip()[:200])
+        open(gp, "w").write(keep)
+
+        # An unresolved gate is a run that dispatched while it was still waiting.
+        g = json.loads(keep); g["outcome"] = None
+        json.dump(g, open(gp, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("a gate that never resolved is refused",
+              rc != 0 and "never resolved" in out, out.strip()[:200])
+        open(gp, "w").write(keep)
+
+        # THE EDIT-AFTER-THE-READBACK CASE.
+        b = json.load(open(os.path.join(d, "brief.json")))
+        shown = dict(b)
+        b["reading"] = "something the user was never shown"
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("a brief edited after the readback is refused",
+              rc != 0 and "changed after the reading was shown" in out, out.strip()[:200])
+        # AND `go` REFUSES THE SAME MISMATCH, one stage earlier, where it costs nothing. Checked
+        # on a gate that is still open, because a resolved one refuses for a different reason and
+        # would pass this by accident.
+        os.remove(gp)
+        run("brief_gate.py", d, "ask")                      # hashes the brief as it now stands
+        b["reading"] = "edited again, after the reader saw it"
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        rc, out = run("brief_gate.py", d, "go")
+        check("...and `go` refuses it too, before the run is spent",
+              rc == 1 and "has changed since the reading was shown" in out, out.strip()[:200])
+        # AND A CORRECTION IS THE WAY THROUGH. This is the ordinary path, not a bypass: the user
+        # is shown the new reading before it dispatches.
+        rc, out = run("brief_gate.py", d, "ask", "--corrected")
+        check("printing the corrected reading clears it", rc == 0, out.strip()[:160])
+        rc, out = run("brief_gate.py", d, "go")
+        check("...and then go is accepted", rc == 0, out.strip()[:160])
+        rc, out = run("verify_pipeline.py", d)
+        check("...and the run verifies", "OK" in out, out.strip()[-200:])
+        json.dump(shown, open(os.path.join(d, "brief.json"), "w"))
+        pass_the_gate(d)
+
+        # THE TWO ANSWERS MAY BE EMPTY; THEY MAY NOT BE MISSING.
+        for _k in ("tried_or_ruled_out", "counts_as_solved"):
+            b = json.load(open(os.path.join(d, "brief.json")))
+            gone = b.pop(_k)
+            json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+            pass_the_gate(d)
+            rc, out = run("verify_pipeline.py", d)
+            check(f"a brief with no `{_k}` key is refused",
+                  rc != 0 and f"no `{_k}` key" in out, out.strip()[:200])
+            b[_k] = gone
+            json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+            pass_the_gate(d)
+        rc, out = run("verify_pipeline.py", d)
+        check("and present-and-empty passes, because declining is an answer",
+              "OK" in out, out.strip()[-200:])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_the_report_says_what_it_was_told():
+    """The opening separates the user's words, an unanswered question and one never asked.
+
+    A reader deciding what a hundred options were aimed at needs all three states distinguishable.
+    They are one file apart in brief.json -- an empty answer -- and only gate.json says whether
+    anybody was ever asked.
+    """
+    print("\nthe report opening carries the gate's answers")
+    d = tempfile.mkdtemp()
+    try:
+        full_fixture(d, multi=True)
+        rep = os.path.join(d, "report.md")
+
+        run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("asked but unanswered is named as unanswered",
+              "**Not answered at the start:**" in body and "what counts as solved" in body,
+              body[:60])
+        check("...and is not dressed up as an answer",
+              "**Not asked:**" not in body, "the skip wording appeared on an asked run")
+
+        b = json.load(open(os.path.join(d, "brief.json")))
+        b["counts_as_solved"] = "the queue is under five minutes by June"
+        b["tried_or_ruled_out"] = ["a second till", "pre-ordering"]
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        pass_the_gate(d)
+        run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("the user's own words are printed as theirs",
+              "**What counts as solved (your words):** the queue is under five minutes by June"
+              in body and "**Already tried or ruled out (your words):** a second till; "
+              "pre-ordering" in body, body[:60])
+        check("...and nothing is reported as unanswered",
+              "**Not answered at the start:**" not in body, "claimed unanswered with answers")
+
+        # THE SKIPPED RUN SAYS SO. Not asked and not answered are different facts about the run,
+        # and a reader who cannot tell them apart cannot tell whether the omission was theirs.
+        os.remove(os.path.join(d, "gate.json"))
+        rc, _ = run("brief_gate.py", d, "skip", "--reason", "user-said-dont-ask")
+        b["counts_as_solved"], b["tried_or_ruled_out"] = "", []
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        os.remove(os.path.join(d, "gate.json"))
+        run("brief_gate.py", d, "skip", "--reason", "user-said-dont-ask")
+        run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("a skipped gate is reported as not asked",
+              "**Not asked:** you said not to ask" in body
+              and "**Not answered at the start:**" not in body, body[:60])
+    finally:
+        shutil.rmtree(d, True)
+
+    # THE ECHO SCAN MUST NOT EAT THE USER'S OWN WORDS. Its suspect vocabulary is built from
+    # `invented` alone; folding the gate's two answers in would flag the best-grounded lines in
+    # the report as inventions.
+    d = tempfile.mkdtemp()
+    try:
+        full_fixture(d, multi=True)
+        json.dump({"verbatim_prompt": "An office of 200 people has a 20-minute lunch queue.",
+                   "actor": "a founder", "decision": "whether to act before the round",
+                   "reading": "shorten the wait",
+                   "invented": ["every workstation is instrumented for data collection"],
+                   "counts_as_solved": "nobody waits longer than a chiropractic appointment",
+                   "tried_or_ruled_out": ["a mezzanine refurbishment"]},
+                  open(os.path.join(d, "brief.json"), "w"))
+        pass_the_gate(d)
+        rep = os.path.join(d, "report.md")
+        run("build_report.py", d, "--out", rep)
+        body = fill_placeholders(rep)
+        open(rep, "w").write(body.replace(
+            "written", "Start with a mezzanine refurbishment so nobody waits longer than a "
+                       "chiropractic appointment.", 1))
+        rc, out = run("build_report.py", "--check", rep)
+        check("a line echoing the user's own gate answers is not flagged",
+              "mezzanine" not in out and "chiropractic" not in out, out.strip()[:300])
+        check("...and the run still passes", rc == 0, f"rc={rc} {out.strip()[:160]}")
+    finally:
+        shutil.rmtree(d, True)
+
+
+
+def t_a_fabricated_gate_record_is_refused():
+    """A `gate.json` no run produced must not pass, however plausible it looks.
+
+    THE MEASURED HOLE: the check used to gate the hash on `asked` being truthy and check nothing
+    else, so `{"asked": false, "outcome": "skipped"}` — nine bytes any model with Write can
+    produce — passed the whole block with the script never having run. The skip path is the one
+    most scenarios take, so the unchecked case was the common case.
+
+    Every field is checked rather than any one of them, and the hash unconditionally, because a
+    record is only evidence while it is one the renderer could have written.
+    """
+    print("\nthe gate record cannot be hand-written")
+    d = tempfile.mkdtemp()
+    try:
+        full_fixture(d, multi=True)
+        gp = os.path.join(d, "gate.json")
+        real = json.loads(open(gp).read())
+        rc, out = run("verify_pipeline.py", d)
+        check("CONTROL: the record the script wrote passes", "OK" in out, out.strip()[-160:])
+
+        for label, fake, marker in (
+            ("a skip nobody performed", {"asked": False, "outcome": "skipped"},
+             "neither that the user"),
+            ("a go nobody performed", {"asked": False, "outcome": "go"}, "neither that the user"),
+            ("asked and skipped at once",
+             {"asked": True, "skip_reason": "user-said-dont-ask", "prints": 1, "outcome": "go",
+              "readback_sha1": real["readback_sha1"]}, "neither that the user"),
+            ("an invented reason for not asking",
+             {"asked": False, "skip_reason": "seemed-obvious", "prints": 1, "outcome": "skipped",
+              "readback_sha1": real["readback_sha1"]}, "not one brief_gate.py writes"),
+            ("a print count no run produces",
+             {"asked": True, "skip_reason": None, "prints": 7, "outcome": "go",
+              "readback_sha1": real["readback_sha1"]}, "prints"),
+            ("a plausible record with the wrong hash",
+             {"asked": True, "skip_reason": None, "prints": 1, "outcome": "go",
+              "readback_sha1": "0" * 40}, "changed after the reading was shown"),
+        ):
+            json.dump(fake, open(gp, "w"))
+            rc, out = run("verify_pipeline.py", d)
+            check(f"{label} is refused", rc != 0 and marker in out, f"rc={rc} {out.strip()[:200]}")
+            # AND IT STILL SPEAKS. A gate that refuses without its SAY: line goes silent at the
+            # worst moment — robust_json.py:56 records this as already fixed once.
+            check(f"...and says so on the reader's line ({label})",
+                  any(l.startswith("SAY:") for l in out.splitlines()), out.strip()[:160])
+        json.dump(real, open(gp, "w"))
+
+        # A WRONG-TYPED `invented` MUST NOT ESCAPE THROUGH THE IMPORTED RENDERER. The readback is
+        # rendered by brief_gate.py, whose die() is not this file's and prints no SAY: line.
+        b = json.load(open(os.path.join(d, "brief.json")))
+        b["invented"] = "rents are rising"
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("a wrong-typed `invented` is refused by this file, not by the renderer",
+              rc != 0 and "list of strings" in out
+              and any(l.startswith("SAY:") for l in out.splitlines()), out.strip()[:220])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_an_answer_the_user_never_saw_is_refused():
+    """The two answers must pass through a print before they may reach a generator.
+
+    They are outside the `ask` block by construction — at `ask` time they are empty — so without
+    this rule the model could write anything into them afterwards and nothing would notice. And
+    they are not inert: `render-brief` hands them to nine generators as "the user's words" and
+    `build_report.py` prints them to the reader as "(your words)". A value only the run has seen
+    must not wear the reader's name.
+    """
+    print("\nan answer the user was never shown is refused")
+    d = _gate_dir()
+    try:
+        run("brief_gate.py", d, "ask")
+        b = json.load(open(os.path.join(d, "brief.json")))
+        b["counts_as_solved"] = "a bar this run invented on the user's behalf"
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        rc, out = run("brief_gate.py", d, "go")
+        check("go refuses an answer that was never printed back",
+              rc == 1 and "counts_as_solved" in out and "has not been shown" in out,
+              f"rc={rc} {out.strip()[:200]}")
+
+        rc, out = run("brief_gate.py", d, "ask", "--corrected")
+        check("the corrected print carries the answer in the user's own words",
+              rc == 0 and "What would count as solved, in your words: a bar this run invented"
+              in out, out.strip()[:250])
+        rc, out = run("brief_gate.py", d, "go")
+        check("...and then the run may start", rc == 0, out.strip()[:160])
+
+        # AND EDITING IT AFTERWARDS TRIPS THE HASH, because the answer is inside the printed text.
+        b["counts_as_solved"] = "something else entirely"
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        g = json.load(open(os.path.join(d, "gate.json")))
+        check("the corrected print is what the record hashes", g["prints"] == 2, g)
+    finally:
+        shutil.rmtree(d, True)
+
+    # AND THE SAME REFUSAL AT THE LAST GATE, for an edit made after `go`.
+    d = tempfile.mkdtemp()
+    try:
+        full_fixture(d, multi=True)
+        b = json.load(open(os.path.join(d, "brief.json")))
+        b["tried_or_ruled_out"] = ["a claim the user never made"]
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("verify_pipeline refuses an answer inserted after the gate",
+              rc != 0 and "tried_or_ruled_out" in out, out.strip()[:220])
+    finally:
+        shutil.rmtree(d, True)
+
+
+def t_the_reading_that_dispatched_is_the_one_that_stands():
+    """No correcting after `go`, and no dispatch block before the gate resolves.
+
+    The design rests on "the last thing the user saw is what dispatched", and the hash alone
+    cannot carry that: it binds the LAST print, not the print before the Task calls. So the two
+    ends are closed instead — a correction is refused once the run has started, and the block the
+    generators are pasted is unavailable until the gate has resolved. Between them there is no
+    ordering in which a run dispatches on one reading and records another.
+    """
+    print("\nthe reading that dispatched is the one that stands")
+    d = _gate_dir()
+    try:
+        run("brief_gate.py", d, "ask")
+        rc, _ = run("brief_gate.py", d, "go")
+        check("CONTROL: the run started", rc == 0, "go was refused")
+        b = json.load(open(os.path.join(d, "brief.json")))
+        b["reading"] = "a reading invented after the generators already ran"
+        json.dump(b, open(os.path.join(d, "brief.json"), "w"))
+        rc, out = run("brief_gate.py", d, "ask", "--corrected")
+        check("a correction after go is refused",
+              rc == 1 and "already started" in out, f"rc={rc} {out.strip()[:200]}")
+        check("...and the record still holds the reading that dispatched",
+              json.load(open(os.path.join(d, "gate.json")))["outcome"] == "go",
+              "the run was un-resolved by a refused correction")
+    finally:
+        shutil.rmtree(d, True)
+
+
+TESTS = (t_brief_gate_asks_once, t_a_fabricated_gate_record_is_refused,
+         t_an_answer_the_user_never_saw_is_refused,
+         t_the_reading_that_dispatched_is_the_one_that_stands, t_brief_gate_renders_the_dispatch_block,
+         t_the_gate_is_verified_at_the_end, t_the_report_says_what_it_was_told,
+         t_robust_json, t_shard_candidates, t_probe_spread, t_concentration_and_mix_warnings, t_merge_relations, t_progress,
               t_reproduced_bypasses, t_three_states_and_report, t_verify_pipeline,
           t_wp4_gates, t_rev6_report, t_relation_gate, t_reply_gate,
               t_invention_surfaces, t_lead_distinctness_gate, t_incoherent_family_gate,

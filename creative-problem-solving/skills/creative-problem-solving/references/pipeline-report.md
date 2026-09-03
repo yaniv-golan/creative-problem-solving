@@ -19,8 +19,9 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
 7. **A `ranker` orders the families** — not the options — and writes `$RUN/_work/ranked.json`.
    *Tell it what its order feeds: the top 13 families are the ones whose leads get search-checked
    and the ones the reader reads first; everything below still ships, in this order.*
-   **Tell it to read `brief.json` at the resolved path** and rank against `verbatim_prompt`, never
-   the invented premises of step 0c — see the rule there. **And tell it, in the dispatch, to put
+   **Tell it to read `brief.json` at the resolved path** and rank against `verbatim_prompt` **and
+   `counts_as_solved`** — both the user's own words, the second being the bar they set at the
+   gate — never the invented premises of step 0c; see the rule there. **And tell it, in the dispatch, to put
    the first 60 characters of `verbatim_prompt` into a `prompt_echo` field beside `ranked`.**
 
    That sentence must INSTRUCT the dispatch, not describe the ranker. Described, it is not
@@ -412,6 +413,11 @@ that it printed, and **step 9 names any that never spoke**.
 **The seventh, the integrity check, is deliberately not audited: it is the auditor**, and a stage
 cannot record its own attendance to itself. A run that skipped step 9 has no step 9 to notice.
 
+**The gate at step 0d is not in this table and must not be added to it.** It is not a phase
+boundary — nothing has been produced when it speaks — and it keeps its own record in `gate.json`,
+which `verify_pipeline.py` reads directly. Adding it to `progress.py`'s `BOUNDARIES` would give
+one event two records that can disagree.
+
 That WARN is not a gate: a run whose answer is right and whose narration was skipped is still a
 right answer, and refusing it would be refusing good work over its commentary. It names the right
 remedy per boundary — a `progress.py` call for the four it prints, and the owning script for
@@ -460,31 +466,25 @@ done", "that produced about two hundred options" — each is a claim about compl
 reads identically whether the work happened or not, and that is the one failure this pipeline
 cannot survive.
 
-### Opening — after Phase 0, before the first dispatch
+### Opening — the gate at step 0d
 
-> Reading this as <the reading you picked, in a clause>. If that is not the question, say so now.
-> Otherwise this takes about half an hour, and I will tell you what each stage produced as it
-> finishes.
+**The Opening is the gate at `references/pipeline.md` step 0d, printed by `brief_gate.py`. There
+is no other opening.** Between the gate's last line and the Closing, nothing of your own.
 
-Do not promise a number of updates. A run that fails its integrity check takes a repair round and
-speaks a different number of times, and a reader counting against a promise learns the wrong
-thing from that.
+This is the one output that can save the reader the whole run. A reading of an ambiguous brief
+has just been chosen, and every one of the next forty minutes is spent on that choice — nine
+generators, three adjudicators, a grouping pass and thirteen searches, all elaborating it. If it
+is read wrong, the reader finds out at the end, having waited for an answer to a question they
+did not ask. Shown at the start, it costs them one sentence to correct.
 
-This is the one output that can save the reader the whole run. You have just chosen a reading of
-an ambiguous brief, and every one of the next forty minutes is spent on that choice — nine
-generators, three adjudicators, a grouping pass and thirteen searches, all elaborating it. If
-you read it wrong, the reader finds out at the end, having waited for an answer to a question
-they did not ask. Told at the start, it costs them one sentence to correct.
+The script says how long the run takes, and it says it on the line that starts the run rather
+than on the line that asks — you cannot say "this takes about half an hour" and then stop for an
+answer. Do not add a number of updates to it. A run that fails its integrity check takes a repair
+round and speaks a different number of times, and a reader counting against a promise learns the
+wrong thing from that.
 
-Say it as a plain sentence, not a heading or a checklist, and do not itemise the pipeline: how
-many sub-agents you are about to run is not the reader's problem. The duration is, because it
-tells them not to sit and wait.
-
-**This is a statement, not a question. Say it and keep going in the same turn** — do not raise
-it as a gate, and do not wait for a reply. A reader who is there will interrupt if the reading
-is wrong; a reader who is not there, or a run with nobody watching at all, would otherwise wait
-for an answer that never comes. It does not spend the skill's one-question budget, because it
-is not a question.
+Do not itemise the pipeline anywhere near it: how many sub-agents are about to run is not the
+reader's problem.
 
 ### Closing — the assumption line, immediately before the Top 3
 

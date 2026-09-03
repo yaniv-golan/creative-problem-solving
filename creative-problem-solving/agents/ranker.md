@@ -25,7 +25,9 @@ beats a novel one that is wrong for it.
 The specific criteria are in the dispatch prompt. **Your output shape is below**, and it holds whatever the dispatch says: a dispatch that lists fewer keys has not removed one.
 
 **Rank against the problem as the user stated it.** Read `brief.json` at the path in your prompt
-and use its `verbatim_prompt`. **Do not use `invented`** — those are premises this run added to
+and use its `verbatim_prompt` **and `counts_as_solved`** — the second is the bar the user set in
+their own words when the run showed them its reading, and it is empty when they did not set one.
+**Do not use `invented`** — those are premises this run added to
 push the generating passes past the obvious answers. They are ours, not the reader's, and an
 option that ranks well only under one of them ranks badly for the person who asked.
 

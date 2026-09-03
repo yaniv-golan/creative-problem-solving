@@ -16,7 +16,9 @@
 # indistinguishable from a pipeline regression, at full price. check-repo.py gates this statically.
 #
 # THE DON'T-ASK TAIL IS LOAD-BEARING. A prompt that draws a clarifying gate ends the run at the
-# gate and captures nothing. ../../evals/README.md has the worked case.
+# gate and captures nothing. ../../evals/README.md has the worked case. Since the brief gate at
+# references/pipeline.md step 0d the skill asks by design, so this clause is what takes the skip
+# path and keeps the capture unattended; the reading is still said on that path.
 #
 # THE RUBRIC IS COPIED VERBATIM from eval-5, claims 1 and 4, so the bar is identical rather than
 # a friendlier one written after the fact. Claim 1 is the point of this run: the 0.1.0 answer took

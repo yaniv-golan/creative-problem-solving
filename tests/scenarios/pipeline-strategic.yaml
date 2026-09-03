@@ -22,7 +22,9 @@
 #
 # The prompt is phrased as a situation with a stated constraint, and tells the agent not to ask
 # questions. Both are load-bearing: a prompt that draws a clarifying gate ends the run at the
-# gate and measures nothing. ../../evals/README.md has the worked case.
+# gate and measures nothing. ../../evals/README.md has the worked case. Since the brief gate at
+# references/pipeline.md step 0d the skill asks by design, so that clause is what takes the skip
+# path here; the reading is still said, and `brief-gate.yaml` measures the asking path.
 name: pipeline-strategic
 session: ../sessions/default.yaml
 baseline: desktop-1.44121.1

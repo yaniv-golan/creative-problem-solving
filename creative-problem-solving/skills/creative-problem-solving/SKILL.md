@@ -63,8 +63,10 @@ verify, cut it: a borrowed mechanism that isn't real is a fabrication that reads
 **Options below the top 13 ship unverified and say so**, with an offer to verify any on request.
 Checking a hundred-plus is not affordable; naming which ones were checked is.
 
-Say roughly how long you will take, then go — don't ask permission twice.
-**Repeat every `SAY:` line a script prints, verbatim; say nothing else.**
+Show your reading once, ask the two things only the user can supply, then go — the gate at step
+0d is the run's one question and there is no second.
+**Repeat every `SAY:` line a script prints, verbatim; say nothing else. An `ASK:` block is the
+same, except you put it to the user and wait.**
 
 ---
 
@@ -89,74 +91,75 @@ brief back: if it no longer says what the problem is about, keep it. *"A better 
 ban **bottle, cap, dispenser**; keep **medication, dose, patient**. *"How to distribute this
 document about X"* → ban **site, publish, newsletter, thread**; **X is not bannable**. A
 generator has the brief and its lens and nothing else, so what the brief drops it cannot know.
-Same rule as the retrieved neighbours below: a ban list is for shapes to avoid, never the subject.
 
 Then ban your own by the same test — **the sharpened brief anchors your passes harder than the
-user's phrasing did**, because it *is* their prompt. Give each pass a different phrasing of the
-same function; identical sentences give five copies of one starting point.
+user's phrasing did**, because it *is* their prompt.
 
 **3. Write down the obvious answer — and set it aside.** Two lines on what a competent
 generalist would say. This is the baseline every idea gets measured against, and naming it
 early stops it reappearing later disguised as insight.
 
-**3b. Test the constraints the user ruled out.** When someone says "it's not the money",
-"we've already tried X", or "that's not an option", they are reporting a conclusion, not a
-fact. Spend one line asking whether it survives: *what would have to be true for the ruled-out
-answer to still be the answer, and how would they check cheaply?*
-
-Accepting a ruled-out constraint isn't respecting the user, it's declining the part they
-can't do themselves — they know what they've ruled out, and they're asking *because* it
-didn't work. In testing a plain answer beat this skill by refusing "it's not the money":
-benchmarks price year-one offers, so matched day-one comp decays annually. If the constraint
-holds, say so in a line and move on. If it doesn't, that's often the answer.
+**3b. Test the constraints the user ruled out**, including the ones the gate below collects.
+"It's not the money", "we've already tried X", "that's not an option" report a conclusion, not a
+fact. Spend one line on each: *what would have to be true for the ruled-out answer to still be
+the answer, and how would they check cheaply?* Accepting one is not respect but declining the
+part they cannot do themselves — they are asking *because* it didn't work. In testing a plain
+answer beat this skill by refusing "it's not the money": benchmarks price year-one offers, so
+matched day-one comp decays annually. If the constraint holds, say so in a line and move on; if
+not, that's often the answer.
 
 **4. Inject adversarial attributes.** Add 2-3 **surprising and negatively-valenced**
 attributes to the working brief — this framing move produces larger novelty gains than any
-choice of method. E.g. "…where the budget is falling", "…where the current best practice is
-about to become illegal", "…where the cheapest input becomes the scarcest."
+choice of method. E.g. "…where the current best practice is about to become illegal", "…where
+the cheapest input becomes the scarcest."
 
 **They describe the world, never anything of the asker's.** An attribute may say what is true
-of the situation, the market, the technology, the regulation — conditions that would hold for
-anyone facing this class of problem. It may **not** attribute a state, a number, an attitude or a
+of the situation, the market, the technology, the regulation — conditions that hold for anyone
+facing this class of problem. It may **not** attribute a state, a number, an attitude or a
 resource to the person asking, their team, their users, **their project, or anything they own or
 run** — not as a claim, and not as a supposition either.
 
-The boundary, because it is easy to land on the wrong side of it: *"funding for work like this is
+The boundary, easy to land on the wrong side of: *"funding for work like this is
 drying up"* is a pressure on the world. *"Your budget is falling"*, *"their CI is flaky"*, *"the
 maintainers have no review time"* are invented facts about them, and naming a system rather than a
-person does not help — a project's CI is theirs. Grammar does not help either: an option written
-under a supposition does not carry the supposition with it, so by the time it reaches the reader it
-is simply a statement about their situation.
+person does not help — a project's CI is theirs. Nor does grammar: a supposition is the first
+thing to fall off, and pipeline.md step 0c has the mechanism.
 
 Record what you added, separately from what you were told, in `references/pipeline.md`
 step 0c.
 
-Keep the sharpened brief as working state — it goes into the passes, not into the
-answer. The exception: if the problem is ambiguous in a way that changes half the answers
-("the verification step" could mean document KYC, an email link, or an SMS code), ask one
-question before generating. That's not the same as asking permission to proceed — it's
-cheaper than generating for the wrong reading. If you can't ask, pick the likeliest
-reading and **say which one you picked** in the answer itself, with what changes under the
-others. It is easy to forget once research has run, because the retrieved list makes the
-chosen reading feel settled: in testing, the ungrounded run disclosed its reading and the
-grounded one silently picked one.
+Keep the sharpened brief as working state — it goes into the passes, not into the answer.
 
-**One question, and only about meaning.** The bar is *the answers change*, not *it would be
-useful to know*: scope, emphasis, target segment, detail level and output format all fail it.
-An interview is not a divergence pass, and each question narrows the space before you've
-explored it. When in doubt, generate and disclose — you cannot ask your way to a non-obvious
-option.
+**Ground inward before you ask, and before you search.** If the user has connected data sources
+— a CRM, a project or customer database, internal documents — describe the *current state* from
+those first. It is more specific than retrieval returns and the web cannot supply it. Keep it
+apart from the neighbours below: those are a ban list, this is the starting position, and step
+2's rule covers both.
+
+**Show the reading once, before research, and ask two things.** The run's only pause, and it is
+scripted. It asks for what the model cannot fabricate: **what have you already tried or ruled
+out**, and **what would count as solved**. Two runs are why (`references/evidence.md`): the
+pipeline sharpens a one-line prompt as confidently as a rich one, then invents the rest.
+Write their answers into `brief.json`: a run that asks and records nothing dispatches like one
+that never asked.
+
+**Meaning ambiguity is folded into the reading, not asked separately** — "the verification step"
+could mean document KYC, an email link or an SMS code, so pick the likeliest and state it in the
+reading line for the user to correct. **Still not a question:** scope, emphasis, target segment,
+detail level, output format. An interview is not a divergence pass; you cannot ask your way to a
+non-obvious option.
+
+**One correction, then go**, no third exchange. **Skip it when told to**: a prompt that says not
+to ask, in any phrasing, gets the reading and a start — same where this host cannot wait. Never
+wait on a run nobody is watching.
+
+The lines come from `brief_gate.py`; the procedure is `references/pipeline.md` step 0d.
 
 **Research happens here.** Search for what already exists and build a list of 8-15
 **retrieved neighbours** — the current known approaches. Hand these to each pass as a
 *difference constraint* ("your ideas must not be any of these"), not as inspiration.
 Retrieval works better as a novelty checker than as a muse.
 
-**Search outward, but ground inward first.** If the user has connected data sources — a CRM, a
-customer or project database, internal documents — describe the *current state* from those
-before searching. What they already have is more specific than anything retrieval returns, and
-it is the half of the brief the web cannot supply. Keep the two apart: neighbours are a ban
-list, their own situation is the starting position, and step 2's rule applies here too.
 
 ---
 
@@ -214,9 +217,10 @@ mechanism, and holding them "in mind" is how they get skipped:
 You are generating candidate approaches to a problem. Work alone; do not hedge toward a
 consensus answer.
 
-PROBLEM (stated as a function, not a form):
-<the sharpened brief from Phase 0, including the adversarial attributes — which describe
-the world, never the person asking; see Phase 0 step 4>
+<one line: your own phrasing of the function, different for each pass>
+
+<the PROBLEM block from `brief_gate.py render-brief` — pasted, not retyped. Identical for
+every pass; only the line above it changes.>
 
 BANNED VOCABULARY: <5-10 seed words>
 Describe the mechanism instead of reaching for the label.
@@ -233,8 +237,9 @@ Do not evaluate, rank or self-critique. No introduction, no conclusion. Return t
 candidates and nothing else.
 ```
 
-Give each pass a **different phrasing of the same function** where you can — one sentence
-repeated five times is five copies of one starting point.
+Give each pass a **different phrasing of the same function** — the line above the block; one
+sentence repeated five times is five copies of one starting point. The block itself is uniform:
+different premises per pass gives nine passes nine different problems.
 
 **What a pass returns is specified once, in `references/pipeline.md` step 3** — quota, option
 shape, and the instruction that the first several will be obvious and the quota exists to push
@@ -303,7 +308,8 @@ Run the steps once, in order, with no second refinement loop. **They are in
 The reader ends with a file they can open and keep.
 
 **Phases 0-3 are working state, not deliverable.** The user gets the ideas and the judgement — not
-the brief you sharpened, not the lens names, not the cluster analysis. Showing your process is the
+the brief you sharpened, not the lens names, not the cluster analysis. The gate at the start is
+the exception, and it is scripted. Showing your process is the
 single easiest way to triple the word count without adding information: in testing, skill responses
 ran 2-3x the length of a plain answer and roughly half of that was apparatus.
 
