@@ -32,9 +32,12 @@ clause) are held for a separate release.
   see it. The report now hands the reader the yardstick instead of leaving them to discover it
   entry by entry. **Deliberately not** the proposed out-of-scope block in the generator prompt:
   on that run it would have suppressed a delivered Top-3 option.
-- **A grouper may mark what an option costs the people it acts on.** *(Measured on two live runs:
-  27 of 104 and 34 of 108 families marked, every mark rendered to the reader, none a mislabelled
-  split-test note.)* An optional one-line `risk`
+- **A grouper may mark what an option costs the people it acts on.** *(Measured: 27 of 104 and 34 of
+  108 families marked across two live runs — 41 leads as the report renders them, since a merged
+  family's risk prints under the lead that absorbed it. Then measured against three raters who judged
+  every option blind, with the marks and the ranking stripped out: in the **bottom half of the list
+  the mark catches 20 of 22**; in the **top 60 it has never caught one, 0 of 6**. Treat an unmarked
+  option near the top as unexamined, not as cleared.)* An optional one-line `risk`
   on a family, rendered under the option at any rank. Nine options on the audited run worked by
   withholding, degrading or coercing the people the reader was trying to serve, sat at ranks
   40–107, and were typographically identical to everything around them. It is a note, not a veto:
