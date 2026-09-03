@@ -10,20 +10,32 @@ project adheres to [Semantic Versioning](https://semver.org/).
 Field report from run `20260901-100305` — a full, undegraded run that passed every gate and still
 surfaced seventeen defects.
 
-**This release changes what the report tells you, not what the pipeline generates.** Coercive
-options are marked with what they cost, the `Checked` badge names the one claim a search settled,
-and the report says what a family counts and whose behaviour is at issue.
+**What is different when you run it.** The report now tells you things it used to leave you to
+notice. An option whose mechanism costs somebody — withholding, coercing, imposing unpaid work on
+people who did not choose it — carries a line saying so. A `Checked` badge names the one claim a
+search actually settled, instead of implying the whole option was verified. The report says whose
+behaviour the question is about, and that a family is one distinct *action* — so a count of 108
+families is not 108 different strategies.
 
-**Whether the options themselves got better is unproven, and was measured rather than assumed.** A
-pre-registered same-prompt A/B — v0.4.1 against this tree, one live run each, three blind raters per
-arm on shuffled, annotation-stripped corpora — found **+1.7 meeting-worthy leads against a floor of
-10**, the floor below which a difference cannot be told apart from asking three people the same
-question about the same report (29% of options in both arms). That floor bounds **rater** variance;
-run-to-run variance is **unmeasured** — the run that would have measured it was killed before it
-produced anything. The rating instrument also passes about **2.4× more options than the field
-reporter's own bar**, so an improvement at that stricter bar need not have registered.
+**Two things to know while reading your report.** They are the most useful findings here:
 
-**Nothing below claims the options improved, and nothing here shows they did not.**
+- **An unmarked option is not one judged safe. It is one nobody flagged.** The marking is done in
+  separate batches by readers who cannot see each other, and it misses. On the run we measured it
+  caught 20 of 28 costly options — and six of the eight it missed were near the top of the list,
+  including the first one.
+- **The top of the list is not the most trustworthy part.** Options that answer a different question
+  than you asked are about twice as common in the top 20 as in the rest. Read past the top.
+
+**Did the ideas themselves get better? We do not know, and we checked.** We ran v0.4.1 and this
+version on the same problem, the same day, and had three readers judge both without knowing which
+was which. The difference was too small to tell apart from two people simply disagreeing about the
+same report. That is not evidence the ideas got worse — it is a measurement that came back
+inconclusive, and one run each cannot settle it. Two limits worth stating: the comparison can only
+see a difference bigger than readers disagreeing with each other, and our readers were more
+generous than the person who filed the report, so a gain at their stricter bar might not show up.
+The full method and numbers are kept with the maintainers and are not published.
+
+**So: this release changes what the report tells you. It does not claim the ideas improved.**
 
 ### Changed
 
