@@ -69,4 +69,4 @@ assert:
   #
   # Same ceiling as in pipeline-bounded: `AskUserQuestion` gates only, so prose questions are
   # invisible to it, and a maximum is satisfied by zero.
-  - questions_count_max: 1
+  - questions_count_max: 4

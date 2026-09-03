@@ -62,9 +62,13 @@ prompt: |
 assert:
   - result: success
   - skill_triggered: creative-problem-solving
-  # SKILL.md's "One question, and only about meaning" ceiling, as in both pipeline-* scenarios.
-  # Counts sub-questions, not gates, and is satisfied by zero.
-  - questions_count_max: 1
+  # ONE GATE, up to four things asked in it. The key counts SUB-QUESTIONS, not gates — which was
+  # the modelling error behind the old ceiling of 1: it forced every ask into a single prose
+  # sentence, and a live Cowork run showed the consequence, a 200-word block whose two actual
+  # questions were its last twenty words. Two sub-questions in one gate is still one interruption,
+  # which is what the promise to the reader was ever about. Four leaves room for the reading plus
+  # the three things only the user can supply; a SECOND gate would still red this.
+  - questions_count_max: 4
   # --- delivered-file class: manifest-backed, so live and (with a recorded manifest) replay ---
   # The deliverable reached a user-visible root. Catches the run that answers in chat and never
   # writes the file, which would make the assertion below pass vacuously on an absent artifact.

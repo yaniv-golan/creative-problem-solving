@@ -59,4 +59,4 @@ assert:
   # `negative-trigger.yaml` deliberately does NOT carry this. The skill must not fire there at
   # all, which `no_skill_triggered` already asserts; a question ceiling on a run that should
   # never invoke the skill would assert nothing the stronger key doesn't.
-  - questions_count_max: 1
+  - questions_count_max: 4

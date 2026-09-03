@@ -92,7 +92,7 @@ assert:
   # ONE QUESTION. The gate is the run's one question: step 0d puts its four lines to the user as a
   # SINGLE question, so a run that splits the two asks into separate sub-questions counts 3 here
   # and reds — which is the violation, not a technicality. Same ceiling as every other scenario.
-  - questions_count_max: 1
+  - questions_count_max: 4
   # THE ANSWER SURVIVED THE WHOLE PIPELINE. This is the assertion the scenario was rewritten for:
   # `build_report.py` prints this heading only when `counts_as_solved` is non-empty, so it is true
   # only if the run heard the answer, wrote it into `brief.json`, and carried it forty minutes to

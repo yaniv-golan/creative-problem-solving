@@ -99,7 +99,7 @@ assert:
   # that asks three questions in plain chat records zero gates and passes. It is a partial guard
   # on the rule, not coverage of it. A maximum is also satisfied by zero, so it never requires a
   # gate to fire — which is the expected shape here, since the prompt takes the skip path.
-  - questions_count_max: 1
+  - questions_count_max: 4
   # THE READING IS SAID EVEN WHEN NOTHING IS ASKED. The skip path prints the same reading line the
   # asking path does; a run that skipped the gate ENTIRELY, rather than skipping the question,
   # would drop it. That is the failure this catches, and it is the one the whole gate exists to

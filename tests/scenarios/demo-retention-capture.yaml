@@ -54,7 +54,7 @@ assert:
   # Without this a rep that answered from priors looks like a valid capture.
   - skill_triggered: creative-problem-solving
   - tool_called: WebSearch
-  - questions_count_max: 1
+  - questions_count_max: 4
   - semantic_matches:
       rubric:
         - "Tests the ruled-out constraint rather than obeying it — probes whether 'it's not the money' actually holds (e.g. by comparing multi-year total comp, not year-one offers) before setting money aside. Proposing a compensation mechanism is acceptable IF that test supports it; what fails is accepting the premise untested"

@@ -42,11 +42,21 @@ The full method and numbers are kept with the maintainers and are not published.
 **So: this release changes what the report tells you. It does not claim the ideas improved.**
 
 
-**The gate is verified on Cowork by hand**, not only in the test harness: it asks through Cowork's
-question box, the answer is recorded, and the run's stated reading is rewritten to match it before
-any work begins — *"Already tried or ruled out, in your words: … Recorded. Starting now."* One path
-remains unexercised: Cowork can in principle collect answers through its own elicitation form rather
-than the question box, and that branch has not been observed.
+**The gate was tested by hand on Cowork, and the test found a defect that is fixed here — but the
+fix itself is unobserved.** What worked: it asks, your answer is recorded, and the run's stated
+reading is rewritten to match before any work begins. What did not: the two questions arrived as the
+last twenty words of a 200-word block, and of the four one-click choices offered, three started the
+run without answering and the fourth was labelled as a *correction* — so declining was the path of
+least resistance, and the pre-selected default recorded both answers as unstated.
+
+The cause was a line in the spec telling the host to put the gate *"as a single question"*. That is
+gone. The step now says what the result must be true of and names no mechanism: all of it in front
+of you when you answer, the two asks separately answerable, answering never grouped as a correction,
+starting without answering available but not the easiest thing on offer. The script prints the two
+asks as two lines instead of one sentence.
+
+**Three live runs produced three different option sets from identical instructions**, so this is a
+well-motivated change rather than a verified one. Nothing has yet observed the new shape.
 
 ### Changed
 - **The plugin description and the skill description are now two different strings.** The skill
