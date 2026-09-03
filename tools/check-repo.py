@@ -328,59 +328,118 @@ if os.path.isdir(agents_dir):
 
 
 # --------------------------------------------------------------------------
-# 3c. The skill description agrees everywhere it is duplicated
+# 3c. Two descriptions, each agreeing with itself everywhere it is duplicated
 # --------------------------------------------------------------------------
-# The description exists in nine places. Two carry the full text (SKILL.md
-# frontmatter, which is the routing surface, and skill-packager.json); the rest
-# carry a short form that feeds marketplace listings. Nothing but this check
-# notices when they diverge, and inter-document drift is this repo's most
-# repeated bug class — a retraction once updated three files and missed a
-# fourth. The short form must be a prefix of the full one.
-print("\nskill description agrees across files")
+# THE SKILL DESCRIPTION AND THE PLUGIN DESCRIPTION ARE DIFFERENT STRINGS, and this
+# check used to require them to be one. They answer different questions and one of
+# them has a hard length limit:
+#
+#   - The SKILL description (SKILL.md frontmatter) is the ROUTING SURFACE. It is long
+#     on purpose — it carries the explicit-only trigger contract, and the measured
+#     0-of-12 no-fire rate is a property of that exact text. Nothing may shorten it
+#     for a packaging reason.
+#   - The PLUGIN description is catalogue copy. Claude Desktop / Cowork refuses a
+#     `.plugin` upload whose plugin description exceeds 500 characters ("Plugin
+#     description must be at most 500 characters") — measured 2026-09-03 against the
+#     real validator, with the 851-character skill description in the manifest. While
+#     the two were required to be equal, the plugin could not be installed into Cowork
+#     by upload at all, on any tree.
+#
+# So they are decoupled, and each is still checked against drift — which is what this
+# section was really for, inter-document drift being this repo's most repeated bug
+# class (a retraction once updated three files and missed a fourth).
+print("\nskill and plugin descriptions each agree across files")
 
 md = read_text("%s/skills/%s/SKILL.md" % (plugin_name, skill_names[0]))
 m = re.search(r"^description:\s*(.+?)(?=\n\w+:|\n---)", md, re.M | re.S)
 canonical_desc = " ".join(m.group(1).split()) if m else None
 
+# The cap the Desktop/Cowork upload validator enforces on a plugin description.
+PLUGIN_DESC_MAX = 500
+
+
+def _at(data, kp):
+    """The value at a dotted key path, or None when the path does not resolve."""
+    obj = data
+    for part in kp.split("."):
+        if isinstance(obj, list):
+            idx = int(part)
+            if idx >= len(obj):
+                return None
+            obj = obj[idx]
+        elif isinstance(obj, dict) and part in obj:
+            obj = obj[part]
+        else:
+            return None
+    return " ".join(obj.split()) if isinstance(obj, str) else None
+
+
+# Each entry is (file, key path). SKILL-level fields carry the routing text; PLUGIN-level
+# fields carry the catalogue copy. Which list a field belongs in is a judgement about what
+# the field IS, so it is written down here rather than inferred from its current value —
+# inferring it would make any drift self-justifying.
+SKILL_DESC_FIELDS = [("skill-packager.json", "skills.0.description")]
+PLUGIN_DESC_FIELDS = [
+    ("skill-packager.json", "description"),
+    (".claude-plugin/marketplace.json", "metadata.description"),
+    (".claude-plugin/marketplace.json", "plugins.0.description"),
+    (".cursor-plugin/plugin.json", "description"),
+    ("%s/.claude-plugin/plugin.json" % plugin_name, "description"),
+    ("%s/.codex-plugin/plugin.json" % plugin_name, "description"),
+    ("%s/.codex-plugin/plugin.json" % plugin_name, "interface.shortDescription"),
+]
+
 if not canonical_desc:
     fail("could not read the canonical description from SKILL.md frontmatter")
 else:
-    short = canonical_desc.split(". ")[0] + "."
-    checked = 0
-    for rel, keys in [
-        ("skill-packager.json", ["skills.0.description", "description"]),
-        (".claude-plugin/marketplace.json", ["metadata.description", "plugins.0.description"]),
-        (".cursor-plugin/plugin.json", ["description"]),
-        ("%s/.claude-plugin/plugin.json" % plugin_name, ["description"]),
-        ("%s/.codex-plugin/plugin.json" % plugin_name, ["description",
-                                                        "interface.shortDescription"]),
-    ]:
+    # --- the skill description, which is the routing surface
+    n_skill = 0
+    for rel, kp in SKILL_DESC_FIELDS:
         if not os.path.isfile(os.path.join(REPO, rel)):
             continue
-        data = load_json(rel)
-        for kp in keys:
-            obj, ok_path = data, True
-            for part in kp.split("."):
-                if isinstance(obj, list):
-                    idx = int(part)
-                    if idx >= len(obj):
-                        ok_path = False
-                        break
-                    obj = obj[idx]
-                elif isinstance(obj, dict) and part in obj:
-                    obj = obj[part]
-                else:
-                    ok_path = False
-                    break
-            if not ok_path or not isinstance(obj, str):
+        val = _at(load_json(rel), kp)
+        if val is None:
+            continue
+        n_skill += 1
+        if val != canonical_desc:
+            fail("skill-description drift - %s :: %s does not match SKILL.md's frontmatter "
+                 "description. That text is the trigger contract; a copy that drifts from it "
+                 "describes a skill this repo does not ship." % (rel, kp))
+
+    # --- the plugin description, canonical in the plugin manifest
+    _pm = "%s/.claude-plugin/plugin.json" % plugin_name
+    plugin_desc = _at(load_json(_pm), "description") if os.path.isfile(os.path.join(REPO, _pm)) \
+        else None
+    n_plugin = 0
+    if not plugin_desc:
+        fail("%s has no `description`; it is the canonical plugin description that every other "
+             "manifest copies." % _pm)
+    else:
+        if len(plugin_desc) > PLUGIN_DESC_MAX:
+            fail("the plugin description is %d characters; Claude Desktop / Cowork refuses a "
+                 "`.plugin` upload over %d with \"Plugin description must be at most 500 "
+                 "characters\". Shorten it in %s — do NOT shorten SKILL.md's description, which "
+                 "is the trigger contract and is deliberately long."
+                 % (len(plugin_desc), PLUGIN_DESC_MAX, _pm))
+        if plugin_desc == canonical_desc:
+            fail("the plugin description is identical to SKILL.md's. They are decoupled on "
+                 "purpose: the skill description is the routing surface and runs past the "
+                 "%d-character limit Cowork enforces on a plugin description, which is what "
+                 "blocked installing this plugin there at all." % PLUGIN_DESC_MAX)
+        for rel, kp in PLUGIN_DESC_FIELDS:
+            if not os.path.isfile(os.path.join(REPO, rel)):
                 continue
-            checked += 1
-            val = " ".join(obj.split())
-            if val != canonical_desc and val != short:
-                fail("description drift - %s :: %s does not match SKILL.md's "
-                     "description or its first sentence" % (rel, kp))
-    if checked:
-        ok("%d duplicated description(s) agree with SKILL.md" % checked)
+            val = _at(load_json(rel), kp)
+            if val is None:
+                continue
+            n_plugin += 1
+            if val != plugin_desc:
+                fail("plugin-description drift - %s :: %s does not match %s's `description`"
+                     % (rel, kp, _pm))
+    if n_skill or n_plugin:
+        ok("%d skill-description copy(ies) match SKILL.md; %d plugin-description copy(ies) "
+           "match the plugin manifest (%d/%d chars)"
+           % (n_skill, n_plugin, len(plugin_desc or ""), PLUGIN_DESC_MAX))
 
 
 # --------------------------------------------------------------------------
