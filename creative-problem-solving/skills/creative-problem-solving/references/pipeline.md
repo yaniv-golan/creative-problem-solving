@@ -495,10 +495,34 @@ one file rendered three times, and a retyped copy is how they stop agreeing.
 python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" ask
 ```
 
-It prints four `ASK:` lines. **Put them to the user as a single question, markers stripped, and
-wait.** Where your host offers a structured way to ask with a default answer, "go" is the
-default; the run must never depend on having one. No tool is named here on purpose: use whatever
-this host has.
+It prints five `ASK:` lines. **Put all five in front of the user in one interruption, markers
+stripped, and wait for a reply.**
+
+**How you do that is this host's business, not this file's** — a question with options, a form,
+plain chat, whatever it has. This step names no tool and never will. What it does specify is what
+the result has to be true of, because those properties are what the gate is for and a host widget
+will not supply them on its own:
+
+- **All five lines are in front of the reader at the moment they answer** — not only in an earlier
+  message they may have scrolled past. The reading is what they are being asked to approve.
+- **The two asks are separately answerable.** They are two different questions and a reader
+  answers them one at a time. Collapsed into a single prompt they read as one vague request and
+  get skipped, which is why the script now prints them as two lines. Three or four things asked in
+  total, and no more: past that a gate stops being one interruption.
+- **Answering is not a correction.** Whatever route supplies what they have tried or what would
+  count as solved may not be labelled, described or grouped as fixing a mistake. Correcting the
+  reading is a different act and gets its own route.
+- **Starting without answering is available, and is not the easiest thing on offer.** Where the
+  host has a default, "go" is it and the run must never depend on having one — but a reader must
+  not have to hunt for the way to answer.
+
+**Measured, on a live Cowork run.** The gate rendered as a single block of prose with the two asks
+as its last twenty words, offering four one-click paths: three of them started the run without
+answering, the pre-selected default recorded both answers as unstated, and the only route to the
+answers was labelled a correction. The run then faithfully recorded that the user declined. Two
+harness runs of the same instruction produced good gates — one offering "Let me answer both" as a
+first-class choice — so this is not a thing the wording of the ASK lines settles by itself. It is
+settled here, as properties, or not at all.
 
 **There are two replies, and only one of them is "go".**
 

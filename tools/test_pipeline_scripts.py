@@ -5569,16 +5569,20 @@ def t_brief_gate_asks_once():
     try:
         rc, out = run("brief_gate.py", d, "ask")
         lines = [l for l in out.splitlines() if l.strip()]
-        check("the ask is four lines and nothing else",
-              rc == 0 and len(lines) == 4 and all(l.startswith("ASK: ") for l in lines),
+        check("the ask is five lines and nothing else",
+              rc == 0 and len(lines) == 5 and all(l.startswith("ASK: ") for l in lines),
               out.strip()[:200])
         check("it opens with the reading", lines[0].startswith("ASK: Reading this as what else"),
               lines[0][:90])
-        check("it names the two things only the user can supply",
-              "already tried or ruled out" in lines[2] and "count as solved" in lines[2],
-              lines[2][:120])
+        # THE TWO ASKS ARE TWO LINES. Bundled into one sentence they read as a single vague
+        # prompt and get skipped -- measured on a live Cowork run, where the gate rendered as a
+        # wall of prose and the run recorded that the user declined both.
+        check("the two asks are separately answerable, one line each",
+              "already tried or ruled out" in lines[2] and "count as solved" not in lines[2]
+              and "count as solved" in lines[3] and "already tried" not in lines[3],
+              " | ".join(lines[2:4])[:200])
         check("and it says how to start and that it will not ask again",
-              'Say "go" to start' in lines[3] and "not ask again" in lines[3], lines[3][:120])
+              'Say "go" to start' in lines[4] and "not ask again" in lines[4], lines[4][:120])
         g = json.load(open(os.path.join(d, "gate.json")))
         check("the gate records one print, asked", g["asked"] is True and g["prints"] == 1
               and g["outcome"] is None and g["readback_sha1"], g)

@@ -64,7 +64,7 @@ verify, cut it: a borrowed mechanism that isn't real is a fabrication that reads
 Checking a hundred-plus is not affordable; naming which ones were checked is.
 
 Show your reading once, ask the two things only the user can supply, then go — the gate at step
-0d is the run's one question and there is no second.
+0d is the run's one interruption and there is no second.
 **Repeat every `SAY:` line a script prints, verbatim; say nothing else. An `ASK:` block is the
 same, except you put it to the user and wait.**
 
@@ -141,7 +141,7 @@ apart from the neighbours below: those are a ban list, this is the starting posi
 scripted. It asks for what the model cannot fabricate: **what have you already tried or ruled
 out**, and **what would count as solved**. Two runs are why (`references/evidence.md`).
 Write their answers into `brief.json`: a run that asks and records nothing dispatches like one
-that never asked.
+that never did.
 
 **Meaning ambiguity is folded into the reading, not asked separately** — "the verification step"
 could mean document KYC, an email link or an SMS code, so pick the likeliest and state it in the
@@ -149,11 +149,12 @@ reading line for the user to correct. **Still not a question:** scope, emphasis,
 detail level, output format. An interview is not a divergence pass; you cannot ask your way to a
 non-obvious option.
 
-**One correction, then go**, no third exchange. **Skip it when told to**: a prompt that says not
-to ask, in any phrasing, gets the reading and a start — same where this host cannot wait. Never
-wait on a run nobody is watching.
+**One correction, then go**, no third exchange, and **the two asks reach the reader as two
+questions** — bundled, they get skipped. **Skip it when told to**: a prompt that says not to ask,
+in any phrasing, gets the reading and a start, as does a host that cannot wait. Never wait on a
+run nobody is watching.
 
-Lines: `brief_gate.py`; procedure: `references/pipeline.md` step 0d.
+Lines: `brief_gate.py`. Procedure: `pipeline.md` 0d.
 
 **Research happens here.** Search for what already exists and build a list of 8-15
 **retrieved neighbours** — the current known approaches. Hand these to each pass as a

@@ -25,7 +25,8 @@ place.
   brief_gate.py <work-dir> go
   brief_gate.py <work-dir> render-brief
 
-`ask` prints ASK: lines, which the orchestrator puts to the user as one question and waits on.
+`ask` prints ASK: lines, which the orchestrator puts to the user as one interruption
+and waits on.
 `skip` and `go` print SAY: lines, which are repeated and not waited on. A refusal prints one
 FAIL: line and exits 1; a work directory that is not there exits 2, because a heartbeat that
 stays quiet about its own misconfiguration never fires and nobody notices.
@@ -148,9 +149,20 @@ def render(mode, brief, reason=None, path="brief.json"):
         body.append(f"Recorded. Starting now; {STARTING[0].lower()}{STARTING[1:]}")
         return [f"SAY: {ln}" for ln in body]
 
+    # THE TWO ASKS ARE TWO LINES, NOT ONE SENTENCE. Bundled -- "Two things only you can tell me,
+    # each in a phrase, or say skip: What have you already tried or ruled out? What would count
+    # as solved?" -- they read as a single vague prompt, and a reader answers a vague prompt by
+    # skipping it. Measured on a live Cowork run: the gate rendered as a wall of prose whose
+    # options offered three one-click ways to start without answering and one route to the
+    # answers labelled as a CORRECTION, so supplying them read as admitting the reading was
+    # wrong. The run then faithfully recorded that the user declined -- the two values whose
+    # whole purpose is to reach nine generators as the user's words.
+    #
+    # Separately answerable is the property that matters, and it is a property of the LINES, not
+    # of the host's widget. This file can only guarantee it here.
     return [f"ASK: {ln}" for ln in head + [
-        "Two things only you can tell me, each in a phrase, or say skip: What have you already "
-        "tried or ruled out? What would count as solved?",
+        "What have you already tried or ruled out? A phrase is enough, or say skip.",
+        "What would count as solved? A phrase again, or skip.",
         "Say \"go\" to start, or correct anything above. I will fix it once and start, and I "
         "will not ask again."]]
 
