@@ -8,9 +8,22 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 Field report from run `20260901-100305` — a full, undegraded run that passed every gate and still
-surfaced seventeen defects. Waves 1 and 3 of the response; the output-surface changes (a risk mark
-on coercive options, a verdict for claims no search can settle, the ranker's workflow-change
-clause) are held for a separate release.
+surfaced seventeen defects.
+
+**This release changes what the report tells you, not what the pipeline generates.** Coercive
+options are marked with what they cost, the `Checked` badge names the one claim a search settled,
+and the report says what a family counts and whose behaviour is at issue.
+
+**Whether the options themselves got better is unproven, and was measured rather than assumed.** A
+pre-registered same-prompt A/B — v0.4.1 against this tree, one live run each, three blind raters per
+arm on shuffled, annotation-stripped corpora — found **+1.7 meeting-worthy leads against a floor of
+10**, the floor below which a difference cannot be told apart from asking three people the same
+question about the same report (29% of options in both arms). That floor bounds **rater** variance;
+run-to-run variance is **unmeasured** — the run that would have measured it was killed before it
+produced anything. The rating instrument also passes about **2.4× more options than the field
+reporter's own bar**, so an improvement at that stricter bar need not have registered.
+
+**Nothing below claims the options improved, and nothing here shows they did not.**
 
 ### Changed
 
@@ -38,8 +51,10 @@ clause) are held for a separate release.
   ranking stripped out: **the mark catches 20 of the 28 they called coercive**, and the eight it
   misses are the ones a reader meets first. Grouping happens before ranking, so the grouper never
   sees a rank; marked options are then ranked down, which is why 36 of the last 48 leads carry a mark
-  and only 5 of the top 60 do — and why a missed mark and a high rank are close to the same event. An
-  unmarked option is not one judged safe; it is one nobody flagged.)* An optional
+  and only 5 of the top 60 do — and why a missed mark and a high rank are close to the same event.
+  **Six of the eight misses, including the top-ranked option, sit in that top 60.** The marking rate
+  is run-dependent, not a constant: 27 of 104, 34 of 108, and 47 of 101 families across three runs.
+  An unmarked option is not one judged safe; it is one nobody flagged.)* An optional
   one-line `risk`
   on a family, rendered under the option at any rank. Nine options on the audited run worked by
   withholding, degrading or coercing the people the reader was trying to serve, sat at ranks
@@ -53,7 +68,10 @@ clause) are held for a separate release.
   `no_external_claim` would have been wrong the other way — it renders as "nothing to verify",
   and there was something to verify that nobody outside could do. Carries a required note naming
   the claim.
-- **The `Checked` badge names what was checked**, from a new optional `claim` field. *(Observed
+- **The `Checked` badge names what was checked**, from a new optional `claim` field. Its companion —
+  the grouper clause naming an obligation imposed as the price of taking part — is **observed
+  producing marks of that class** (26 of 47 risk lines on the A/B run); whether each is a *correct*
+  mark is unrated. *(Observed
   live on two prompts once the dispatch relayed it: 15 of 15 verdicts and 6 of 6 confirmed ones
   carry a populated clause — "granting limited, visible account access before verification
   finishes". It fired 0 of 13 before that, because the field was specified in `agents/verifier.md`
@@ -62,7 +80,12 @@ clause) are held for a separate release.
   can see the badge covers one assertion rather than the option.
 - **The ranker no longer conflates two objections.** Requiring a workflow change from people the
   reader already directs is not the same as requiring agreement from a party with no incentive.
-  **Its effect is unmeasured.** A four-run A/B was reported here and is withdrawn: the two
+  **Its effect is unmeasured, and a defect it was meant to address is open.** Known and open: the
+  ranker concentrates off-target families at the top — 31% of the top 20 against 14% of the rest,
+  direction replicated in 4 of 4 frozen re-rankings. One candidate fix, an actor-priority tiebreak,
+  was A/B'd against frozen families, had **no effect** (6.5 against a control of 6.0, inside the
+  control's own spread), and is not shipped. A four-run A/B of the clause itself was reported here
+  and is withdrawn: the two
   conditions differed only in `agents/ranker.md`, and a `subagent_type` dispatch loads the
   installed plugin rather than the working tree, so control and treatment were plausibly the same
   condition and the difference was noise. One finding from it survives, because it needs no
