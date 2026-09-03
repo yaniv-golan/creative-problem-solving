@@ -1,6 +1,11 @@
 # Installing Creative Problem Solving
 
-**What has actually been tested: Claude** (Code, Desktop, Cowork). The instructions below cover
+**What has actually been tested: Claude** (Code, Desktop, Cowork) — with one exception in 0.5.0.
+**The opening gate, which asks what you have already ruled out before the run spends forty minutes,
+has not been verified on Cowork.** Cowork can ask through its own elicitation form rather than the
+question tool, and the test harness cannot reproduce that path — so on Cowork the gate may ask and
+fail to record your answer, which is the one thing it exists to prevent. On Claude Code and Desktop
+it is tested and works. The instructions below cover
 other hosts because the skill uses the open [Agent Skills](https://agentskills.io) standard and
 *should* work on them — ChatGPT most likely, others probably — but none of them have been
 verified, and a host missing sub-agent dispatch, `python3` or web search runs a weaker version of

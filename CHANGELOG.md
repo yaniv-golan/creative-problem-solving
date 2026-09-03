@@ -41,6 +41,12 @@ The full method and numbers are kept with the maintainers and are not published.
 
 **So: this release changes what the report tells you. It does not claim the ideas improved.**
 
+
+**Known unverified in this release:** the opening gate has not been run on Cowork. Cowork can ask
+through its own elicitation form instead of the question tool, and the harness cannot reproduce that
+path, so whether your answers reach the report there is unobserved. Tested and working on Claude
+Code and Desktop. `INSTALL.md` carries the same caveat.
+
 ### Changed
 - **The plugin description and the skill description are now two different strings.** The skill
   description in `SKILL.md` is the routing surface and stays long on purpose — the explicit-only
