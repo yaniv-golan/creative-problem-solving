@@ -45,8 +45,11 @@ The full method and numbers are kept with the maintainers and are not published.
 - **The plugin description and the skill description are now two different strings.** The skill
   description in `SKILL.md` is the routing surface and stays long on purpose — the explicit-only
   trigger contract lives in it. The plugin description is catalogue copy and is capped at 500
-  characters, because Claude Desktop and Cowork refuse a `.plugin` upload above that. `check-repo`
-  now enforces each against its own canonical source instead of requiring them to match.
+  characters, because Claude Desktop and Cowork refuse a `.plugin` upload above that — measured in
+  both directions: an 851-character description was refused, a 468-character one installed.
+  `check-repo` now enforces each against its own canonical source instead of requiring them to
+  match, **and refuses them being re-merged**, so a future tidy-up cannot silently break installs
+  again.
 
 - **The run shows its reading and asks two things before starting.** One pause, before the web
   search: it states the reading, the actor, the decision and the pressures it invented, then asks
