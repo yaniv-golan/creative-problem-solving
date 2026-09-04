@@ -464,7 +464,7 @@ if __name__ == "__main__":
         print(f"  plan {_ns} shards, about {(_n + _probe) // _ns} pairs each")
         if _want > _cap:
             _p = probe_for(_n, _probe, _ps)
-            print(f"  OVER BUDGET. " + (f"--probe {_p} clears it "
+            print("  OVER BUDGET. " + (f"--probe {_p} clears it "
                   f"({plan_shards(_n, _p, _ps)[0]} shards)." if _p else
                   f"No probe value clears it; use --shards {_want} deliberately."))
         else:

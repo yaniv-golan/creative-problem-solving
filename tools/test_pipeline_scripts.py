@@ -2944,7 +2944,7 @@ def t_quota_gate_fires():
     silently passed a planted `len(d["items"]) < 30`.
     """
     print("\nthe quota gates refuse a planted defect")
-    import shutil as _sh, subprocess as _sp, tempfile as _tf
+    import subprocess as _sp
     src = ROOT / "creative-problem-solving" / "skills" / "creative-problem-solving" / \
         "references" / "pipeline.md"
     script = ROOT / "creative-problem-solving" / "scripts" / "plan_groups.py"
