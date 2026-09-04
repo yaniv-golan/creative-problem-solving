@@ -36,7 +36,17 @@ docs/DESIGN-NOTES.md    never loaded at runtime. literature review + eval histor
 creative-problem-solving/          ← plugin scope. ships to plugin installs, NOT to the zip.
     commands/ideas.md   fourteen lines. invokes the skill and nothing else — the stages
                         live in references/pipeline.md so both entry points run the same
-                        pipeline.
+                        pipeline. Claude Desktop and Cowork print a notice on install
+                        calling this the "legacy commands/ format" and suggesting
+                        skills/*/SKILL.md; both forms work and this one stays. Custom
+                        commands were merged into skills, so `commands/ideas.md` and a
+                        `skills/ideas/SKILL.md` carrying `name: ideas` produce the same
+                        `/ideas`. What differs is the trigger surface: a second skill is a
+                        second always-loaded description, and this project's whole trigger
+                        discipline is one skill that fires only when asked for by name.
+                        Moving it therefore needs live trigger runs, not a file move — see
+                        the 6/6 vs 1/6 measurement below. Not a release blocker; not a
+                        tidy-up either.
     agents/             six sub-agent definitions, one per role. Each carries a tool set
                         and its role invariants and nothing per-run.
     scripts/            nine stdlib-only Python scripts. shard_candidates,
