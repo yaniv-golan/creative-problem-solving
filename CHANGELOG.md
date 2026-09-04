@@ -68,8 +68,8 @@ either direction.
   promises one interruption, and the two questions are printed as separate lines you can answer
   one at a time rather than buried at the end of a paragraph.
 
-- **The gate was tested by hand on Cowork twice, and each test found a defect that is fixed
-  here.** What worked both times: it asks, your answer is recorded, and the run's stated reading
+- **The gate was tested by hand on Cowork three times, and each test found a defect that is fixed
+  here.** What worked every time: it asks, your answer is recorded, and the run's stated reading
   is rewritten to match before any work starts.
 
   The first test: the two questions arrived as the last twenty words of a 200-word block, and of
@@ -89,9 +89,16 @@ either direction.
   controls, and never a guess at what you have tried or what would count as solved, since those
   two answers reach the report labelled as your words.
 
-  **Nothing has yet observed this third shape.** Each test so far has found something the previous
-  one could not have predicted, so read this as two defects removed rather than as a gate now
-  known to be right.
+  The third test, on that fix: no wall of text and no fake options — and no questions either. The
+  new rule said a question whose only honest answers are "skip" and words only you have does not
+  need an option list, and Cowork will not accept a question without one. All three were refused;
+  you saw the reading, three lines reading *Failed*, and then the same three questions retyped as
+  prose. The rule is now a requirement in both directions: an option must be an answer rather than
+  an instruction, *and* the ask must be one the host will accept.
+
+  **Nothing has yet observed this fourth shape.** Each test has found something the one before it
+  could not have predicted, so read this as three defects removed rather than as a gate now known
+  to be right.
 
 - **The plugin installs again on Claude Desktop and Cowork.** Their `.plugin` upload refuses a
   description over 500 characters, and ours had grown past it (an 851-character description was

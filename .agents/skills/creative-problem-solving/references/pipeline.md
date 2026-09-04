@@ -515,12 +515,19 @@ not supply them on its own:
   go-or-correct line. Three or four is the ceiling; past that a gate stops being one interruption.
   The scenarios assert `questions_count_max: 4` for this, which counts sub-questions, so a gate at
   three leaves one spare and a SECOND gate reds it whatever it asks.
+- **The ask has to be one the host will accept.** Whatever its question mechanism requires in
+  order to be a valid question — a minimum number of choices, a label on each — give it. A gate
+  the host refuses is not a gate: the run has spent its one interruption on a failed call, and
+  what the reader gets instead is an apology and a question in prose.
 - **Every option you offer is a possible answer, whole in itself — never an instruction for
   working the host's controls.** "I'll type it — choose Other and write it" is not an answer. It
   duplicates a free-text box the host already puts on the same gate, it spends one of your three
   or four slots saying nothing, and it makes typing look like the off-menu move when it is the
-  expected one. If the only honest choices for a question are "skip" and words only the reader
-  has, that question does not want an option list — ask it and let them write.
+  expected one. When an answer needs words you do not have, name the answer and not the control:
+  the reader is choosing between things they might mean, not between widgets. **This is not a
+  reason to offer no options at all** — see the bullet above; on a live run that read as licence
+  to ask with an empty option list, all three questions were refused, and the reader saw three
+  failures and then the same three questions retyped as prose.
 - **Do not offer a guess at either answer.** You may offer "skip"; you may not offer a candidate
   for what they have tried or what would count as solved. Those two values are the whole reason
   the gate exists — they reach nine generators as the user's words and the report as "(your
@@ -533,16 +540,24 @@ not supply them on its own:
   host has a default, "go" is it and the run must never depend on having one — but a reader must
   not have to hunt for the way to answer.
 
-**Measured, on two live Cowork runs, and the second is why half of the list above exists.** The
+**Measured, on three live Cowork runs, and each one is why part of the list above exists.** The
 first rendered the whole gate as one block of prose with the two asks as its last twenty words,
 offering four one-click paths: three started the run without answering, the pre-selected default
 recorded both answers as unstated, and the only route to the answers was labelled a correction.
 The run faithfully recorded that the user declined. The second, after that was fixed, asked three
 separate questions and still put a hundred and fifty words of reading and pressures inside the
 first one — and gave every question a second option reading "I'll type it: choose Other and write
-it", beside the free-text field the host had already drawn two lines below. Two harness runs of
-the same instruction produced good gates, so this is not something the wording of the lines
-settles by itself. It is settled here, as properties, or not at all.
+it", beside the free-text field the host had already drawn two lines below.
+
+The third asked all three questions with no options at all, because the property written after the
+second test said a question whose only honest choices are "skip" and the reader's own words does
+not want an option list. The host refused every one of them. The reader saw the reading, then
+three lines reading *Failed*, then the same three questions retyped as prose. **That is the shape
+of mistake to avoid repeating in this list:** each property here was written to stop something a
+live run actually did, and the one written as a licence rather than as a requirement was taken up
+as far as it would go. Two harness runs of the same instruction produced good gates, so this is
+not something the wording of the lines settles by itself. It is settled here, as properties, or
+not at all.
 
 **There are two replies, and only one of them is "go".**
 
