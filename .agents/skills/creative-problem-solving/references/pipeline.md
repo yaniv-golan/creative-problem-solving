@@ -561,48 +561,15 @@ not supply them on its own:
   host has a default, "go" is it and the run must never depend on having one — but a reader must
   not have to hunt for the way to answer.
 
-**Measured, on six live Cowork runs; the first five are why the list above exists, and the sixth
-is what it produced.** The
-first rendered the whole gate as one block of prose with the two asks as its last twenty words,
-offering four one-click paths: three started the run without answering, the pre-selected default
-recorded both answers as unstated, and the only route to the answers was labelled a correction.
-The run faithfully recorded that the user declined. The second, after that was fixed, asked three
-separate questions and still put a hundred and fifty words of reading and pressures inside the
-first one — and gave every question a second option reading "I'll type it: choose Other and write
-it", beside the free-text field the host had already drawn two lines below.
-
-The third asked all three questions with no options at all, because the property written after the
-second test said a question whose only honest choices are "skip" and the reader's own words does
-not want an option list. The host refused every one of them. The reader saw the reading, then
-three lines reading *Failed*, then the same three questions retyped as prose. **That is the shape
-of mistake to avoid repeating in this list:** each property here was written to stop something a
-live run actually did, and the one written as a licence rather than as a requirement was taken up
-as far as it would go.
-
-The fourth had the shape this step wants and two dead options in it: on a card that already drew
-its own *Skip* button and its own free-text field, the two asks each offered "Skip" and "I'll say
-in my own words". Both are things the reader could already do without reading a menu. That is why
-the rule above is now about what an option is *worth* rather than about what it may not say —
-three runs renamed the same dead slot three times while obeying every wording the earlier rules
-used.
-
-The fifth is the shape this step wants, and it is what put the last three bullets here. Every
-option on it was worth reading: "nothing -- open field"; "take the reusability answer as already
-understood and rule it out", which is step 3b's own ban handed back for approval; three real bars
-under *what would count as solved*. One of those three was "investable theses -- angles a fund
-could actually back", which is not a bar, it is a claim about who the reader is, and a click would
-have recorded it as their goal. So the rule that governs options is the rule that already governs
-premises, and the run had to be watched five times to find that out.
-
-The sixth was run on a problem that carried something. All five before it used a bare one-line
-prompt, which is why the run kept inventing options -- it had nothing of the reader's to offer.
-This one opened with their own two ruled-out attempts quoted back and marked "(your words)", as a
-checklist, beside "nothing else -- open field"; offered three bars that were all about the
-business; and closed with go or correct the reading first. Nothing refused, no dead slot, nothing
-asserted about the reader. **A bare prompt is the hard case for these properties and a prompt with
-material in it is where they pay off; a change to this step wants both.** Two harness runs of the
-same instruction produced good gates, so this is not something the wording of the lines settles by
-itself. It is settled here, as properties, or not at all.
+**Measured, on six live Cowork runs.** Every property above was written to stop something a run
+actually did: a gate rendered as a wall of prose whose two asks were its last twenty words;
+options telling the reader to use the free-text box drawn beside them; a gate the host refused
+outright; and an option that told the reader who they were. **Read them as requirements.** The one
+that was written as a licence — *a question like this does not need an option list* — was taken up
+as far as it would go, and the host refused all three questions. Two harness runs of the same
+instruction produced good gates, so this is not something the wording of the ASK lines settles by
+itself. It is settled here, as properties, or not at all. `docs/INCIDENTS.md` **in the repository**
+has the six runs in full; you do not need it to follow the list.
 
 **There are two replies, and only one of them is "go".**
 

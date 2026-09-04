@@ -236,3 +236,88 @@ still a claim about the architecture. It contradicted the absolute rule stated o
 two commits before a review caught it. The rule now forbids the superlative outright, and the
 `SAY:` line says the stage runs as one agent rather than a batch — which is what the reader needs
 and does not go stale.
+
+---
+
+## Six gates, five wrong, and a rule written as a licence
+
+**Rule:** `pipeline.md` step 0d — the properties the gate has to be true of, and the `SAY:`/`ASK:`
+split in `brief_gate.py` that puts the reading above the questions rather than inside one. Written
+and rewritten across six hand runs on Cowork; the narrative is kept because five of the six failed
+in ways the previous rule could not have anticipated, and because one of them was caused by the
+rule itself.
+
+Step 0d names no widget, deliberately: hosts differ, and the file that specifies a gate cannot
+also specify a UI. What it states instead is what the result has to be true of. Every one of those
+properties comes from a run below.
+
+**Run 1.** The whole gate rendered as one block of prose with the two asks as its last twenty
+words, offering four one-click paths. Three of the four started the run without answering. The
+pre-selected default recorded both answers as unstated, and the only route to supplying them was
+labelled a *correction*, so answering read as admitting the reading was wrong. The run then
+faithfully recorded that the user had declined — the two values whose entire purpose is to reach
+nine generators as the user's own words. The cause was a line in the spec telling the host to put
+the gate "as a single question". That line is gone.
+
+**Run 2.** Three separate questions, as intended. The first still carried a hundred and fifty
+words of reading and invented pressures inside its own text, so the eight-word ask arrived at the
+end of a wall of prose; and every one of the three offered a second option reading *"I'll type it
+— choose Other and write it"*, two lines above the free-text field the host had already drawn.
+
+Two causes. The head lines were marked `ASK:`, and `SKILL.md`'s rule for `ASK:` is *put it to the
+user and wait* — so a host did exactly that. They are statements, and they now print as `SAY:`.
+The second was a property asking that answering not be hard to find; the model met it by spending
+an option on instructions for the widget.
+
+**Run 3, and this one is the reason the list is phrased as requirements.** The property written
+after run 2 ended: *if the only honest choices are "skip" and words only the reader has, that
+question does not want an option list — ask it and let them write.* Cowork's question mechanism
+does not accept a question without choices. The run asked all three with an empty option list, the
+host refused all three, and the reader saw the reading, three lines reading *Failed*, and then the
+same three questions retyped as prose. Every other property in that list is a requirement; this
+one was written as a licence, and it was taken up as far as it would go.
+
+**Run 4.** The right shape — reading above, three short questions, nothing refused — and two dead
+options on each ask. The card draws its own *Skip* button and its own free-text box, so *"Skip"*
+and *"I'll say in my own words"* were both menu items pointing at the buttons beside them. Three
+runs had by then renamed the same dead slot three times (*"choose Other and write it"*, then
+nothing at all, then *"I'll say in my own words"*), each obeying every wording the rule then used.
+A rule about what an option may not **say** cannot catch that. The rule became one about what an
+option is **worth**: it has to give the reader something the controls already on the card do not.
+
+**Run 5.** Options worth reading at last: *"nothing — open field"*, and *"take the reusability
+answer as already understood and rule it out"*, which is Phase 0 step 3b's own ban handed back to
+the one person who can approve it. Among three otherwise good bars under *what would count as
+solved* sat *"investable theses — angles a fund could actually back"*. That is not a bar on the
+problem; it is a claim about who the reader is, and a click would have written it into
+`brief.json` as their goal, sent it to nine generators as their words and printed it in the report
+as "(your words)".
+
+This also resolved a collision introduced two runs earlier. *Worth the click* drives concrete
+options; *do not offer a guess at either answer* forbade them. The second was wrong as it stood:
+an invented premise is dangerous precisely because the reader never sees it, and an option they
+read and choose is an endorsement. So the line to hold is not whether an option is concrete but
+what it is a proposal **about** — step 0c's rule, unchanged: the world, never the person asking.
+
+**Run 6 passed, and it is the run that explains the other five.** It was given a problem that
+carried something. All five before it used a bare one-line prompt, which is why the run kept
+inventing options: it had nothing of the reader's to offer. This one opened with the reader's own
+two ruled-out attempts quoted back, each marked *(your words)*, as a checklist, beside *"nothing
+else — open field"*; offered three bars that were all about the business; and closed with *go* or
+*correct the reading first*. Nothing refused, no dead slot, nothing asserted about the reader. It
+produced no new property, which is the signal worth recording: each of the five before it produced
+exactly one.
+
+**Three things follow.**
+
+**Read step 0d's list as requirements, and write additions to it the same way.** The one licence
+in it cost a run and produced the worst-looking failure of the six.
+
+**A bare prompt and a prompt with material in it are different tests, and a change to this step
+wants both.** The bare prompt is where the properties are hard — the run has nothing honest to
+offer and will invent to fill a slot. The prompt with material is where they pay off. Five
+consecutive runs used the same bare prompt and could not have shown what the sixth showed.
+
+**The wording of the `ASK:` lines does not settle this.** Two `cowork-harness` runs of the very
+same instruction produced good gates while the live host produced bad ones, so a green harness run
+is not evidence about presentation. It is settled by the properties, or not at all.
