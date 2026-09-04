@@ -519,15 +519,23 @@ not supply them on its own:
   order to be a valid question — a minimum number of choices, a label on each — give it. A gate
   the host refuses is not a gate: the run has spent its one interruption on a failed call, and
   what the reader gets instead is an apology and a question in prose.
-- **Every option you offer is a possible answer, whole in itself — never an instruction for
-  working the host's controls.** "I'll type it — choose Other and write it" is not an answer. It
-  duplicates a free-text box the host already puts on the same gate, it spends one of your three
-  or four slots saying nothing, and it makes typing look like the off-menu move when it is the
-  expected one. When an answer needs words you do not have, name the answer and not the control:
-  the reader is choosing between things they might mean, not between widgets. **This is not a
-  reason to offer no options at all** — see the bullet above; on a live run that read as licence
-  to ask with an empty option list, all three questions were refused, and the reader saw three
-  failures and then the same three questions retyped as prose.
+- **An option has to be worth the click: it must give the reader something the controls already
+  on the card do not.** A host that asks with options generally draws a *skip* and a *free-text*
+  control beside them. Where it does, an option meaning "skip" and an option meaning "I'll type
+  it" are both dead slots — the reader can already do both, one tap away, and a menu offering
+  them is a menu pointing at the buttons next to it. Every wording of the second is the same dead
+  slot: "I'll type it", "I'll say in my own words", "choose Other and write it". Three live runs
+  produced three of those.
+- **So the options are the answers a click can complete, and the user's own prompt is where to
+  find one.** If what they already wrote answers the question, offer it back in their words —
+  that is not a guess (the next bullet forbids guesses; these are their sentences), and it is
+  worth clicking because it saves them retyping what they have said once already.
+- **A question with no such answer does not go in the option widget at all.** Say it as a line of
+  text above the gate, where the reader answers it in the reply box like any other question.
+  **Do not instead call the widget with an empty option list** — the host refuses that, and on a
+  live run all three questions were refused, so the reader saw three failures and then the same
+  three questions retyped as prose anyway. One question is always a real gate and that is what
+  makes the run wait: the go-or-correct line, where "go" is a complete answer a click can give.
 - **Do not offer a guess at either answer.** You may offer "skip"; you may not offer a candidate
   for what they have tried or what would count as solved. Those two values are the whole reason
   the gate exists — they reach nine generators as the user's words and the report as "(your
@@ -540,7 +548,7 @@ not supply them on its own:
   host has a default, "go" is it and the run must never depend on having one — but a reader must
   not have to hunt for the way to answer.
 
-**Measured, on three live Cowork runs, and each one is why part of the list above exists.** The
+**Measured, on four live Cowork runs, and each one is why part of the list above exists.** The
 first rendered the whole gate as one block of prose with the two asks as its last twenty words,
 offering four one-click paths: three started the run without answering, the pre-selected default
 recorded both answers as unstated, and the only route to the answers was labelled a correction.
@@ -555,9 +563,15 @@ not want an option list. The host refused every one of them. The reader saw the 
 three lines reading *Failed*, then the same three questions retyped as prose. **That is the shape
 of mistake to avoid repeating in this list:** each property here was written to stop something a
 live run actually did, and the one written as a licence rather than as a requirement was taken up
-as far as it would go. Two harness runs of the same instruction produced good gates, so this is
-not something the wording of the lines settles by itself. It is settled here, as properties, or
-not at all.
+as far as it would go.
+
+The fourth had the shape this step wants and two dead options in it: on a card that already drew
+its own *Skip* button and its own free-text field, the two asks each offered "Skip" and "I'll say
+in my own words". Both are things the reader could already do without reading a menu. That is why
+the rule above is now about what an option is *worth* rather than about what it may not say —
+three runs renamed the same dead slot three times while obeying every wording the earlier rules
+used. Two harness runs of the same instruction produced good gates, so this is not something the
+wording of the lines settles by itself. It is settled here, as properties, or not at all.
 
 **There are two replies, and only one of them is "go".**
 

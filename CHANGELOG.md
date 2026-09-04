@@ -68,7 +68,7 @@ either direction.
   promises one interruption, and the two questions are printed as separate lines you can answer
   one at a time rather than buried at the end of a paragraph.
 
-- **The gate was tested by hand on Cowork three times, and each test found a defect that is fixed
+- **The gate was tested by hand on Cowork four times, and each test found a defect that is fixed
   here.** What worked every time: it asks, your answer is recorded, and the run's stated reading
   is rewritten to match before any work starts.
 
@@ -96,8 +96,16 @@ either direction.
   prose. The rule is now a requirement in both directions: an option must be an answer rather than
   an instruction, *and* the ask must be one the host will accept.
 
-  **Nothing has yet observed this fourth shape.** Each test has found something the one before it
-  could not have predicted, so read this as three defects removed rather than as a gate now known
+  The fourth test: the right shape at last — the reading above, three short questions, nothing
+  refused — and every question offering two choices you did not need. The card already draws its
+  own *Skip* button and its own free-text box, so *"Skip"* and *"I'll say in my own words"* were
+  both menu items pointing at buttons beside them. The rule is now about what an option is worth
+  rather than about what it may not say: an option has to give you something the controls on the
+  card do not, the best source of one is your own prompt quoted back, and a question with no such
+  answer is asked as a line of text instead of as a menu.
+
+  **Nothing has yet observed this fifth shape.** Each test has found something the one before it
+  could not have predicted, so read this as four defects removed rather than as a gate now known
   to be right.
 
 - **The plugin installs again on Claude Desktop and Cowork.** Their `.plugin` upload refuses a
