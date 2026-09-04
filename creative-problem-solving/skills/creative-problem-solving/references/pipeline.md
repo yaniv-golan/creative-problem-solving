@@ -561,7 +561,8 @@ not supply them on its own:
   host has a default, "go" is it and the run must never depend on having one — but a reader must
   not have to hunt for the way to answer.
 
-**Measured, on five live Cowork runs, and each one is why part of the list above exists.** The
+**Measured, on six live Cowork runs; the first five are why the list above exists, and the sixth
+is what it produced.** The
 first rendered the whole gate as one block of prose with the two asks as its last twenty words,
 offering four one-click paths: three started the run without answering, the pre-selected default
 recorded both answers as unstated, and the only route to the answers was labelled a correction.
@@ -591,8 +592,16 @@ understood and rule it out", which is step 3b's own ban handed back for approval
 under *what would count as solved*. One of those three was "investable theses -- angles a fund
 could actually back", which is not a bar, it is a claim about who the reader is, and a click would
 have recorded it as their goal. So the rule that governs options is the rule that already governs
-premises, and the run had to be watched five times to find that out. Two harness runs of the same
-instruction produced good gates, so this is not something the wording of the lines settles by
+premises, and the run had to be watched five times to find that out.
+
+The sixth was run on a problem that carried something. All five before it used a bare one-line
+prompt, which is why the run kept inventing options -- it had nothing of the reader's to offer.
+This one opened with their own two ruled-out attempts quoted back and marked "(your words)", as a
+checklist, beside "nothing else -- open field"; offered three bars that were all about the
+business; and closed with go or correct the reading first. Nothing refused, no dead slot, nothing
+asserted about the reader. **A bare prompt is the hard case for these properties and a prompt with
+material in it is where they pay off; a change to this step wants both.** Two harness runs of the
+same instruction produced good gates, so this is not something the wording of the lines settles by
 itself. It is settled here, as properties, or not at all.
 
 **There are two replies, and only one of them is "go".**

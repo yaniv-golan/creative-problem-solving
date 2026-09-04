@@ -113,8 +113,13 @@ either direction.
   invented pressures: **it may propose something about the problem, never assert something about
   you.**
 
-  **Nothing has yet observed this sixth shape.** Read this as five defects removed rather than as
-  a gate now known to be right.
+  **The sixth test is the one that passed, and it was run on a problem with something in it.**
+  The first five all used a bare one-line prompt, so the run had nothing of yours to offer and
+  invented options instead. Given a problem that already said what had been tried, the gate opened
+  with your own two attempts quoted back and marked *(your words)*, as a checklist, beside
+  *"nothing else — open field"*; offered three bars that were all about the business rather than
+  about you; and closed with *go* or *correct the reading first*. Nothing was refused, nothing was
+  a dead slot, and nothing put words in your mouth. That is the gate as designed, seen working.
 
 - **The plugin installs again on Claude Desktop and Cowork.** Their `.plugin` upload refuses a
   description over 500 characters, and ours had grown past it (an 851-character description was
