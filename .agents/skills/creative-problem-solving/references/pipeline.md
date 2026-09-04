@@ -536,11 +536,24 @@ not supply them on its own:
   live run all three questions were refused, so the reader saw three failures and then the same
   three questions retyped as prose anyway. One question is always a real gate and that is what
   makes the run wait: the go-or-correct line, where "go" is a complete answer a click can give.
-- **Do not offer a guess at either answer.** You may offer "skip"; you may not offer a candidate
-  for what they have tried or what would count as solved. Those two values are the whole reason
-  the gate exists — they reach nine generators as the user's words and the report as "(your
-  words)" — and a guess the reader clicks is this run's own invention coming back wearing their
-  name.
+- **An option may propose something about the problem. It may never assert something about the
+  reader.** This is step 0c's rule about invented premises — *the world, never the person asking*
+  — and it binds here for a sharper reason than it does there: a clicked option is written into
+  `brief.json` as what the user said, reaches nine generators as their words and the report as
+  "(your words)". A bar about the problem survives that honestly: *"an order-of-magnitude cost
+  drop, not incremental trims"* is a claim about what would count, and a reader who picks it has
+  set that bar. *"Angles a fund could actually back"* does not: it tells the reader who they are,
+  and one click turns this run's supposition about them into their own stated goal. Both were
+  offered on the same live gate.
+- **Propose from the record, not from the air.** The two strongest sources are already written
+  down: what their prompt said, offered back in their words, and the obvious answer Phase 0 step
+  3b banned, offered back for them to confirm — a live gate offered *"take the reusability answer
+  as already understood and rule it out"*, which is exactly right, because it is this run's own
+  artifact put to the person who can approve it.
+- **Being shown it is what makes a proposal legitimate.** An invented premise is dangerous
+  precisely because the reader never saw it; an option they read and chose is an endorsement, and
+  a real answer. That is the whole difference, and it is why this bullet does not simply forbid
+  concrete options — a gate whose options are all abstentions is the dead-slot gate two bullets up.
 - **Answering is not a correction.** Whatever route supplies what they have tried or what would
   count as solved may not be labelled, described or grouped as fixing a mistake. Correcting the
   reading is a different act and gets its own route.
@@ -548,7 +561,7 @@ not supply them on its own:
   host has a default, "go" is it and the run must never depend on having one — but a reader must
   not have to hunt for the way to answer.
 
-**Measured, on four live Cowork runs, and each one is why part of the list above exists.** The
+**Measured, on five live Cowork runs, and each one is why part of the list above exists.** The
 first rendered the whole gate as one block of prose with the two asks as its last twenty words,
 offering four one-click paths: three started the run without answering, the pre-selected default
 recorded both answers as unstated, and the only route to the answers was labelled a correction.
@@ -570,8 +583,17 @@ its own *Skip* button and its own free-text field, the two asks each offered "Sk
 in my own words". Both are things the reader could already do without reading a menu. That is why
 the rule above is now about what an option is *worth* rather than about what it may not say —
 three runs renamed the same dead slot three times while obeying every wording the earlier rules
-used. Two harness runs of the same instruction produced good gates, so this is not something the
-wording of the lines settles by itself. It is settled here, as properties, or not at all.
+used.
+
+The fifth is the shape this step wants, and it is what put the last three bullets here. Every
+option on it was worth reading: "nothing -- open field"; "take the reusability answer as already
+understood and rule it out", which is step 3b's own ban handed back for approval; three real bars
+under *what would count as solved*. One of those three was "investable theses -- angles a fund
+could actually back", which is not a bar, it is a claim about who the reader is, and a click would
+have recorded it as their goal. So the rule that governs options is the rule that already governs
+premises, and the run had to be watched five times to find that out. Two harness runs of the same
+instruction produced good gates, so this is not something the wording of the lines settles by
+itself. It is settled here, as properties, or not at all.
 
 **There are two replies, and only one of them is "go".**
 

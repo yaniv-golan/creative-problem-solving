@@ -68,8 +68,8 @@ either direction.
   promises one interruption, and the two questions are printed as separate lines you can answer
   one at a time rather than buried at the end of a paragraph.
 
-- **The gate was tested by hand on Cowork four times, and each test found a defect that is fixed
-  here.** What worked every time: it asks, your answer is recorded, and the run's stated reading
+- **The gate was tested by hand on Cowork five times, and each test found something the one
+  before it could not have shown.** What worked every time: it asks, your answer is recorded, and the run's stated reading
   is rewritten to match before any work starts.
 
   The first test: the two questions arrived as the last twenty words of a 200-word block, and of
@@ -104,9 +104,17 @@ either direction.
   card do not, the best source of one is your own prompt quoted back, and a question with no such
   answer is asked as a line of text instead of as a menu.
 
-  **Nothing has yet observed this fifth shape.** Each test has found something the one before it
-  could not have predicted, so read this as four defects removed rather than as a gate now known
-  to be right.
+  The fifth test is the shape this was aiming at: the reading above, three short questions, and
+  options worth reading — *"nothing, open field"*, and the run's own banned obvious answer handed
+  back for you to confirm. It also showed the remaining risk. Among three otherwise good answers
+  to *what would count as solved* sat *"investable theses — angles a fund could actually back"*,
+  which is not a bar, it is a guess about who you are — and clicking it would have recorded that
+  guess as your goal. The rule that governs an option is now the rule that already governed
+  invented pressures: **it may propose something about the problem, never assert something about
+  you.**
+
+  **Nothing has yet observed this sixth shape.** Read this as five defects removed rather than as
+  a gate now known to be right.
 
 - **The plugin installs again on Claude Desktop and Cowork.** Their `.plugin` upload refuses a
   description over 500 characters, and ours had grown past it (an 851-character description was
