@@ -11,224 +11,184 @@ _Nothing yet._
 
 ## [0.5.0] — 2026-09-03
 
-Field report from run `20260901-100305` — a full, undegraded run that passed every gate and still
-surfaced seventeen defects.
+Most of this release changes what the report *tells* you: it asks you two questions before it
+starts, it says whose behaviour the ideas are meant to change, and it marks options that come at
+somebody's expense. None of it claims the ideas themselves got better — we tested that, and the
+test came back inconclusive.
 
-**What is different when you run it.** The report now tells you things it used to leave you to
-notice. An option whose mechanism costs somebody — withholding, coercing, imposing unpaid work on
-people who did not choose it — carries a line saying so. A `Checked` badge names the one claim a
-search actually settled, instead of implying the whole option was verified. The report says whose
-behaviour the question is about, and that a family is one distinct *action* — so a count of 108
-families is not 108 different strategies.
+**What is different when you run it**
 
-**Two things to know while reading your report.** They are the most useful findings here:
+- **It checks its reading with you before it starts.** One pause, before the search. It says what
+  it thinks you are asking, who has to act, and which pressures it added that you never mentioned —
+  then asks two things only you can answer: what you have already tried or ruled out, and what would
+  count as solved. Say "go", or correct it. It asks once and corrects once, then runs for about
+  half an hour without interrupting again. Put *"don't ask me any questions"* in your problem and
+  it shows you the reading and starts.
+- **The report opens with whose behaviour it is about** — the person who has to act, and what
+  they are deciding at the moment they would. It is the yardstick for everything below: on the run
+  this came from, about a third of the options improved the thing rather than changing what the
+  person does, and you had to notice that one entry at a time.
+- **Your answers come back in your own words**, under *Before the run started*. If you were never
+  asked — you declined, or the host had no way to put a question to you — it says so, and names
+  what the run went without.
+- **An option that costs somebody now says so.** One line under any option that works by
+  withholding, degrading, coercing or deceiving someone, or that would damage your standing with
+  the people you are trying to serve. It is a note, not a veto: the option still ships, at whatever
+  rank it earned.
+- **"Checked" names what was checked** — the one claim a search actually settled — instead of
+  sitting under an option and implying the whole thing was verified.
+- **The closing read says what the list is missing**, not just where to start.
+
+**Two things worth knowing as you read your report**
 
 - **An unmarked option is not one judged safe. It is one nobody flagged.** The marking is done in
-  separate batches by readers who cannot see each other, and it misses. On the run we measured it
-  caught 20 of 28 costly options — and six of the eight it missed were near the top of the list,
-  including the first one.
-- **The top of the list is not the most trustworthy part.** Options that answer a different question
-  than you asked are about twice as common in the top 20 as in the rest. Read past the top.
+  separate batches by readers who cannot see each other, and it misses: on the run we measured it
+  caught 20 of 28 costly options, and most of what it missed was near the top of the list. The
+  report now tells you this itself, whenever any option carries a mark.
+- **The top of the list is not the most trustworthy part.** Options that answer a slightly
+  different question than the one you asked are about twice as common in the top 20 as in the
+  rest. Read past the top. This one is known and still open.
 
-**Did the ideas themselves get better? We do not know, and we checked.** We ran v0.4.1 and this
-version on the same problem, the same day, and had three readers judge both without knowing which
-was which. The difference was too small to tell apart from two people simply disagreeing about the
-same report. That is not evidence the ideas got worse — it is a measurement that came back
-inconclusive, and one run each cannot settle it. Two limits worth stating: the comparison can only
-see a difference bigger than readers disagreeing with each other, and our readers were more
-generous than the person who filed the report, so a gain at their stricter bar might not show up.
-The full method and numbers are kept with the maintainers and are not published.
-
-**So: this release changes what the report tells you. It does not claim the ideas improved.**
-
-
-**The gate was tested by hand on Cowork, and the test found a defect that is fixed here — but the
-fix itself is unobserved.** What worked: it asks, your answer is recorded, and the run's stated
-reading is rewritten to match before any work begins. What did not: the two questions arrived as the
-last twenty words of a 200-word block, and of the four one-click choices offered, three started the
-run without answering and the fourth was labelled as a *correction* — so declining was the path of
-least resistance, and the pre-selected default recorded both answers as unstated.
-
-The cause was a line in the spec telling the host to put the gate *"as a single question"*. That is
-gone. The step now says what the result must be true of and names no mechanism: all of it in front
-of you when you answer, the two asks separately answerable, answering never grouped as a correction,
-starting without answering available but not the easiest thing on offer. The script prints the two
-asks as two lines instead of one sentence.
-
-**Three live runs produced three different option sets from identical instructions**, so this is a
-well-motivated change rather than a verified one. Nothing has yet observed the new shape.
+**Did the ideas get better? We do not know, and we did check.** We ran 0.4.1 and this version on
+the same problem on the same day and had three readers judge both without knowing which was
+which. The difference was too small to tell apart from two people simply disagreeing about the
+same report. That is not evidence it got worse — it's one run each, which cannot settle it in
+either direction.
 
 ### Changed
-- **The plugin description and the skill description are now two different strings.** The skill
-  description in `SKILL.md` is the routing surface and stays long on purpose — the explicit-only
-  trigger contract lives in it. The plugin description is catalogue copy and is capped at 500
-  characters, because Claude Desktop and Cowork refuse a `.plugin` upload above that — measured in
-  both directions: an 851-character description was refused, a 468-character one installed.
-  `check-repo` now enforces each against its own canonical source instead of requiring them to
-  match, **and refuses them being re-merged**, so a future tidy-up cannot silently break installs
-  again.
 
-- **The run shows its reading and asks two things before starting.** One pause, before the web
-  search: it states the reading, the actor, the decision and the pressures it invented, then asks
-  what you have already tried or ruled out and what would count as solved. Say "go" or correct it
-  once. Two runs are the reason — on a one-line prompt the pipeline invented a world pressure and
-  ranked a family third on the bet that the pressure drove the work, while a prompt that already
-  carried those two answers kept its invented pressures at world level and produced a different
-  top of the list. Both are recorded in `brief.json`, printed in the report opening in your own
-  words, and read by the ranker. Say "don't ask me any questions" in the problem and the run says
-  the reading and starts instead. The one-question ceiling is unchanged: this gate is the one
-  question, and the meaning ambiguity that used to be asked separately is now folded into the
-  reading line.
-- **Phase 0 names the actor and the decision.** Step 1 now asks who has to behave differently and
-  what they are deciding at the moment they would; `brief.json` records both, and the report opens
-  with them. On the audited run roughly a third of the options answered "make the artifact better"
-  rather than "make the actor act", because the brief led with a state of use — and no stage could
-  see it. The report now hands the reader the yardstick instead of leaving them to discover it
-  entry by entry. **Deliberately not** the proposed out-of-scope block in the generator prompt:
-  on that run it would have suppressed a delivered Top-3 option.
-- **A grouper may mark what an option costs the people it acts on.** *(Measured: 27 of 104 and 34
-  of 108 families marked across two live runs, none a mislabelled split-test note. On the 108-family
-  run — one run, one prompt — three raters then judged every option blind, with the marks and the
-  ranking stripped out: **the mark catches 20 of the 28 they called coercive**, and the eight it
-  misses are the ones a reader meets first. Grouping happens before ranking, so the grouper never
-  sees a rank; marked options are then ranked down, which is why 36 of the last 48 leads carry a mark
-  and only 5 of the top 60 do — and why a missed mark and a high rank are close to the same event.
-  **Six of the eight misses, including the top-ranked option, sit in that top 60.** The marking rate
-  is run-dependent, not a constant: 27 of 104, 34 of 108, and 47 of 101 families across three runs.
-  An unmarked option is not one judged safe; it is one nobody flagged.)* An optional
-  one-line `risk`
-  on a family, rendered under the option at any rank. Nine options on the audited run worked by
-  withholding, degrading or coercing the people the reader was trying to serve, sat at ranks
-  40–107, and were typographically identical to everything around them. It is a note, not a veto:
-  the option ships at whatever rank it earns. The grouper is given the actor line to judge it —
-  one of the nine was a fund pledging not to invest in anyone who used the tool, which is
-  damaging because of who the reader is and reads as generous otherwise.
-- **A fifth verifier verdict, `internal_claim`**, for an option whose load-bearing claim is about
-  the reader's own product, situation or data. The audited run's top-ranked option rested on one;
-  a search confirmed an incidental assertion inside it and the report printed "Checked" beneath.
-  `no_external_claim` would have been wrong the other way — it renders as "nothing to verify",
-  and there was something to verify that nobody outside could do. Carries a required note naming
-  the claim.
-- **The `Checked` badge names what was checked**, from a new optional `claim` field. Its companion —
-  the grouper clause naming an obligation imposed as the price of taking part — is **observed
-  producing marks of that class** (26 of 47 risk lines on the A/B run); whether each is a *correct*
-  mark is unrated. *(Observed
-  live on two prompts once the dispatch relayed it: 15 of 15 verdicts and 6 of 6 confirmed ones
-  carry a populated clause — "granting limited, visible account access before verification
-  finishes". It fired 0 of 13 before that, because the field was specified in `agents/verifier.md`
-  and step 8 never asked for it; an agent-file contract the dispatch does not name does not
-  arrive.)* So a reader
-  can see the badge covers one assertion rather than the option.
-- **The ranker no longer conflates two objections.** Requiring a workflow change from people the
-  reader already directs is not the same as requiring agreement from a party with no incentive.
-  **Its effect is unmeasured, and a defect it was meant to address is open.** Known and open: the
-  ranker concentrates off-target families at the top — 31% of the top 20 against 14% of the rest,
-  direction replicated in 4 of 4 frozen re-rankings. One candidate fix, an actor-priority tiebreak,
-  was A/B'd against frozen families, had **no effect** (6.5 against a control of 6.0, inside the
-  control's own spread), and is not shipped. A four-run A/B of the clause itself was reported here
-  and is withdrawn: the two
-  conditions differed only in `agents/ranker.md`, and a `subagent_type` dispatch loads the
-  installed plugin rather than the working tree, so control and treatment were plausibly the same
-  condition and the difference was noise. One finding from it survives, because it needs no
-  contrast: re-running the *same* criteria moved a family 23 ranks, so any single-family readout
-  needs a ~27-rank shift to mean anything.
-- **The ranker reads the brief and proves it.** It is told to read `brief.json` and rank against
-  `verbatim_prompt`, and to echo the first 60 characters back in a `prompt_echo` field beside
-  `ranked`. `verify_pipeline.py` refuses an echo that does not match the file; an absent or
-  too-short one is a WARN, because a missing audit field is a gap in the record rather than a
-  proven fault. The instruction to produce it lives in step 7's dispatch, and `check-repo` fails
-  if that sentence reverts to merely describing the behaviour.
-- **Lenses are picked from SKILL.md's Phase 1 table**, which every other surface already called
-  the operative one. The contradicting instruction was introduced in the 0.2.0 pipeline rebuild,
-  six days after the one-chooser decision was recorded, and check-repo now guards it.
+- **The run shows its reading and asks you two things before it starts.** Two runs are the
+  reason: given a one-line prompt, the pipeline invented a pressure nobody had stated and ranked
+  a whole family third on the bet that it was what drove the work; given a prompt that already
+  carried what was ruled out and what success looked like, it kept its inventions where they
+  belonged and produced a different top of the list. Those are inputs a model cannot fabricate,
+  so it asks. Your answers go into `brief.json`, reach every generator, are read by the ranker,
+  and are printed back in the report in your words. This gate is the run's one interruption —
+  SKILL.md used to promise "one question", which forced both asks into a single sentence; it now
+  promises one interruption, and the two questions are printed as separate lines you can answer
+  one at a time rather than buried at the end of a paragraph.
+
+- **The gate was tested by hand on Cowork, and the test found a defect that is fixed here.** What
+  worked: it asks, your answer is recorded, and the run's stated reading is rewritten to match
+  before any work starts. What did not: the two questions arrived as the last twenty words of a
+  200-word block, and of four one-click choices, three started the run without answering and the
+  fourth was labelled a *correction* — so declining was the easiest thing to do, and the default
+  recorded both answers as unstated. The cause was a line in the spec telling the host to present
+  the gate "as a single question". That line is gone; the spec now states what the result has to
+  be true of and names no mechanism. **Nothing has yet observed the new shape** — three live runs
+  have produced three different results from identical instructions — so this is well-motivated
+  rather than verified.
+
+- **The plugin installs again on Claude Desktop and Cowork.** Their `.plugin` upload refuses a
+  description over 500 characters, and ours had grown past it (an 851-character description was
+  refused; a 468-character one installed). The plugin description is catalogue copy and is now
+  capped; the skill description in `SKILL.md` is what routes the skill and stays long on purpose.
+  `check-repo` holds each to its own source **and refuses them being merged back together**, so a
+  future tidy-up cannot quietly break installs again.
+
+- **Phase 0 names the actor and the decision**, and the report prints them. Deliberately *not*
+  added: a rule telling the generator to drop anything off-target — on the run this came from, it
+  would have suppressed an option that made the final Top 3.
+
+- **A grouper can mark what an option costs the people it acts on.** Nine options on the audited
+  run worked by withholding, degrading or coercing the very people the reader was trying to
+  serve, sat at ranks 40–107, and looked exactly like everything around them. Marked options tend
+  to be ranked down, which is also why the misses cluster at the top: grouping happens before
+  ranking, so the pass that marks an option has never seen a rank. How often it marks varies by
+  run (27, 34 and 47 families out of ~100, across three runs), which is why the report warns you
+  rather than presenting the mark as complete coverage.
+
+- **A new verifier verdict for claims only you can check.** When an option rests on something
+  about your own product, situation or data, it now says that, with a note naming the claim.
+  Before, it came out as "nothing to verify" — wrong in the other direction, since there *was*
+  something to verify that nobody outside your company could.
+
+- **The ranker no longer treats two different objections as one.** Asking people you already
+  direct to change how they work is not the same as needing agreement from someone with no reason
+  to give it. Its effect is unmeasured. It also now reads the brief and proves it did, by echoing
+  your prompt back into its output where the integrity check can compare it against the file. One
+  thing we learned while testing it is worth passing on: re-running the *same* ranking criteria
+  moved a family 23 places, so a single option's rank is not a precise number.
+
+- **The run stopped promising times it could not keep.** Two stage estimates were simply wrong —
+  one billed as "a couple of minutes" took fourteen. The lines now describe the shape of the wait
+  (serial or parallel, nothing prints until it returns) instead of guessing a number.
+
+- **Lenses are picked from one table**, the one in `SKILL.md` that every other surface already
+  called the operative one. A contradicting instruction had been introduced six days after that
+  decision was recorded.
 
 ### Added
 
-- **`build_report.py --emit-reply`** writes `reply.md` from the finished report, refusing if a
-  placeholder is unfilled. The model no longer authors the file it then checks. `pipeline-report.md`
-  now says plainly that this makes `--check-reply` tautological — it was already, since
-  `cp report.md reply.md` satisfied it by construction, and a run did exactly that, passed, and
-  sent a summary anyway.
-- **`shard_candidates.py --dry-run`** prints the shard plan and probe arithmetic without writing.
-- **The closing read now asks what the list is missing**, not only where to start. `{{CLOSING}}`
-  was already a required slot — `--check` refuses a report that leaves it unfilled — but it asked
-  *"where you would start, and why"*, which is answerable by pointing at rank 1 without making
-  contact with the other hundred options. The run this came from counted eleven places the
-  pipeline asked for care about the process and one that asked about the answer, took all eleven,
-  and examined the ideas only when the reader asked. It deliberately does not ask how many options
-  are worth acting on: that would pressure a run into presenting fewer, against the rule that
-  nothing is dropped.
-- **Two `check-repo.py` gates on the quota rule** — the shipped clause must be present, and no
-  script may compare a pool's option count against a literal. Both tested by planting the defect.
+- **The report's closing read now asks what the list is missing** — an angle nobody took, a
+  constraint every option assumes away, a question the list answers that you did not ask — instead
+  of only asking where to start, which is answerable by pointing at rank 1. It deliberately does
+  *not* ask how many options are worth acting on: that would pressure a run into presenting
+  fewer, and nothing here is ever dropped.
+
+- **The chat summary is generated from the finished report** (`build_report.py --emit-reply`)
+  rather than written by the model that then checks it, and it refuses to write one with an
+  unfilled placeholder.
+
+- **`shard_candidates.py --dry-run`** prints the shard plan and the arithmetic behind it without
+  writing anything.
+
+- **Two repo checks on the quota rule** — the shipped clause has to be there, and no script may
+  compare a pool's option count against a fixed number. Both tested by planting the defect.
 
 ### Fixed
-- **A risk line carried from a merged family now names where it came from.** When two families merge,
-  the absorbed one's risk line prints under the surviving lead — and it used to say only "from a
-  family merged in", so a line describing a mechanism the printed option does not have was
-  indistinguishable from a real cost. Measured on a live run: of seven leads whose only mark was
-  carried, three named a mechanism the lead does not have — one publishes a changelog of past
-  rejections and carried *"withholds prior diagnostic knowledge"*, the exact inverse. The line now
-  reads *"carried from "<the other option>" merged into this family, and it may not describe the
-  option above"*.
 
-- **The risk mark is a backstop, not yet a working instrument — measured, not assumed.** Seven
-  groupers were replayed against a frozen run's real task files. One shard marked five genuine
-  costs in both samples; two shards produced eleven marks between them and **not one was a risk** —
-  every one was the split test's answer ("p7-012 also removes the export button"), which had
-  nowhere else to go because `risk` is the only free-text field in the output shape. Two prose
-  attempts to exclude that failed, and the second raised the misuse rate. What discriminates is
-  mechanical: of ten genuine marks none named an option id, of fifteen misuses fourteen did. So
-  `merge_families.py` drops a risk naming an option id and warns, rather than showing the reader a
-  warning about an option that costs nobody. Recall is still poor — "withhold half the findings
-  for thirty days" was missed by every shard that held it. The field stops wrong marks reaching
-  the reader; it does not yet reliably produce right ones.
+- **A risk line carried over from a merged option now says where it came from.** When two
+  families merge, the absorbed one's warning prints under the surviving option, and it used to
+  say only "from a family merged in" — so a warning describing a mechanism the printed option
+  does not have was indistinguishable from a real one. Of seven such lines on a live run, three
+  named a mechanism the option did not have; one described withholding past findings, under an
+  option that publishes them.
 
-- **The report's shrinkage guard counts generated content, not placeholder prompts.** It compares
-  the finished report against a word count taken from the skeleton, and that count included the
-  `{{SLOT — instructions}}` text — so editing a slot's wording silently moved a gate meant to
-  measure content. Lengthening one prompt by eight words made a fully-filled report fail the 90%
-  floor. Placeholders are scaffolding that gets replaced and filling one only adds words, so
-  excluding them leaves the guard catching exactly what it exists for.
+- **Wrong marks no longer reach you.** Replaying seven groupers against a frozen run showed two
+  of them putting the split test's answer in the risk field — it was the only free-text field
+  available — at a rate that prose alone could not stop. What separates a genuine mark from
+  that misuse turned out to be mechanical:
+  genuine marks never name an option id, and nearly every misuse did. Those are now dropped with
+  a warning. Recall is still poor, which is what the warning in the report is for.
 
-- **`references/pipeline.md` split** into `pipeline.md` (steps 0-6) and `pipeline-report.md`
-  (steps 7-10). It was 1,133 lines and a single `Read` returned 945, so the ban on reporting a
-  "distinct options" count at line 1010 was unreachable — and two independent readers then
-  proposed exactly that. Seven consequences, including a silent 12→5 coverage loss on
-  `check-repo.py`'s `$BASE/$RUN` gate, which kept printing `[ok]`.
-- **Adjudication and grouping are now audited.** `progress.py`'s `BOUNDARIES` carried two
-  meanings at once, so the two boundaries printed by `merge_relations.py` and `merge_families.py`
-  could never be checked. Split into `PRINTABLE` (4) and `BOUNDARIES` (6). The recorded run left
-  five lines for six boundaries and drew no warning; it now names both.
-- **The over-budget WARN names a probe value that actually clears it.** `want * 4` — the obvious
-  inversion of "the ceiling is a quarter of the probe" — leaves the WARN standing in 2,614 of the
-  cases it fires on, because `want` is itself a function of the probe. The recorded run's 1,772
-  pairs happens to be a fixed point.
-- **Failure messages resolve the path they looked in.** Every success path already printed
-  `wrote to {abspath}`; failures named the argument.
-- **Truncated WARNs write their full evidence** to `_work/warn-*.json`. The separated-pairs WARN
-  showed 5 of 16 and asked the reader to check families it never named.
-- **The echo scan's stopword list** goes from 76 to ~250 words, and multi-word runs from the
-  invented premises are matched and reported first. Six hits on the recorded run, none actionable;
-  now two, one genuine.
-- **Two `SAY:` forecasts were materially wrong** and the orchestrator repeats them verbatim.
-  Pair proposal was billed "a couple of minutes" and took 823.6s; adjudication was billed the
-  longest wait and was not. Both claims removed rather than renumbered.
-- **The closing line says what a family counts** — one distinct action, where several families
-  may be one strategy. The count itself is unchanged; a count of "distinct options" is not
-  measurable and remains unreported.
-- **Step 0b covers the stagger's third outcome:** a bare-path write that succeeds against the
-  file tools' own cwd, landing valid options outside `outputs/` where no validator looks and the
-  never-delete rule gives no guidance. Added branch 0 — read the tool's own schema first and skip
-  the stagger when it declares paths must be absolute, as the recorded host did before anything
-  was dispatched.
-- **Step 10 defers to the spelling Step 0b established** for `slots.json`, instead of saying
-  "the bare path" flatly.
-- **Step 6 says its output is gated.** `verify_pipeline.py` re-derives `joinable.json` and refuses
-  a wrong one, but nothing in the step said so — so "this step is un-gated" was a correct reading
-  of the documentation.
-- **The quota is documented as a target**, with the refused forms of pool-size check enumerated
-  rather than the principle stated. That decision had been re-proposed five times by three readers,
-  each time wearing a different word.
+- **The report's shrinkage check counts written content, not the template.** It compared the
+  finished report against a word count that included the placeholder instructions, so editing a
+  slot's wording silently moved a quality gate — lengthening one prompt by eight words made a
+  perfectly complete report fail.
+
+- **`references/pipeline.md` was longer than a single read returns**, so a rule near the end was
+  unreachable, and two independent readers proposed exactly the thing it forbids. It is now split
+  into `pipeline.md` (steps 0–6) and `pipeline-report.md` (steps 7–10) — one procedure, split for
+  length, step numbers continuing. Seven other things were broken by the same cause, including a
+  repo check that had silently dropped from 12 cases to 5 and kept printing `[ok]`.
+
+- **Two phase lines could never be checked.** The progress helper used one name for two different
+  sets, so the boundaries printed by the grouping stages were outside the audit. A recorded run
+  showed five lines where six were due and drew no warning.
+
+- **Warnings you can act on.** The over-budget warning now suggests a value that actually clears
+  it; truncated warnings write their full evidence to a file instead of showing 5 of 16 and
+  asking you to check families they never named; failure messages name the full path they looked
+  in, as the success messages already did; and the check that catches the run's invented premises
+  leaking into your answer went from 76 to about 250 stopwords, which cut a recorded run's six
+  unactionable hits to two, one of them genuine.
+
+- **The report says what a family counts** — one distinct *action*, where several families may be
+  one strategy approached different ways. So a count of 108 families is not 108 different
+  strategies, which is how a blind reader read it. The count itself is unchanged.
+
+- **Two path defects that could put your results somewhere nobody looks.** A bare-path write can
+  succeed against the file tools' own working directory, landing valid options outside `outputs/`
+  where no check looks; the run now reads the tool's own schema first. A later step defers to
+  whatever spelling that established, instead of asserting its own.
+
+- **Step 6 says its output is gated.** It always was, but nothing in the step said so — so "this
+  step is unchecked" was a fair reading of our own documentation.
+
+- **The generator quota is documented as a target**, with the specific forms of pool-size check we
+  refuse listed by name. That decision had been re-proposed five times by three different readers,
+  each time in different words.
 
 ## [0.4.1] — 2026-09-01
 
