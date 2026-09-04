@@ -67,6 +67,46 @@ actually ran as specified rather than being narrated. That job has since moved i
 the current pipeline writes its working state to files as it goes and
 `scripts/verify_pipeline.py` refuses to let an answer be written if the stages do not add up.
 
+## What is known about the current pipeline
+
+The rounds below measure 0.1.0. This section is what has been measured since the 2026-08-23
+rebuild, and it is what the root `README.md` summarises in a line each.
+
+**Six runs have completed end to end**, two of them in
+[`transcripts/`](transcripts/) with everything they produced; two more stalled and were fixed —
+a proposer asked to hold set arithmetic over ~1,600 pairs, and a progress script that no-opped
+on a bad path.
+
+**One 50-card blind read, one problem, one judge.** All 25 of the pipeline's options were new to
+the reader; 15 were ones he would not spend anyone's time on, leaving 10 he would. A plain
+model's 25 yielded 9 worth bringing — and the pipeline spent twenty times the wall-clock to get
+there. Novelty and usefulness came out close to orthogonal on that data, which is why the ranker
+asks whether a family survives the room it is taken to, and unusualness is explicitly not a
+tiebreak. The per-lens quota and the survivability ranking are unmeasured.
+
+**Every run measures its own adjudication.** `shard_candidates.py` plants 48 pairs twice, so two
+adjudicators who cannot see each other rule on the same pair; `merge_relations.py` reports how
+often they agreed and the run prints it. On the run captured in
+[`transcripts/capture-2026-09-01-retention/`](transcripts/capture-2026-09-01-retention/) it was
+**40 of 48 — 83%**. Across every run on record the rate has ranged from **75% to 90%**, so
+somewhere between one judged pair in four and one in ten is a coin toss between two readers of
+the same evidence. `verify_pipeline.py` fails a run whose probe covers fewer than forty pairs
+rather than let it print a rate it cannot support (`PROBE_FLOOR`, scaled down only for a problem
+too small to have forty pairs to spare).
+
+What the probe does **not** detect is where the whole verdict distribution sits. Across three
+independent adjudications the `duplicate` rate ran **18.5% / 19.5% / 0.7%**, and agreement stayed
+mid-range at 81% on the 0.7% run. Agreement is measured pair by pair; it says nothing about
+calibration.
+
+**Grouping is unstable, and often shallow.** The same 450 options came back as 217, 102, 127 and
+373 families under successive instructions, each grouping individually coherent. Across the runs
+on record the grouped list came out between **3.3x and 1.4x shorter** than the raw list, and in
+the runs at the bottom of that range **about 90% of families held a single option**. That
+instability is accepted rather than solved, on the grounds that two editors organising the same
+material would also differ. **No count of "distinct options" is reported anywhere**, because that
+number is not measurable.
+
 ## Results
 
 | Iteration | Change under test | With skill | Baseline |

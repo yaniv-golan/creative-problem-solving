@@ -85,8 +85,8 @@ with [what the run measured about itself](evals/transcripts/capture-2026-09-01-r
 
 **Ask for it directly. That is the only way in.** A full run takes about half an hour, spreads
 the work over about thirty separate jobs, and returns a long document — so the run is yours to
-start, never something a phrasing triggers. On the metered API the run quoted above cost about
-$21; on a subscription it takes a matching bite out of your usage. In Claude Code and Claude
+start, never something a phrasing triggers. Billed by usage, the run quoted above came to about
+$21; on a subscription it takes a matching bite out of your limits. In Claude Code and Claude
 Desktop that decision is a command:
 
 ```
@@ -224,13 +224,10 @@ rather than forcing a different starting point. The reasoning is in
 - **Nothing is deleted for being a duplicate.** Options proposing the same intervention are
   grouped into one family, each variant stating what differs, and every one of them stays
   visible. An integrity script enforces it.
-- **Every run reports how much to trust its own grouping.** Forty-eight pairs are planted twice,
-  so two judges who cannot see each other rule on the same pair, and the agreement rate is
-  printed in the answer. On the run captured in this repo it was 40 of 48 pairs — **83%** — and
-  across the runs on record it has ranged from **75% to 90%**, so somewhere between one judged
-  pair in four and one in ten is a coin toss between two readers of the same evidence. A run
-  where fewer than forty pairs come back from two different judges fails instead of printing a
-  rate it cannot support.
+- **Every run tells you how much to trust its own grouping.** Some pairs are deliberately judged
+  twice, by judges who cannot see each other, and the run prints how often they agreed — on the
+  run captured here, 40 times out of 48. A run that cannot measure this refuses to print a figure
+  it can't support. [How the check works →](evals/README.md#what-is-known-about-the-current-pipeline)
 
 ## What it won't do
 
@@ -241,17 +238,15 @@ number of families, each grouping individually coherent — about what two edito
 same material would do. Read the families as a way through the list, not as a property of the
 problem.
 
-**Grouping often does less work than it sounds like.** How much the list actually shortens
-varies a lot. Across the runs on record, the share of compared pairs judged outright duplicates
-ran from about one in five down to under one in a hundred, and the grouped list came out
-anywhere from three times shorter than the raw one to **barely shorter at all**. In the runs at
-that bottom end, **about nine families in ten held a single option** — the report is then
-essentially the full list with a handful of near-repeats tucked together. Options drawn from
-nine deliberately unlike angles often are not versions of each other.
+**Grouping often does less work than it sounds like.** Sometimes it folds the list to a third of
+its length. Sometimes it barely shortens it at all and nearly every family holds a single
+option — the report is then the full list with a handful of near-repeats tucked together.
+Options drawn from nine deliberately unlike angles often are not versions of each other.
 
 **No count of "distinct options" is reported anywhere**, because that number is not measurable.
-A family count is a count of groupings, and the agreement rate under *What you get* says how far
-two readers of the same evidence disagree about those.
+A family count counts groupings, not ideas.
+
+[The numbers behind all three →](evals/README.md#what-is-known-about-the-current-pipeline)
 
 ## Reading the output
 
@@ -272,30 +267,17 @@ get it as a file to keep. [Where a run writes its files →](INSTALL.md#where-a-
 Well enough to be worth half an hour on an open strategic problem — on evidence thin enough
 that you should know its shape before you trust it.
 
-**One measurement covers the pipeline you would install.** Six runs have completed end to end,
-two of them captured in this repo with everything they produced; two more stalled and were
-fixed. The quality evidence behind all of it is a single reading: 50 blind cards from one
-problem, one judge. All 25 of the pipeline's options were new to the reader; 15 were ones he
-would not spend anyone's time on, leaving 10 he would. A plain model's 25 yielded 9 worth
-bringing — and the pipeline spent twenty times the wall-clock to get there. Novelty and
-usefulness came out close to orthogonal there, which is why unusualness is explicitly not a
-ranking tiebreak. The per-lens quota and the survivability ranking are unmeasured.
+One reader compared 25 of its options against 25 from a plain model: **10 worth someone's time
+against 9**, for twenty times the wait. On a bounded question a plain answer beat it outright.
+The run at the top of this page was graded against two claims and met both — that it tests a
+ruled-out premise instead of obeying it, and that at least one option questions the framing —
+which is one run, not a rate.
 
-The run shown at the top of this page was graded against two claims and met both: that it tests
-a ruled-out premise instead of obeying it, and that at least one option questions the framing.
-One run is not a rate.
+**The older A/B rounds measure a pipeline this one replaced**, and have not been re-run since
+the rebuild of 2026-08-23. They are published in full, including the three findings that cut
+against the skill.
 
-**On bounded questions a plain answer beats it** — 17/18 to 14/18. The half hour and the spend
-are the whole cost, and on a question that deserved five minutes it is a bad trade.
-
-**The graded evals measure the 0.1.0 pipeline, not this one.** Nothing in them has been re-run
-since the rebuild of 2026-08-23. All five cases are wired and now grade the answer itself rather
-than only whether a stage fired, but the runs are metered and have not happened; the
-negative-trigger case and the bounded case a plain answer won are the honest two to start with.
-Every 0.1.0 number, including the three findings that cut against the skill, is in
-[`evals/`](evals/README.md) — whose per-round labels are development builds, not the version you
-installed. Why category negation is in the skill but not in the pipeline is in
-[`DESIGN-NOTES.md`](docs/DESIGN-NOTES.md).
+[How all of it was measured, including the rounds it lost →](evals/README.md)
 
 ## Requirements
 
@@ -307,9 +289,10 @@ load it. Claude is the only one this has been tested on.
 
 - **Sub-agent dispatch.** Generation runs one isolated pass per lens as its own sub-agent;
   without dispatch the skill falls back to sequential passes and is required to tell you it did.
-- **`python3` and a Bash tool.** Stdlib-only scripts do the bookkeeping — dealing the pairs out
-  to judges, merging their verdicts, sorting the options into families, building the report,
-  checking the finished run. A stage that did not run leaves nothing to count.
+- **`python3` and a Bash tool.** Plain Python scripts, nothing to install, do the bookkeeping —
+  dealing the pairs out to judges, merging their verdicts, sorting the options into families,
+  building the report, checking the finished run. A stage that did not run leaves nothing to
+  count.
 - **Web search**, where the host provides it — WebSearch specifically, not WebFetch. Where there
   is none, the skill says so in one line and states borrowed mechanisms as principles rather
   than citations.
