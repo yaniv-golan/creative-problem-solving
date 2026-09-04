@@ -68,16 +68,30 @@ either direction.
   promises one interruption, and the two questions are printed as separate lines you can answer
   one at a time rather than buried at the end of a paragraph.
 
-- **The gate was tested by hand on Cowork, and the test found a defect that is fixed here.** What
-  worked: it asks, your answer is recorded, and the run's stated reading is rewritten to match
-  before any work starts. What did not: the two questions arrived as the last twenty words of a
-  200-word block, and of four one-click choices, three started the run without answering and the
-  fourth was labelled a *correction* — so declining was the easiest thing to do, and the default
-  recorded both answers as unstated. The cause was a line in the spec telling the host to present
-  the gate "as a single question". That line is gone; the spec now states what the result has to
-  be true of and names no mechanism. **Nothing has yet observed the new shape** — three live runs
-  have produced three different results from identical instructions — so this is well-motivated
-  rather than verified.
+- **The gate was tested by hand on Cowork twice, and each test found a defect that is fixed
+  here.** What worked both times: it asks, your answer is recorded, and the run's stated reading
+  is rewritten to match before any work starts.
+
+  The first test: the two questions arrived as the last twenty words of a 200-word block, and of
+  four one-click choices, three started the run without answering and the fourth was labelled a
+  *correction* — so declining was the easiest thing to do, and the default recorded both answers
+  as unstated. The cause was a line in the spec telling the host to present the gate "as a single
+  question". That line is gone; the spec now states what the result has to be true of and names no
+  mechanism.
+
+  The second test, on the fix: three separate questions, as intended — but the first still carried
+  150 words of reading and invented pressures inside its own text, and every one of the three
+  offered a second choice reading *"I'll type it — choose Other and write it"*, directly above the
+  free-text box the host had already drawn. Two causes, both now closed. The reading and the
+  pressures print as `SAY:` lines rather than `ASK:` — they are things you are told, they belong
+  above the questions, and the marker is what says so. And the spec now requires every option
+  offered to be a possible answer in itself: never an instruction for working the host's own
+  controls, and never a guess at what you have tried or what would count as solved, since those
+  two answers reach the report labelled as your words.
+
+  **Nothing has yet observed this third shape.** Each test so far has found something the previous
+  one could not have predicted, so read this as two defects removed rather than as a gate now
+  known to be right.
 
 - **The plugin installs again on Claude Desktop and Cowork.** Their `.plugin` upload refuses a
   description over 500 characters, and ours had grown past it (an 851-character description was

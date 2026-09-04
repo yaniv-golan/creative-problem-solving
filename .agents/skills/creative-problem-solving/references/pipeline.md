@@ -495,24 +495,37 @@ one file rendered three times, and a retyped copy is how they stop agreeing.
 python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" ask
 ```
 
-It prints five `ASK:` lines. **Put all five in front of the user in one interruption, markers
-stripped, and wait for a reply.**
+It prints five lines: **two `SAY:` and three `ASK:`, and the markers are the instruction.** Say
+the two — the reading and the pressures are statements, not questions — then put the three to the
+user as one interruption, markers stripped, and wait for a reply.
 
-**How you do that is this host's business, not this file's** — a question with options, a form,
-plain chat, whatever it has. This step names no tool and never will. What it does specify is what
-the result has to be true of, because those properties are what the gate is for and a host widget
-will not supply them on its own:
+**How you ask is this host's business, not this file's** — a question with options, a form, plain
+chat, whatever it has. This step names no tool and never will. What it does specify is what the
+result has to be true of, because those properties are what the gate is for and a host widget will
+not supply them on its own:
 
-- **All five lines are in front of the reader at the moment they answer** — not only in an earlier
-  message they may have scrolled past. The reading is what they are being asked to approve.
+- **The reading is said above the questions, in the same turn, and is not inside one.** The reader
+  needs it while they answer, so it cannot be an earlier message they scroll past — but it is
+  something they are being told, and a statement pasted into a question's text turns that question
+  into a wall of prose with the actual ask at the end of it.
 - **The two asks are separately answerable.** They are two different questions and a reader
   answers them one at a time. Collapsed into a single prompt they read as one vague request and
-  get skipped, which is why the script now prints them as two lines.
-- **Count the things that want an answer, not the lines.** Of the five, two state (the reading,
-  the pressures) and **three want a response** — the two asks and the go-or-correct line. Three or
-  four is the ceiling; past that a gate stops being one interruption. The scenarios assert
-  `questions_count_max: 4` for this, which counts sub-questions, so a gate at three leaves one
-  spare and a SECOND gate reds it whatever it asks.
+  get skipped, which is why the script prints them as two lines.
+- **Count the things that want an answer, not the lines.** Three do: the two asks and the
+  go-or-correct line. Three or four is the ceiling; past that a gate stops being one interruption.
+  The scenarios assert `questions_count_max: 4` for this, which counts sub-questions, so a gate at
+  three leaves one spare and a SECOND gate reds it whatever it asks.
+- **Every option you offer is a possible answer, whole in itself — never an instruction for
+  working the host's controls.** "I'll type it — choose Other and write it" is not an answer. It
+  duplicates a free-text box the host already puts on the same gate, it spends one of your three
+  or four slots saying nothing, and it makes typing look like the off-menu move when it is the
+  expected one. If the only honest choices for a question are "skip" and words only the reader
+  has, that question does not want an option list — ask it and let them write.
+- **Do not offer a guess at either answer.** You may offer "skip"; you may not offer a candidate
+  for what they have tried or what would count as solved. Those two values are the whole reason
+  the gate exists — they reach nine generators as the user's words and the report as "(your
+  words)" — and a guess the reader clicks is this run's own invention coming back wearing their
+  name.
 - **Answering is not a correction.** Whatever route supplies what they have tried or what would
   count as solved may not be labelled, described or grouped as fixing a mistake. Correcting the
   reading is a different act and gets its own route.
@@ -520,13 +533,16 @@ will not supply them on its own:
   host has a default, "go" is it and the run must never depend on having one — but a reader must
   not have to hunt for the way to answer.
 
-**Measured, on a live Cowork run.** The gate rendered as a single block of prose with the two asks
-as its last twenty words, offering four one-click paths: three of them started the run without
-answering, the pre-selected default recorded both answers as unstated, and the only route to the
-answers was labelled a correction. The run then faithfully recorded that the user declined. Two
-harness runs of the same instruction produced good gates — one offering "Let me answer both" as a
-first-class choice — so this is not a thing the wording of the ASK lines settles by itself. It is
-settled here, as properties, or not at all.
+**Measured, on two live Cowork runs, and the second is why half of the list above exists.** The
+first rendered the whole gate as one block of prose with the two asks as its last twenty words,
+offering four one-click paths: three started the run without answering, the pre-selected default
+recorded both answers as unstated, and the only route to the answers was labelled a correction.
+The run faithfully recorded that the user declined. The second, after that was fixed, asked three
+separate questions and still put a hundred and fifty words of reading and pressures inside the
+first one — and gave every question a second option reading "I'll type it: choose Other and write
+it", beside the free-text field the host had already drawn two lines below. Two harness runs of
+the same instruction produced good gates, so this is not something the wording of the lines
+settles by itself. It is settled here, as properties, or not at all.
 
 **There are two replies, and only one of them is "go".**
 

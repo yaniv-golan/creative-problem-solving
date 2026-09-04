@@ -5556,7 +5556,7 @@ def _gate_dir(**over):
 
 
 def t_brief_gate_asks_once():
-    """Step 0d's four lines, its one correction, and the two ways out of it.
+    """Step 0d's five lines, its one correction, and the two ways out of it.
 
     The gate is the run's one question and there is no second, so the refusals matter as much as
     the prints: a run that can ask again can interview, and an interview is not a divergence
@@ -5570,9 +5570,16 @@ def t_brief_gate_asks_once():
         rc, out = run("brief_gate.py", d, "ask")
         lines = [l for l in out.splitlines() if l.strip()]
         check("the ask is five lines and nothing else",
-              rc == 0 and len(lines) == 5 and all(l.startswith("ASK: ") for l in lines),
-              out.strip()[:200])
-        check("it opens with the reading", lines[0].startswith("ASK: Reading this as what else"),
+              rc == 0 and len(lines) == 5, out.strip()[:200])
+        # THE READING IS SAID, THE THREE ASKS ARE ASKED, and the markers are the whole
+        # instruction. Marked ASK: the head inherits "put it to the user", and a live Cowork run
+        # did exactly that -- it pasted a hundred and fifty words of reading and pressures on to
+        # the front of the first question, leaving the actual ask as its last eight words.
+        check("the reading and the pressures are said, not asked",
+              all(l.startswith("SAY: ") for l in lines[:2]), " | ".join(lines[:2])[:200])
+        check("and only the three that want an answer are asked",
+              all(l.startswith("ASK: ") for l in lines[2:]), " | ".join(lines[2:])[:200])
+        check("it opens with the reading", lines[0].startswith("SAY: Reading this as what else"),
               lines[0][:90])
         # THE TWO ASKS ARE TWO LINES. Bundled into one sentence they read as a single vague
         # prompt and get skipped -- measured on a live Cowork run, where the gate rendered as a

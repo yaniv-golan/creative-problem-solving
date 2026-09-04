@@ -51,11 +51,13 @@ on_unanswered: first
 # is how a scenario uses it, so this supplies both asks the way a real user would and lets the run
 # take the correction path: record, re-run 3b and 4, print the answers back, start.
 #
-# The anchor is deliberately wide. `when_question` matches the QUESTION text only, and the gate's
-# four lines are bundled into one model-composed question — so anchoring on one exact sentence
-# would silently miss if the model put that sentence into an option description instead, and
-# `on_unanswered: first` would answer in its place with nothing recording that it had. Three
-# producer-authored fragments, any of which lands the rule.
+# The anchor is deliberately wide. `when_question` matches the QUESTION text only, and step 0d
+# leaves the model free to compose three sub-questions out of three producer-authored lines — so
+# anchoring on one exact sentence would silently miss if the model put that sentence into an
+# option description instead, and `on_unanswered: first` would answer in its place with nothing
+# recording that it had. Three fragments, any of which lands the rule. "Reading this as" is kept
+# among them even though the reading is now a `SAY:` line and belongs above the questions: a run
+# that pastes it into the question text anyway is a run this rule must still fire on.
 answers:
   - when_question: 'Reading this as|already tried or ruled out|Say "go" to start'
     answer: "Already ruled out: cutting the midweek rate, and a corporate rate card. Solved means midweek at 60% without moving anyone off the weekend. That's everything — go."
@@ -87,11 +89,18 @@ assert:
   # delivered inside a gate would be invisible to it — and that reasoning was sound but the premise
   # was wrong: the model narrates the reading as text and asks a shorter question, rather than
   # packing four lines into a question label.
+  #
+  # `brief_gate.py` now settles which surface that is rather than leaving it to the run: the
+  # reading and the pressures print as `SAY:` lines, which SKILL.md relays verbatim as assistant
+  # text, and only the three lines that want an answer print as `ASK:`. So the transcript is the
+  # surface by construction, and this assertion reds a run that asks the reading instead of
+  # saying it.
   - gate_answer_count_min: 1
   - transcript_contains: "Reading this as"
-  # ONE QUESTION. The gate is the run's one question: step 0d puts its four lines to the user as a
-  # SINGLE question, so a run that splits the two asks into separate sub-questions counts 3 here
-  # and reds — which is the violation, not a technicality. Same ceiling as every other scenario.
+  # ONE GATE, AND THIS COUNTS SUB-QUESTIONS. Step 0d has three things that want an answer — the
+  # two asks and the go-or-correct line — so three is the expected shape and this leaves one
+  # spare. What it catches is a SECOND gate: the run gets one interruption, and a fourth
+  # sub-question anywhere in the run reds whatever it asks. Same ceiling as every other scenario.
   - questions_count_max: 4
   # THE ANSWER SURVIVED THE WHOLE PIPELINE. This is the assertion the scenario was rewritten for:
   # `build_report.py` prints this heading only when `counts_as_solved` is non-empty, so it is true

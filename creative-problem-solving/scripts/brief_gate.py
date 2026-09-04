@@ -25,9 +25,9 @@ place.
   brief_gate.py <work-dir> go
   brief_gate.py <work-dir> render-brief
 
-`ask` prints ASK: lines, which the orchestrator puts to the user as one interruption
-and waits on.
-`skip` and `go` print SAY: lines, which are repeated and not waited on. A refusal prints one
+`ask` prints two SAY: lines -- the reading and the pressures, which are said -- and then three
+ASK: lines, which the orchestrator puts to the user as one interruption and waits on.
+`skip` and `go` print SAY: lines only. A refusal prints one
 FAIL: line and exits 1; a work directory that is not there exits 2, because a heartbeat that
 stays quiet about its own misconfiguration never fires and nobody notices.
 
@@ -160,7 +160,15 @@ def render(mode, brief, reason=None, path="brief.json"):
     #
     # Separately answerable is the property that matters, and it is a property of the LINES, not
     # of the host's widget. This file can only guarantee it here.
-    return [f"ASK: {ln}" for ln in head + [
+    #
+    # AND THE HEAD IS SAID, NOT ASKED -- which is what the two markers mean and why the block
+    # carries both. The reading and the pressures are statements; the reader is being told what
+    # this run settled on. Marked ASK: they inherit "put it to the user", and the next live run
+    # did exactly that: it prepended a hundred and fifty words of reading and pressures to the
+    # first question's own text, so the question a reader had to find -- "what have you already
+    # tried?" -- arrived as the last eight words of a wall of prose. Nothing about the sentences
+    # caused that; the marker did.
+    return [f"SAY: {ln}" for ln in head] + [f"ASK: {ln}" for ln in [
         "What have you already tried or ruled out? A phrase is enough, or say skip.",
         "What would count as solved? A phrase again, or skip.",
         "Say \"go\" to start, or correct anything above. I will fix it once and start, and I "
