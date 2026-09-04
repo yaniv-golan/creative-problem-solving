@@ -68,58 +68,12 @@ either direction.
   promises one interruption, and the two questions are printed as separate lines you can answer
   one at a time rather than buried at the end of a paragraph.
 
-- **The gate was tested by hand on Cowork five times, and each test found something the one
-  before it could not have shown.** What worked every time: it asks, your answer is recorded, and the run's stated reading
-  is rewritten to match before any work starts.
-
-  The first test: the two questions arrived as the last twenty words of a 200-word block, and of
-  four one-click choices, three started the run without answering and the fourth was labelled a
-  *correction* — so declining was the easiest thing to do, and the default recorded both answers
-  as unstated. The cause was a line in the spec telling the host to present the gate "as a single
-  question". That line is gone; the spec now states what the result has to be true of and names no
-  mechanism.
-
-  The second test, on the fix: three separate questions, as intended — but the first still carried
-  150 words of reading and invented pressures inside its own text, and every one of the three
-  offered a second choice reading *"I'll type it — choose Other and write it"*, directly above the
-  free-text box the host had already drawn. Two causes, both now closed. The reading and the
-  pressures print as `SAY:` lines rather than `ASK:` — they are things you are told, they belong
-  above the questions, and the marker is what says so. And the spec now requires every option
-  offered to be a possible answer in itself: never an instruction for working the host's own
-  controls, and never a guess at what you have tried or what would count as solved, since those
-  two answers reach the report labelled as your words.
-
-  The third test, on that fix: no wall of text and no fake options — and no questions either. The
-  new rule said a question whose only honest answers are "skip" and words only you have does not
-  need an option list, and Cowork will not accept a question without one. All three were refused;
-  you saw the reading, three lines reading *Failed*, and then the same three questions retyped as
-  prose. The rule is now a requirement in both directions: an option must be an answer rather than
-  an instruction, *and* the ask must be one the host will accept.
-
-  The fourth test: the right shape at last — the reading above, three short questions, nothing
-  refused — and every question offering two choices you did not need. The card already draws its
-  own *Skip* button and its own free-text box, so *"Skip"* and *"I'll say in my own words"* were
-  both menu items pointing at buttons beside them. The rule is now about what an option is worth
-  rather than about what it may not say: an option has to give you something the controls on the
-  card do not, the best source of one is your own prompt quoted back, and a question with no such
-  answer is asked as a line of text instead of as a menu.
-
-  The fifth test is the shape this was aiming at: the reading above, three short questions, and
-  options worth reading — *"nothing, open field"*, and the run's own banned obvious answer handed
-  back for you to confirm. It also showed the remaining risk. Among three otherwise good answers
-  to *what would count as solved* sat *"investable theses — angles a fund could actually back"*,
-  which is not a bar, it is a guess about who you are — and clicking it would have recorded that
-  guess as your goal. The rule that governs an option is now the rule that already governed
-  invented pressures: **it may propose something about the problem, never assert something about
-  you.**
-
-  **The sixth test is the one that passed, and it was run on a problem with something in it.**
-  The first five all used a bare one-line prompt, so the run had nothing of yours to offer and
-  invented options instead. Given a problem that already said what had been tried, the gate opened
-  with your own two attempts quoted back and marked *(your words)*, as a checklist, beside
-  *"nothing else — open field"*; offered three bars that were all about the business rather than
-  about you; and closed with *go* or *correct the reading first*. Nothing was refused, nothing was
-  a dead slot, and nothing put words in your mouth. That is the gate as designed, seen working.
+- **How the gate looks is specified, and was checked by hand on Cowork.** The step names no
+  widget — hosts differ — so it states what the result has to be true of instead. The reading is
+  said above the questions rather than packed inside one. Each question offers choices worth
+  making, and where your own problem statement already answers one, it comes back in your words
+  rather than as a guess. No option asserts anything about you — your role, your budget, what kind
+  of buyer you are — only about the problem. Skipping any of it stays one tap away.
 
 - **The plugin installs again on Claude Desktop and Cowork.** Their `.plugin` upload refuses a
   description over 500 characters, and ours had grown past it (an 851-character description was
