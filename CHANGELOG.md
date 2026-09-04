@@ -9,7 +9,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 _Nothing yet._
 
-## [0.5.0] — 2026-09-03
+## [0.5.0] — 2026-09-04
 
 Most of this release changes what the report *tells* you: it asks you two questions before it
 starts, it says whose behaviour the ideas are meant to change, and it marks options that come at
@@ -133,6 +133,24 @@ either direction.
   compare a pool's option count against a fixed number. Both tested by planting the defect.
 
 ### Fixed
+
+- **The README reported the wrong adjudicator agreement for its own worked example.** The demo
+  capture moved to the 2026-09-01 run; the sentence reporting its agreement did not, and read
+  37 of 48 — 77% — which belongs to the capture before it. That run's `agreement.json` says
+  **40 of 48, 83%**. The stated range across runs was widened to 70–90% at the same time, and no
+  run on record sits below 75%, so the range is **75% to 90%** and the worst case is one judged
+  pair in four rather than one in three. Also corrected there: six runs have completed end to
+  end rather than two, the release zip holds ten files rather than nine, the section promising
+  three limits listed four, and the quoted closing read is marked where it was cut instead of
+  being called verbatim.
+
+- **The README's measurement detail moved to `evals/README.md`, which is where its working
+  belongs.** Roughly a fifth of the page was methodology — blind cards, an agreement probe, an
+  A/B scoreboard — standing between a reader and the decision to install, none of it answerable
+  without knowing how inter-rater agreement works. Every number survives under
+  *What is known about the current pipeline*, including the duplicate-rate spread the probe
+  cannot see and the `PROBE_FLOOR` that fails a run rather than print a rate it cannot support.
+  The README keeps the verdicts and links to them.
 
 - **A risk line carried over from a merged option now says where it came from.** When two
   families merge, the absorbed one's warning prints under the surviving option, and it used to
