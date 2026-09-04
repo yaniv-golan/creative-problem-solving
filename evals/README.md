@@ -10,7 +10,7 @@ rounds where the skill lost.
 > `scripts/verify_pipeline.py`. **No eval in here has been re-run against it.** The prompts,
 > instruments and the way of reading a result all transfer; the results describe a previous
 > architecture, and the `correct_mode` field in `evals.json` no longer refers to anything. What is
-> known about the current pipeline is two completed runs and one 50-card blind read, summarised in
+> known about the current pipeline is six completed runs and one 50-card blind read, summarised in
 > the root [`README.md`](../README.md#does-it-actually-work) and the changelog.
 
 Publishing eval results for a skill is unusual. Publishing the losses is the point: three

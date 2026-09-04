@@ -288,11 +288,14 @@ One run is not a rate.
 **On bounded questions a plain answer beats it** — 17/18 to 14/18. The half hour and the spend
 are the whole cost, and on a question that deserved five minutes it is a bad trade.
 
-**The graded evals measure the 0.1.0 pipeline, not this one.** Re-running them is sequenced
-after this release, starting with the negative-trigger case and the bounded case a plain answer
-won — the honest two to begin with. Every 0.1.0 number, including the three findings that cut
-against the skill, is in [`evals/`](evals/README.md). Why category negation is in the skill but
-not in the pipeline is in [`DESIGN-NOTES.md`](docs/DESIGN-NOTES.md).
+**The graded evals measure the 0.1.0 pipeline, not this one.** Nothing in them has been re-run
+since the rebuild of 2026-08-23. All five cases are wired and now grade the answer itself rather
+than only whether a stage fired, but the runs are metered and have not happened; the
+negative-trigger case and the bounded case a plain answer won are the honest two to start with.
+Every 0.1.0 number, including the three findings that cut against the skill, is in
+[`evals/`](evals/README.md) — whose per-round labels are development builds, not the version you
+installed. Why category negation is in the skill but not in the pipeline is in
+[`DESIGN-NOTES.md`](docs/DESIGN-NOTES.md).
 
 ## Requirements
 
