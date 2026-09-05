@@ -424,8 +424,24 @@ So record the split before anything is dispatched, in `$RUN/_work/brief.json`:
  "decision": "<what they are deciding at the moment they would>",
  "invented": ["<each constraint or attribute you added that the user did not state>"],
  "tried_or_ruled_out": ["<what the user says they have already tried — may be empty>"],
- "counts_as_solved": "<what the user says would count as solved — may be empty>"}
+ "counts_as_solved": "<what the user says would count as solved — may be empty>",
+ "current_state": ["<one short fact per string, from the user's own connected data — omit the
+                    key entirely if you grounded on nothing>"]}
 ```
+
+**`current_state` is the only route by which grounding reaches a generator.** SKILL.md tells you
+to ground inward before you ask; this is where the result goes. `render-brief` prints it inside
+the PROBLEM block, so the gate says it back to the user before anything is spent, the readback
+hash covers it, and all nine passes receive it identically — the same guarantees the rest of the
+block gets.
+
+Context written into a dispatch prompt by hand has none of them. It is not in the readback, so
+the user never corrects it; not in the hash, so a changed brief still verifies; and not in any
+file, so no later stage can see what the generators were actually steered by. A live run did
+exactly that, and the nine generators were steered by a paragraph no gate has ever seen.
+
+**Facts, not proposals.** Each string is something that is true of the reader's situation. An
+option belongs in a pool, and a "fact" that is really a suggestion steers every pass toward it.
 
 **The last two are the user's answers at step 0d, and they are recorded separately from
 `invented` for the same reason `invented` is recorded separately from `verbatim_prompt`.** Once

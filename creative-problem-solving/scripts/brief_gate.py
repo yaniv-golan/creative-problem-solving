@@ -254,6 +254,7 @@ def render_problem(brief, path="brief.json"):
     solved = one_line(brief_str(brief, "counts_as_solved", path))
     tried = _list_of_str(brief, "tried_or_ruled_out", path)
     invented = _list_of_str(brief, "invented", path)
+    state = _list_of_str(brief, "current_state", path) if brief.get("current_state") else []
 
     out = [f"PROBLEM: {reading}. The person who has to act: {actor}. "
            f"What they are deciding: {decision}."]
@@ -264,6 +265,20 @@ def render_problem(brief, path="brief.json"):
     if tried:
         out.append("ALREADY TRIED OR RULED OUT — do not hand these back:")
         out += [f"- {t}" for t in tried]
+    # WHAT THE RUN LEARNED FROM THE USER'S OWN DATA, carried in the block rather than beside it.
+    #
+    # SKILL.md tells a run to ground inward before it asks, and `brief.json` had nowhere to put
+    # the result — so on the first 0.5.0 field run the orchestrator wrote a context paragraph by
+    # hand into each generator prompt, OUTSIDE this block. Everything this file exists to
+    # guarantee stopped at the edge of that paragraph: the gate's readback never showed it to the
+    # user, the readback hash does not cover it, and no later stage can see what the nine
+    # generators were actually steered by.
+    #
+    # A field here puts it back inside the one rendering, so it is said at the gate, hashed with
+    # the rest, and identical across passes like everything else in this block.
+    if state:
+        out.append("WHAT THIS RUN FOUND IN YOUR OWN DATA — treat as given, not as a proposal:")
+        out += [f"- {c}" for c in state]
     if invented:
         out.append("PRESSURES ADDED FOR THIS RUN — these describe the world, not the person "
                    "asking:")
