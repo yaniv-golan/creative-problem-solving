@@ -110,6 +110,16 @@ def main(wd, out):
     # filename order. That was survivable when a verdict only labelled an option; it is not now
     # that `refuted` removes one, because which file happened to sort last would decide whether
     # a reader ever sees it.
+    # OBJECTIONS, IF THE ADVERSARY RAN. Optional by construction: the file is absent on a host
+    # without sub-agent dispatch and on every run made before this stage existed, and a report is
+    # still a report without it. Absent means nothing renders -- never an empty "Objection —"
+    # line, which would read as "we looked and found none" when nobody looked.
+    objection = {}
+    for f in sorted(glob.glob(os.path.join(wd, "adversary*.json"))):
+        for e in load(f, "objections"):
+            if e.get("id") and str(e.get("objection") or "").strip():
+                objection[e["id"]] = e
+
     verdict, seen_in = {}, {}
     for f in sorted(glob.glob(os.path.join(wd, "verified-*.json"))) + \
              ([os.path.join(wd, "verified.json")] if os.path.exists(os.path.join(wd, "verified.json")) else []):
@@ -368,6 +378,23 @@ def main(wd, out):
         # their own band below.
         if note:
             b += ["", f"*Note — {one_line(note)}*"]
+
+        # THE OBJECTION, RENDERED LIKE THE VERIFIER'S NOTE AND FOR THE SAME REASON.
+        #
+        # A verifier checks the outside world; the adversary checks the option against this
+        # reader's own constraints and against the other options. Both are qualifications on an
+        # option the report is otherwise presenting favourably, and both belong under it rather
+        # than collected elsewhere -- a doubt the reader meets three sections later is a doubt
+        # that arrives after they have already formed a view.
+        #
+        # `answerable` rides in the same paragraph rather than its own line: an objection with a
+        # remedy beside it is a decision, and an objection alone is a veto. The reader needs to
+        # be able to tell those apart in one glance.
+        _obj = objection.get(head)
+        if _obj:
+            _ans = one_line(str(_obj.get("answerable") or "").strip())
+            b += ["", f"*Objection — {one_line(_obj['objection'])}"
+                      + (f" **Answerable by:** {_ans}*" if _ans else "*")]
 
         # THE RISK MARK, UNGATED BY RANK. On the run this came from, nine options worked by
         # withholding, degrading or coercing the people the reader is trying to serve, and they

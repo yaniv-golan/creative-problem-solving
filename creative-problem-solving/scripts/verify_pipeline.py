@@ -1014,6 +1014,28 @@ def main(wd):
     # `slots` is counted off the render loop rather than derived from the partition, so it catches a
     # divergence between what the report emitted and what the grouping says. That is the first point
     # in the run where a number for "presented" exists independently at all.
+    # DID THE ADVERSARY RUN? Reported, never required. The file is absent on a host with no
+    # sub-agent dispatch and on every run made before the stage existed, so refusing without it
+    # would fail runs that could not have produced it. But silence is the wrong default the other
+    # way too: a run that HAD dispatch and skipped the only stage that argues against its own
+    # options has told the reader it checked more than it did, and nothing else would say so.
+    _adv = []
+    for _f in sorted(glob.glob(os.path.join(wd, "adversary*.json"))):
+        try:
+            _d = json.load(open(_f, encoding="utf-8"))
+            _adv += [e for e in (_d.get("objections") or [])
+                     if e.get("id") and str(e.get("objection") or "").strip()]
+        except Exception:
+            warn(f"{os.path.basename(_f)} is not readable as objections — the adversary pass "
+                 f"wrote something this script cannot count, so no objection will render")
+    if _adv:
+        _on_top13 = sum(1 for e in _adv if e.get("id") in set(top13))
+        print(f"adversary: {len(_adv)} objection(s), {_on_top13} on a top-13 lead — each renders "
+              f"under its option")
+    else:
+        print("adversary: no objections file — nothing in this run argued against its own "
+              "options. If sub-agent dispatch was available, step 8b was skipped.")
+
     if rejected:
         print(f"rejected (refuted by search, present these in their own band with the source): "
               f"{rejected}")

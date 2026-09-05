@@ -184,6 +184,38 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
    The tally includes the refutations. A run that reports what held up and not what did not has
    told the reader it went better than it did.
 
+8b. **Dispatch ONE `adversary` sub-agent over the same top 13.** This is the only stage that
+   argues against the options, and it is the one a human otherwise runs by hand afterwards.
+
+   A verifier asks whether a borrowed mechanism is real. An adversary asks whether an option is
+   right **for this reader** — against `verbatim_prompt`, `counts_as_solved` and
+   `tried_or_ruled_out`, against the other options in the band, and against its own arithmetic.
+   An option can rest on a perfectly real mechanism and still contradict something the reader
+   ruled out on line one, and nothing else in this pipeline looks.
+
+   One dispatch, not thirteen: the highest-value catches are *contradictions between options*,
+   and a sub-agent holding one option cannot see them. Give it the brief, and the rank, id and
+   text of the effective lead of each of the top 13.
+
+   ```json
+   {"objections": [{"id": "p3-011", "objection": "<the strongest single reason this fails here>",
+                    "answerable": "<the cheapest thing that would settle it>",
+                    "grounds": "brief|contradiction|arithmetic|mandate",
+                    "depends_on_invented": false}]}
+   ```
+
+   Write it to `$BASE/$RUN/_work/adversary-1.json`. **Fewer than 13 objections is a correct
+   answer** — an objection it does not hold is worse than none. `build_report.py` renders each
+   under its option, in the same place as a verifier's note, and renders nothing where there is
+   no objection.
+
+   **It may not reword an option.** Ids only, like every stage after generation.
+
+   This stage is optional in the sense that the report builds without it — on a host with no
+   sub-agent dispatch there is no file and nothing renders. It is not optional in the sense of
+   being skippable when dispatch works: `verify_pipeline.py` reports whether it ran, and a run
+   that had the capability and skipped it is telling the reader it checked more than it did.
+
 9. **Verify integrity before writing a word of the answer.** Run:
    `python3 "$CPS/scripts/verify_pipeline.py" "$BASE/$RUN/_work"`
    It fails if any option is in no family or in two, if a family is empty or unlabelled, if the

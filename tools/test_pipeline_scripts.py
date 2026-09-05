@@ -6116,6 +6116,52 @@ def t_the_assumption_line_is_rendered_not_retyped():
         shutil.rmtree(d, True)
 
 
+def t_the_adversary_pass_is_optional_but_never_silent():
+    """Objections render under their option; a missing file is reported, not required.
+
+    The stage did not exist before 2026-09-05, and a host without sub-agent dispatch cannot run
+    it, so requiring the file would fail runs that could not have produced it. But a run that HAD
+    dispatch and skipped the only stage that argues against its own options has told the reader
+    it checked more than it did -- so absence is reported rather than passed over.
+    """
+    print("\nthe adversary pass is optional but never silent")
+    with tempfile.TemporaryDirectory() as d:
+        ids, fams = full_fixture(d)
+        rc, out = run("verify_pipeline.py", d)
+        check("a run with no adversary file still passes", rc == 0, out.strip()[:120])
+        check("...and says so rather than staying quiet",
+              "adversary: no objections file" in out, out.strip()[:200])
+
+        lead = fams[0]["members"][0]
+        json.dump({"objections": [{"id": lead, "objection": "OBJECTION TEXT.",
+                                   "answerable": "REMEDY TEXT."}]},
+                  open(os.path.join(d, "adversary-1.json"), "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("with objections it still passes", rc == 0, out.strip()[:120])
+        check("...and counts them against the top 13",
+              "1 objection(s), 1 on a top-13 lead" in out, out.strip()[:200])
+
+        rep = os.path.join(d, "report.md")
+        rc, out = run("build_report.py", d, "--out", rep)
+        check("the report builds", rc == 0, out.strip()[:120])
+        body = open(rep).read()
+        check("the objection renders under its option",
+              "*Objection — OBJECTION TEXT." in body, body[:200])
+        check("...carrying the remedy in the same paragraph",
+              "**Answerable by:** REMEDY TEXT.*" in body, body[:200])
+
+        # An objection with no remedy is a veto; one with a remedy is a decision. The reader has
+        # to be able to tell them apart, so the label must not appear when there is nothing to put
+        # after it.
+        json.dump({"objections": [{"id": lead, "objection": "BARE OBJECTION."}]},
+                  open(os.path.join(d, "adversary-1.json"), "w"))
+        rc, out = run("build_report.py", d, "--out", rep)
+        body = open(rep).read()
+        check("an objection with no remedy renders without the label",
+              "*Objection — BARE OBJECTION.*" in body and "Answerable by" not in body,
+              body[:200])
+
+
 def t_a_refuted_lead_that_slides_two_families_onto_one_move_is_reported():
     """Two families whose FIRST members differ, but whose PRESENTED leads collide once a lead
     is refuted.
@@ -6244,6 +6290,7 @@ TESTS = (t_brief_gate_asks_once, t_the_assumption_line_is_rendered_not_retyped, 
     t_family_gloss_is_in_the_report_not_only_the_narration,
     t_risk_marks_carry_their_own_scope,
     t_a_refuted_lead_that_slides_two_families_onto_one_move_is_reported,
+    t_the_adversary_pass_is_optional_but_never_silent,
     t_every_test_is_registered,
 )
 

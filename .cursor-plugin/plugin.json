@@ -2,7 +2,7 @@
   "name": "creative-problem-solving",
   "displayName": "Creative Problem Solving",
   "version": "0.5.0",
-  "description": "Runs a long pipeline that generates hundreds of options for an open-ended problem across many isolated angles, checks the ones it presents most prominently by search, and presents every option it generated rather than a pruned few. Use ONLY when asked for explicitly: the /ideas command, naming this skill, or \"use creative problem solving on this\" — never merely because a prompt wants ideas or says the obvious answers are spent. A full run takes about half an hour.",
+  "description": "Runs a long pipeline that generates hundreds of options for an open-ended problem across many isolated angles, checks the ones it presents most prominently by search, and presents every option it generated rather than a pruned few. Use ONLY when asked for explicitly: the /ideas command, naming this skill, or \"use creative problem solving on this\" \u2014 never merely because a prompt wants ideas or says the obvious answers are spent. A full run takes about half an hour.",
   "author": {
     "name": "Yaniv Golan",
     "email": "yaniv@golan.name"
@@ -24,6 +24,7 @@
   "commands": "./creative-problem-solving/commands",
   "agents": [
     "./creative-problem-solving/agents/adjudicator.md",
+    "./creative-problem-solving/agents/adversary.md",
     "./creative-problem-solving/agents/generator.md",
     "./creative-problem-solving/agents/grouper.md",
     "./creative-problem-solving/agents/pair-proposer.md",
