@@ -6116,6 +6116,55 @@ def t_the_assumption_line_is_rendered_not_retyped():
         shutil.rmtree(d, True)
 
 
+def t_a_refuted_lead_may_not_slide_two_families_onto_one_move():
+    """Two families whose FIRST members differ, but whose PRESENTED leads collide once a lead
+    is refuted.
+
+    The older gate compares `members[0]` and passes here, correctly: the grouping is legal. The
+    report does not print `members[0]` — `build_report.effective_lead` skips refuted options — so
+    refutation can move two families onto leads adjudicated as the same intervention, after the
+    only gate that looked has already passed.
+
+    Not hypothetical. On the preserved run of 2026-08-27, `p1-005` was refuted, f001's face became
+    `p2-006`, f002's is `p5-001`, and that run's own adjudicators recorded
+    {p2-006, p5-001} = implementation_variant. Ranks 1 and 2 of the report it shipped are two
+    variants of one move. This reproduces that shape.
+    """
+    print("\na refuted lead may not slide two families onto one move")
+    with tempfile.TemporaryDirectory() as d:
+        full_fixture(d)
+        fp = os.path.join(d, "families.json")
+        fam = json.load(open(fp))
+        by = {f["id"]: f for f in fam["families"]}
+        # p1-001 ~ p1-004 is implementation_variant in the fixture; p1-002 ~ p1-004 is unjudged.
+        # So leading with p1-002 and p1-004 is legal, and promoting p1-001 is not.
+        by["f001"]["members"] = ["p1-002", "p1-001"]
+        by["f002"]["members"] = ["p1-004"]
+        json.dump(fam, open(fp, "w"))
+        vp = os.path.join(d, "verified-1.json")
+        ver = json.load(open(vp))
+        if "p1-004" not in {e["id"] for e in ver["checked"]}:
+            ver["checked"].append({"id": "p1-004", "verdict": "no_external_claim"})
+        json.dump(ver, open(vp, "w"))
+
+        rc, out = run("verify_pipeline.py", d)
+        check("the grouping alone is legal", rc == 0, out.strip()[:160])
+
+        for e in ver["checked"]:
+            if e["id"] == "p1-002":
+                e.update(verdict="refuted", source_url="https://example.org/x", quote="does not hold")
+        json.dump(ver, open(vp, "w"))
+        rc, out = run("verify_pipeline.py", d)
+        check("refuting the lead is refused", rc != 0, out.strip()[:160])
+        check("...and it is named as a PRESENTED collision, not a grouping defect",
+              "will be PRESENTED" in out, out.strip()[:200])
+        check("...naming both families and the relation",
+              "f001(p1-001)" in out and "f002(p1-004)" in out and "implementation_variant" in out,
+              out.strip()[:200])
+        check("...and does not tell the reader to hand-edit members",
+              "not reorder members" in out, out.strip()[:200])
+
+
 def t_the_reading_that_dispatched_is_the_one_that_stands():
     """No correcting after `go`, and no dispatch block before the gate resolves.
 
@@ -6190,6 +6239,7 @@ TESTS = (t_brief_gate_asks_once, t_the_assumption_line_is_rendered_not_retyped, 
     t_echo_survives_a_paragraph_break,
     t_family_gloss_is_in_the_report_not_only_the_narration,
     t_risk_marks_carry_their_own_scope,
+    t_a_refuted_lead_may_not_slide_two_families_onto_one_move,
     t_every_test_is_registered,
 )
 

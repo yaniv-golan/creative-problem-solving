@@ -403,8 +403,9 @@ def main(wd):
 
     # NO TWO FAMILIES MAY LEAD WITH THE SAME MOVE.
     #
-    # A family's first member is what the report prints in full under its own heading; the rest
-    # appear as variants beneath it. So two families whose leads were adjudicated `duplicate` or
+    # A family's first member is the lead the GROUPER assigned, and until a lead is refuted it is
+    # also the one the report prints in full under its own heading; the rest appear as variants
+    # beneath it. So two families whose leads were adjudicated `duplicate` or
     # `implementation_variant` present the reader with one move twice, under two headings, as
     # though choosing between them were a decision. That is the failure this whole pipeline exists
     # to prevent, and it happens in the section people actually read: on the run this gate was
@@ -919,6 +920,51 @@ def main(wd):
             f"option(s) named above, write the verdict to the next free verified-<k>.json, and "
             f"re-run this script. Do not edit families.json to reorder the members: the promotion "
             f"is build_report.py's and reordering hides the gap rather than closing it.")
+    # ...AND NO TWO FAMILIES MAY *PRESENT* THE SAME MOVE.
+    #
+    # The gate above at "NO TWO FAMILIES MAY LEAD WITH THE SAME MOVE" compares `members[0]`, and
+    # its comment asserts that a family's first member "is what the report prints in full under its
+    # own heading". That is true only until a lead is refuted. `build_report.py` prints
+    # `effective_lead`, which skips refuted options -- so refutation can slide two families onto
+    # leads that were adjudicated the same move, and the earlier gate, having already passed on
+    # `members[0]`, never looks again.
+    #
+    # Measured on the preserved run of 2026-08-27: `p1-005` was refuted, f001's face became
+    # `p2-006` and f002's is `p5-001`, and that run's own adjudicators recorded
+    # {p2-006, p5-001} = implementation_variant. Ranks 1 and 2 of the report it shipped are two
+    # variants of one intervention -- exactly the failure the earlier gate exists to prevent,
+    # reached by the one path it cannot see.
+    #
+    # This is a SECOND gate rather than a change to the first, because the two failures have
+    # different causes and different remedies. A `members[0]` collision is a grouping defect and
+    # re-running the solver fixes it. A collision that only appears after refutation is not the
+    # grouper's mistake: it grouped legally, and verification moved the faces afterwards.
+    #
+    # Any collision reaching here therefore involves at least one promoted lead -- a pair that
+    # collided on `members[0]` already died above.
+    presented = []
+    for f in fams:
+        eff = effective_lead(f.get("members") or [], set(rejected))
+        if eff is not None:              # a fully-refuted family is not presented at all
+            presented.append((f.get("id"), eff))
+    collided = []
+    for x in range(len(presented)):
+        for y in range(x + 1, len(presented)):
+            r = rel_of.get(frozenset((presented[x][1], presented[y][1])))
+            if r in JOINING:
+                collided.append((presented[x], presented[y], r))
+    if collided:
+        ex = "; ".join(f"{fa}({la}) ~ {fb}({lb}) = {r}" for (fa, la), (fb, lb), r in collided[:5])
+        die(f"{len(collided)} pair(s) of families will be PRESENTED with options adjudicated as "
+            f"the same intervention ({ex}{'; …' if len(collided) > 5 else ''}). Their first "
+            f"members do not collide, so the grouping was legal; refuting a lead promoted the "
+            f"next surviving member and moved two families onto the same move. The reader would "
+            f"meet one intervention twice, under two headings, as though choosing between them "
+            f"were a decision. Re-run merge_families.py over the group-result-*.json shards with "
+            f"the refuted ids excluded, so lead assignment is solved against the options that "
+            f"will actually be presented; if it cannot separate them, they are one family. Do "
+            f"not reorder members to hide it — build_report.py picks the lead, not the file.")
+
     unclear = [i for i in top13 if by[i] == "unclear" and i not in rejected]
     no_claim = [i for i in top13 if by[i] == "no_external_claim"]
     internal = [i for i in top13 if by[i] == "internal_claim"]
