@@ -13,9 +13,15 @@ options together and the other two as leaving them apart, so when readers split,
 keeps them apart: a wrong merge presents an option as a footnote on someone else's idea, while a
 wrong split costs a line of reading.
 
-  merge_relations.py <work-dir>
+  merge_relations.py <work-dir> [--supersede]
 
 Writes relations.json (one verdict per pair, compact) and agreement.json. Prints the numbers.
+
+Also writes verdict-ledger.json: what each pair was judged the first time it was merged. A later
+merge that finds a verdict changed says so, because an end-state check cannot tell a deliberate
+re-adjudication from a verdict quietly overwritten -- both leave a consistent set of files.
+`--supersede` adopts the new verdicts and records the change, which is the difference between a
+decision and a rewrite.
 """
 import json, sys, glob, os
 from collections import defaultdict, Counter
@@ -31,18 +37,30 @@ from progress import record
 # share, ascending. Transcribed from run records kept outside this repository, so these are figures
 # of record rather than something a reader can recompute from what ships. Eight events, not nine
 # files: critique-mf-stateA and critique-repro are the same adjudication, so it is counted once.
-RECORDED_DUP = (0.006, 0.007, 0.013, 0.019, 0.022, 0.071, 0.185, 0.195)
-RECORDED_JOIN = (0.332, 0.346, 0.389, 0.401, 0.401, 0.539, 0.603, 0.617)
+RECORDED_DUP = (0.003, 0.004, 0.006, 0.007, 0.013, 0.019, 0.022, 0.029, 0.071, 0.185, 0.195)
+RECORDED_JOIN = (0.199, 0.234, 0.332, 0.346, 0.361, 0.389, 0.401, 0.401, 0.539, 0.603, 0.617)
 
-# LOWER EDGES ONLY. The old floors of 5% and 40% fired on FIVE of these eight runs, including both
+# THREE RUNS WERE MISSING FROM THE RECORD, and two of them fall outside the bands drawn without
+# them: attribution-v041 (0.4% / 19.9%), attribution-head (2.9% / 36.1%) and the first 0.5.0 field
+# run (0.3% / 23.4%). A band calibrated on a record that omits runs it would have flagged is
+# calibrated on its own agreement. Both lower edges move down to contain them.
+#
+# The statistic itself is the deeper problem and this does not fix it: joinable share is a share
+# of PROPOSED pairs, so it falls as the proposer gets denser. Across the runs on record,
+# pairs-per-option runs 4.8 to 9.8 while joinable-PER-OPTION is flat at 1.7 to 2.5 -- the share
+# moves because the denominator does. Normalising by pair density would make this a measurement
+# of adjudication rather than of proposer volume, and needs its own calibration before it can
+# replace a band anyone acts on.
+#
+# LOWER EDGES ONLY. The old floors of 5% and 40% fired on FIVE of eight runs, including both
 # complete preserved runs the rest of this project is calibrated against -- a warning that fires on
 # the runs it calls normal is one the reader learns to skip. They were drawn when a single 0.7% run
 # was read as the anomaly; five of the eight are now at or below 2.2%, so the low-duplicate regime
 # is the common case and the two early runs at 18.5% and 19.5% are the outliers. The ceilings are
 # untouched: the nearest recorded run is 23 points below the joinable ceiling and 25 below
 # the duplicate one.
-DUP_BAND = (0.005, 0.45)
-JOIN_BAND = (0.30, 0.85)
+DUP_BAND = (0.002, 0.45)
+JOIN_BAND = (0.15, 0.85)
 
 # The band must contain the evidence the messages cite for it, because the previous version printed
 # "outside the 5%-45% of recorded runs (18.5%, 19.5%, 0.7%)" -- naming a recorded run outside the
@@ -76,7 +94,7 @@ def _name(pair):
     return f"{xs[0]}~{xs[0]} (self-pair)" if len(xs) == 1 else f"{xs[0]}~{xs[1]}"
 
 
-def main(wd):
+def main(wd, supersede=False):
     shards = sorted(glob.glob(os.path.join(wd, "relations-*.json")))
     if not shards:
         sys.exit(f"FAIL: no relations-*.json in {_where(wd)}")
@@ -265,6 +283,78 @@ def main(wd):
     json.dump({"relations": out}, open(os.path.join(wd, "relations.json"), "w", encoding="utf-8"),
               separators=(",", ":"))
 
+    # ---- FIRST-SEEN LEDGER -------------------------------------------------------------------
+    #
+    # A live 0.5.0 run deleted 25 verdicts from seventeen adjudicator shards and re-judged them in
+    # an eighteenth it created by hand. Every gate passed, and they passed *correctly*: the union
+    # of cand-*.json still reconciled against the union of relations-*.json, one verdict per pair,
+    # counts intact. The sanctioned repair for a short shard has exactly that signature, so no
+    # end-state check can separate the two -- both are, at the end, a consistent set of files.
+    #
+    # Which is why this is a ledger and not a hash of the final state. It records what each shard
+    # said the FIRST time it was merged. A re-merge compares against that record, so a verdict
+    # that changed between merges is named, with its shard and its pair.
+    #
+    # It cannot stop a rewrite: the orchestrator runs this script and could delete the ledger
+    # along with everything else. It is not a lock, it is a receipt -- the difference between a
+    # change nobody can see and a change someone has to decide to hide.
+    #
+    # Verdicts only, keyed by pair. Not a file digest: shards are legitimately re-serialised
+    # (formatting, key order, a repair appending to a different file), and a digest would fire on
+    # all of that. What must not change silently is what an adjudicator *decided*.
+    # NOT relations-ledger.json: that matches the `relations-*.json` shard glob this
+    # script, verify_pipeline.py and the tests all use, so the ledger would be read as
+    # an adjudicator shard with no verdicts in it.
+    led_path = os.path.join(wd, "verdict-ledger.json")
+    now = {f"{a}~{b}": (rel, shard) for (a, b), (rel, shard) in
+           ((tuple(sorted(k)), (max(v, key=lambda e: SEPARATION[e["relation"]])["relation"],
+                               max(v, key=lambda e: SEPARATION[e["relation"]])["_shard"]))
+            for k, v in seen.items())}
+    changed, ledger, ledger_doc = [], {}, {}
+    if os.path.exists(led_path):
+        try:
+            ledger_doc = json.load(open(led_path, encoding="utf-8"))
+            ledger = ledger_doc.get("first_seen") or {}
+        except Exception:
+            print("WARN: verdict-ledger.json is unreadable, so this merge cannot say whether "
+                  "any earlier verdict changed. Treating this as a first merge.")
+            ledger = {}
+        for pair, (rel_now, shard_now) in sorted(now.items()):
+            if pair in ledger and ledger[pair][0] != rel_now:
+                changed.append((pair, ledger[pair][0], ledger[pair][1], rel_now, shard_now))
+    # --supersede IS THE LEGAL DOOR, and it exists because the warning above names it.
+    #
+    # Re-adjudication is sometimes the correct action -- plan_groups.py can die instructing it --
+    # and the merge rule resolves disagreement toward separation, so re-judging a pair in a new
+    # shard can never re-JOIN it. Deleting the old verdict is the only way to change one, which is
+    # what a live run did to twenty-five pairs. A ledger that only ever warns would make the
+    # necessary action permanently indistinguishable from tampering, and the workaround would
+    # stay a workaround. This makes it a recorded decision instead: the new verdict is adopted,
+    # the old one is kept beside it, and the report says a supersession happened.
+    if changed and supersede:
+        sup = ledger_doc.get("superseded", [])
+        for pair, was, wf, isnow, nf in changed:
+            sup.append({"pair": pair, "was": was, "in": wf, "now": isnow, "then_in": nf})
+            ledger[pair] = list(now[pair])
+        ledger_doc["superseded"] = sup
+        print(f"superseded {len(changed)} verdict(s) deliberately; recorded in verdict-ledger.json "
+              f"and reported by verify_pipeline.py. The grouping below uses the new verdicts.")
+        changed = []
+    if changed:
+        ex = "; ".join(f"{p}: {was} in {wf} -> {isnow} in {nf}"
+                       for p, was, wf, isnow, nf in changed[:5])
+        print(f"WARN: {len(changed)} pair(s) carry a different verdict than when they were first "
+              f"merged ({ex}{'; …' if len(changed) > 5 else ''}). Adjudicator verdicts are not "
+              f"supposed to change between merges. If this was a deliberate re-adjudication, "
+              f"re-run this script with --supersede to record it; if it was not, an earlier "
+              f"verdict has been overwritten and the grouping below rests on the new one.")
+    merged_ledger = dict(ledger)
+    for pair, val in now.items():
+        merged_ledger.setdefault(pair, list(val))
+    out_doc = {"first_seen": merged_ledger, "merges": ledger_doc.get("merges", 0) + 1}
+    if ledger_doc.get("superseded"): out_doc["superseded"] = ledger_doc["superseded"]
+    json.dump(out_doc, open(led_path, "w", encoding="utf-8"), separators=(",", ":"))
+
     agreed = len(probe) - len(conflicts)
     rate = (agreed / len(probe)) if probe else None
     json.dump({
@@ -367,5 +457,6 @@ def main(wd):
                   f"inside it. This sets how much of the pool can be grouped at all.")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2: sys.exit(__doc__)
-    main(sys.argv[1])
+    _a = [x for x in sys.argv[1:] if x != "--supersede"]
+    if len(_a) != 1: sys.exit(__doc__)
+    main(_a[0], supersede="--supersede" in sys.argv[1:])

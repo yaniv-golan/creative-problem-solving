@@ -9,8 +9,17 @@ route to `rejected` is a search that refuted the option, carrying the source tha
 
 The generators, the dedup agent and the ranking agent each write JSON. Every stage after
 generation is an INDEX over ids that already exist — no stage may rewrite, reword, or invent
-option text. This script proves that, so a silent loss or edit fails loudly instead of
-reaching the reader as a shorter list nobody noticed.
+option text.
+
+**This script does not prove that.** What it proves is that every id
+survives and the counts reconcile: `generated == presented + rejected`, one verdict per proposed
+pair, a partition covering the pool exactly once. It reads each option's text only to confirm the
+field is present and non-empty. An edit under a stable id passes every check here, and so does a
+verdict deleted from one shard and re-judged in another — both measured.
+
+Binding a verdict to the shard that wrote it is `verdict-ledger.json`, written by
+`merge_relations.py` on first merge and compared on every merge after. This file reports what the
+ledger found, so a changed verdict is visible rather than silent.
 
   verify_pipeline.py <work-dir>
 
