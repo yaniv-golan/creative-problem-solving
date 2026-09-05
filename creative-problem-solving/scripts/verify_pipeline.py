@@ -505,14 +505,14 @@ def main(wd):
                            "pairs": [{"unmarked_family": k, "lead": _lead.get(k),
                                       "marked_families": sorted(v)}
                                      for k, v in sorted(_incons.items())]}, _fh, indent=1)
-            _where = f" Full list: {_rp}."
+            _listed = f" Full list: {_rp}."
         except Exception as _e:                                            # noqa: BLE001
-            _where = f" (could not write the list: {_e})"
+            _listed = f" (could not write the list: {_e})"
         warn(f"{len(_incons)} unmarked famil(ies) lead with an option the adjudicators called an "
              f"implementation variant of something inside a family that IS marked as costly. The "
              f"grouper judges risk one shard at a time and cannot see the others, so a mechanism "
              f"can be marked in one place and not another. Worth a look, not a defect: a variant "
-             f"can differ in exactly the way that removes the cost.{_where}")
+             f"can differ in exactly the way that removes the cost.{_listed}")
 
     _wp = os.path.join(wd, "warn-separated-pairs.json")
     try:
