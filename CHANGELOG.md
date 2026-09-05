@@ -9,6 +9,67 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [0.5.1] — 2026-09-06
+
+The first release shaped by a real run on someone's own problem rather than by a test. Most of it
+changes **where the useful parts of the report are**, and adds the one stage the pipeline never
+had: something that argues against its own answers.
+
+**What is different when you run it**
+
+- **The report leads with the judgement.** "Where I would start" — where to begin, what the list
+  quietly does, and what it is missing — used to be the last thing in the document. On a real run
+  that put it behind 10,840 words, about three quarters of the report, which is where a reader
+  arrives least. It now sits near the top. It is still written last, because "what this list is
+  missing" is only answerable once the list exists.
+- **Something argues against the top options before you see them.** A new `adversary` pass reads
+  the brief and the leading options and gives each one the strongest single reason it might not
+  work *for you* — against what you said you had already ruled out, against the other options it
+  contradicts, against its own arithmetic — with what would settle the doubt. It is one pass, not
+  one per option, because the most useful catches are contradictions *between* options. Verified
+  claims and objections are different things: a mechanism can be perfectly real and still wrong
+  here.
+- **The ideas only one angle found are collected in their own section.** Ranking is by whether an
+  option survives scrutiny, and unusualness is deliberately not a tiebreak — that stays. But
+  measured on a real run, rank correlates **−0.42** with how many of the nine lenses reached an
+  idea: the more angles that converged, the higher it ranks. So the options closest to *something
+  you had not already thought of* were sitting in the part of the report that gets a line each and
+  no judgement. They are now also listed together, without changing the ranking.
+- **A family big enough to be a design space gets a sentence.** Six or more variants of one idea
+  now carry one line on what separates them and which end of the range to take. On the run this
+  came from, the largest family held thirteen options and ranked 45 — so it had no verification
+  and no judgement, and thirteen options shared one entry.
+- **Grounding on your own data reaches the generators properly.** What a run learns from your
+  connected sources goes in the brief, so it is read back to you before anything is spent and every
+  pass receives it identically.
+
+**Fixed**
+
+- **`--help` printed a traceback.** `verify_pipeline.py --help`, and any directory with no options
+  in it, raised `UnboundLocalError` instead of saying what was wrong.
+- **Two families could present the same move.** When a search refutes a leading option the report
+  promotes the next one, and the check that stops two families leading with the same idea was
+  looking at the original rather than the promoted one. Two of four preserved runs had shipped a
+  report doing this. It is now reported rather than refused: the collision is created after the
+  stage that could prevent it, so there is no re-run that fixes it — and a check that names a
+  remedy which cannot work is worse than a warning.
+
+**Integrity**
+
+- **A run now records what each verdict was when it was first merged.** A live run deleted 25
+  judgements from seventeen files and re-judged them in an eighteenth it made by hand, and every
+  check passed — correctly, because the totals still reconciled and a legitimate repair looks
+  identical. `--supersede` records a deliberate re-judgement, which is the difference between a
+  decision and a rewrite.
+- **The warning about the mix of judgements no longer fires on ordinary runs.** Three runs were
+  missing from the record the thresholds were drawn against, and two of them fell outside it.
+
+**Also**
+
+- `tools/check-measurement.py` refuses a measurement whose instrument, isolation and raw output
+  are not recorded — maintainer tooling, not part of the skill.
+- Test scenarios re-pinned to the current agent baseline; harness 3.4.0.
+
 ## [0.5.0] — 2026-09-04
 
 Most of this release changes what the report *tells* you: it asks you two questions before it
