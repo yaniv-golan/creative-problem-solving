@@ -27,7 +27,7 @@
 # path here; the reading is still said, and `brief-gate.yaml` measures the asking path.
 name: pipeline-strategic
 session: ../sessions/default.yaml
-baseline: desktop-1.44121.1
+baseline: desktop-1.46388.3
 fidelity: container
 on_unanswered: first
 

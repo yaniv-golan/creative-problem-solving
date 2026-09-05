@@ -23,7 +23,7 @@
 
 name: pipeline-bounded
 session: ../sessions/default.yaml
-baseline: desktop-1.44121.1
+baseline: desktop-1.46388.3
 fidelity: container
 
 # THE MEANING GATE THIS FILE USED TO DOCUMENT NO LONGER FIRES, and the prompt now says so.

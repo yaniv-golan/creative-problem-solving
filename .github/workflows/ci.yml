@@ -65,6 +65,13 @@ jobs:
       - name: Git hook tests
         run: python3 tools/test_hooks.py
 
+      # The gate that refuses an unauditable measurement, and its own tests. It runs here rather
+      # than in `check-repo.py` because the artifacts it reads live under gitignored
+      # `docs/internal/` on a maintainer's disk -- CI can always prove the gate works, and only a
+      # maintainer can run it over real results.
+      - name: Measurement gate tests
+        run: python3 tools/test_check_measurement.py
+
   integrity:
     name: Repo integrity
     runs-on: ubuntu-latest
@@ -166,7 +173,7 @@ jobs:
       # and the recorded runs already used 2.1.247 as a fallback. The gate that differs
       # (subagentPromptServerOverride:124685897) is read only by `sync`, never by the runtime loop.
       - name: Install cowork-harness
-        run: npm install --global cowork-harness@3.2.0
+        run: npm install --global cowork-harness@3.4.0
 
       # --strict makes the WARN class gate, which a bare lint would only print. --min-severity
       # WARN is the other half and it is load-bearing, not decoration: `gate-needs-controlout`

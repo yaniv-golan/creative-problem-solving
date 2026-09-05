@@ -32,7 +32,7 @@
 # the machine mid-session before.
 name: brief-gate
 session: ../sessions/default.yaml
-baseline: desktop-1.44121.1
+baseline: desktop-1.46388.3
 fidelity: container
 # A full run, same envelope as ideas-command and branch-output-quality: one pipeline, one bound,
 # derived from runs of 1634s / 2737s / 3688s.

@@ -15,7 +15,7 @@
 # caught the pipeline making.
 name: branch-output-quality
 session: ../sessions/default.yaml
-baseline: desktop-1.44121.1
+baseline: desktop-1.46388.3
 fidelity: container
 on_unanswered: first
 # Same bound as ideas-command, and for the same measured reason: runs of this pipeline have taken

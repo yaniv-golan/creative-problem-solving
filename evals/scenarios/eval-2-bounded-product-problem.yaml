@@ -5,7 +5,7 @@
 # here is an oversized answer, not a thin one.
 name: eval-2-bounded-product-problem
 session: ../sessions/default.yaml
-baseline: desktop-1.44121.1
+baseline: desktop-1.46388.3
 fidelity: container
 # The eval prompts are self-contained and several end by telling the model not to ask, so a gate
 # here is a finding rather than something to script an answer for.

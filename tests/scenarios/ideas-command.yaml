@@ -11,7 +11,7 @@
 # whether the pipeline then produced good options — that is an ../../evals/ question, judged.
 name: ideas-command
 session: ../sessions/default.yaml
-baseline: desktop-1.44121.1
+baseline: desktop-1.46388.3
 fidelity: container
 # The prompt tells the model not to ask, which since step 0d also takes the brief gate's skip
 # path — the reading is said and the run does not stop. `first` remains as a backstop for any gate
