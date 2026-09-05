@@ -6116,7 +6116,7 @@ def t_the_assumption_line_is_rendered_not_retyped():
         shutil.rmtree(d, True)
 
 
-def t_a_refuted_lead_may_not_slide_two_families_onto_one_move():
+def t_a_refuted_lead_that_slides_two_families_onto_one_move_is_reported():
     """Two families whose FIRST members differ, but whose PRESENTED leads collide once a lead
     is refuted.
 
@@ -6130,7 +6130,7 @@ def t_a_refuted_lead_may_not_slide_two_families_onto_one_move():
     {p2-006, p5-001} = implementation_variant. Ranks 1 and 2 of the report it shipped are two
     variants of one move. This reproduces that shape.
     """
-    print("\na refuted lead may not slide two families onto one move")
+    print("\na refuted lead that slides two families onto one move is reported")
     with tempfile.TemporaryDirectory() as d:
         full_fixture(d)
         fp = os.path.join(d, "families.json")
@@ -6155,14 +6155,18 @@ def t_a_refuted_lead_may_not_slide_two_families_onto_one_move():
                 e.update(verdict="refuted", source_url="https://example.org/x", quote="does not hold")
         json.dump(ver, open(vp, "w"))
         rc, out = run("verify_pipeline.py", d)
-        check("refuting the lead is refused", rc != 0, out.strip()[:160])
         check("...and it is named as a PRESENTED collision, not a grouping defect",
               "will be PRESENTED" in out, out.strip()[:200])
         check("...naming both families and the relation",
               "f001(p1-001)" in out and "f002(p1-004)" in out and "implementation_variant" in out,
               out.strip()[:200])
-        check("...and does not tell the reader to hand-edit members",
-              "not reorder members" in out, out.strip()[:200])
+        # Reported, not refused: lead assignment is solved at step 6 and this is created at
+        # step 8, so there is no remedy to name. A die here would strand the run -- two of the
+        # four preserved runs collide.
+        check("it warns rather than refusing, because no remedy exists yet",
+              rc == 0 and "WARN:" in out, out.strip()[:200])
+        check("...and does not send the reader to a fix that cannot work",
+              "will NOT fix it" in out, out.strip()[:200])
 
 
 def t_the_reading_that_dispatched_is_the_one_that_stands():
@@ -6239,7 +6243,7 @@ TESTS = (t_brief_gate_asks_once, t_the_assumption_line_is_rendered_not_retyped, 
     t_echo_survives_a_paragraph_break,
     t_family_gloss_is_in_the_report_not_only_the_narration,
     t_risk_marks_carry_their_own_scope,
-    t_a_refuted_lead_may_not_slide_two_families_onto_one_move,
+    t_a_refuted_lead_that_slides_two_families_onto_one_move_is_reported,
     t_every_test_is_registered,
 )
 

@@ -696,8 +696,11 @@ def main(wd):
         die(f"ranking invented famil(ies): {sorted(added)[:5]}")
 
     n = len(order)
-    # The lead member of each of the top 13 families -- the option the report leads that family
-    # with. Not the first 13 members in rank order, which would leave most of the prominent
+    # The lead member of each of the top 13 families, as the GROUPER assigned it. Verification is
+    # dispatched against these, and it has to be: refutation is what this stage produces, so the
+    # option the report will actually lead with is not knowable yet. Where the two diverge -- a
+    # lead refuted, the next member promoted -- the promotion gate further down is what closes it.
+    # Not the first 13 members in rank order, which would leave most of the prominent
     # families unchecked, and not every member of them, which is five times the searches for
     # options the reader meets as one-line variants.
     by_id = {f.get("id"): f for f in fams}
@@ -953,17 +956,31 @@ def main(wd):
             r = rel_of.get(frozenset((presented[x][1], presented[y][1])))
             if r in JOINING:
                 collided.append((presented[x], presented[y], r))
+    # REPORTED, NOT REFUSED — and the reason is that no remedy exists to point at yet.
+    #
+    # `merge_families.solve_leads` already assigns leads so that no two were adjudicated the same
+    # intervention. It cannot help here: it runs at step 6 and refutation happens at step 8, so
+    # the collision is created after the only solver that could prevent it has finished. Nothing
+    # in the pipeline re-solves lead assignment over surviving options.
+    #
+    # A gate that dies with an instruction nobody can follow strands the run, and this is not
+    # rare — swept over the four preserved runs, two of them collide. So it warns, names the
+    # families, and leaves the report to ship, which follows this file's own precedent for the
+    # within-family contradiction below: "a hard gate until it was measured". The cost here is a
+    # reader meeting one move twice, which is a line of reading — not the unrecoverable loss the
+    # hard gates exist for.
+    #
+    # It becomes a `die` the moment a post-verification lead re-solve exists to name.
     if collided:
         ex = "; ".join(f"{fa}({la}) ~ {fb}({lb}) = {r}" for (fa, la), (fb, lb), r in collided[:5])
-        die(f"{len(collided)} pair(s) of families will be PRESENTED with options adjudicated as "
-            f"the same intervention ({ex}{'; …' if len(collided) > 5 else ''}). Their first "
-            f"members do not collide, so the grouping was legal; refuting a lead promoted the "
-            f"next surviving member and moved two families onto the same move. The reader would "
-            f"meet one intervention twice, under two headings, as though choosing between them "
-            f"were a decision. Re-run merge_families.py over the group-result-*.json shards with "
-            f"the refuted ids excluded, so lead assignment is solved against the options that "
-            f"will actually be presented; if it cannot separate them, they are one family. Do "
-            f"not reorder members to hide it — build_report.py picks the lead, not the file.")
+        warn(f"{len(collided)} pair(s) of families will be PRESENTED with options adjudicated as "
+             f"the same intervention ({ex}{'; …' if len(collided) > 5 else ''}). Their first "
+             f"members do not collide, so the grouping was legal; refuting a lead promoted the "
+             f"next surviving member and moved two families onto one move, and the reader meets "
+             f"that move twice under two headings. Lead assignment is solved at step 6 and this "
+             f"is created at step 8, so re-running merge_families.py will NOT fix it. Until a "
+             f"post-verification re-solve exists, the decision is a human one: these families "
+             f"present the same intervention and are candidates to be merged.")
 
     unclear = [i for i in top13 if by[i] == "unclear" and i not in rejected]
     no_claim = [i for i in top13 if by[i] == "no_external_claim"]
