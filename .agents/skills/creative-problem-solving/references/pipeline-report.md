@@ -207,9 +207,24 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     text, and a hand-assembled list is where options go missing under end-of-run pressure.
 
     What it leaves you is `{{...}}` placeholders for the parts only you can write: the assumption
-    line, the depth fields and one sentence on each of the top 3, and the closing read. **The
+    line, the depth fields and one sentence on each of the top 3, a `FAMILY-NOTE` for each family
+    of six or more below the top 3, and the closing read. **The
     build prints every token verbatim — use those strings, do not retype them from memory**, and
     `build_report.py --slots "$BASE/$RUN/report.md"` lists them again at any point.
+
+    **Two of these are new, and both are about what the reader can find.**
+
+    - **The closing now renders near the top**, under *Where I would start*, though you still
+      write it last — "what this list is missing" is only answerable once the list exists.
+      Rendering order and authoring order are different things, and only the first is theirs. Do
+      not weaken it because it is now above the options: it is the paragraph most readers will
+      act on, and on a long run it may be the only one they read closely.
+    - **A `FAMILY-NOTE` marks a family big enough to be a design space rather than an option.**
+      Six or more variants, and nothing else in the report says what separates them. One sentence:
+      what the variants actually differ on, and which end of that range you would take. The
+      largest family in a run has ranked as low as 45, so these appear well down the list — a
+      note there is often the most useful line on the page, because it is the only judgement that
+      band gets.
 
     Fill them with the script rather than by hand:
 

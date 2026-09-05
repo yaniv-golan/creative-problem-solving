@@ -423,6 +423,23 @@ def main(wd, out):
         pools = {m.split("-")[0] for m in members}
         if len(pools) >= 3:
             b.append(f"- *Proposed by {len(pools)} of the 9 passes.*")
+        # A BIG FAMILY OUTSIDE THE TOP 3 IS A DESIGN SPACE WITH NOBODY READING IT.
+        #
+        # Judgement slots exist only for the top 3, and verification only for the top 13, so a
+        # large family ranked below either gets one line per variant and no assessment of the
+        # space they span. On the 0.5.0 field run the largest family held THIRTEEN options and
+        # ranked 45: thirteen ways of doing one thing, sharing an 86-word entry, with nothing
+        # saying what separates them or which end of the range is right.
+        #
+        # Six or more members, anywhere below the Top 3 — which already get the full treatment.
+        # NO UPPER RANK BOUND, and that is the point: the field report proposed "top 30" and its
+        # own motivating case, the thirteen-option family, ranks 45. A rank window would have
+        # excluded the example that justified the rule. Size is what makes a family unreadable
+        # without a note, and size is not correlated with rank -- on that run the two largest
+        # families ranked 45 and 13. Cheap, too: five families reached six members out of 139.
+        if len(members) >= 6 and rank > 3:
+            b.append(f"- {{{{FAMILY-NOTE-{rank} — one sentence: what separates these "
+                     f"{len(members)} variants, and which end of the range you would take}}}}")
         return b + [""]
 
     # Bands are cut by RANK, not by position among survivors. If a fully-rejected family sat at
@@ -435,6 +452,22 @@ def main(wd, out):
         return [f for f in live if lo <= rank_of[f] <= hi]
 
     top, nxt, rest = band(1, 3), band(4, 13), band(14, len(order))
+
+    # THE POINT OF VIEW GOES FIRST, and it is written last.
+    #
+    # This slot used to render after the final family. On the 0.5.0 field run that put it behind
+    # 10,840 words of untreated tail -- 72.6% of the document -- so the one paragraph carrying a
+    # judgement sat where a reader arrives least. Measured on that run: the Top 3 get 410 words
+    # per family, the next 10 get 240, and the remaining 126 get 86 each and no judgement at all.
+    # Position is the whole difference between a report that answers and one that has to be mined.
+    #
+    # The model still fills it last -- the slot is filled after the options exist, which is the
+    # only order in which "what this list is missing" can be answered. Rendering order and
+    # authoring order are different things, and only the first is the reader's.
+    L += ["## Where I would start", "",
+          "{{CLOSING — where you would start and why; and one line on what this list is missing}}",
+          ""]
+
     for fid in top:
         if fid == top[0]: L += ["## Top 3", ""]
         L += family_block(rank_of[fid], fid, True)
@@ -487,6 +520,34 @@ def main(wd, out):
                   f"claims below are unverified — ask me to check any of them and I will.*", ""]
         for fid in rest: L += family_block(rank_of[fid], fid, False)
 
+    # THE IDEAS ONE LENS FOUND, WHICH THE RANKING SYSTEMATICALLY BURIES.
+    #
+    # Ranking is survivability, and unusualness is deliberately not a tiebreak -- the 50-card read
+    # found novelty and usefulness close to orthogonal, so that decision stands. But it was taken
+    # as NEUTRAL toward novelty, and measured on the 0.5.0 field run it is not: correlation
+    # between rank and the number of lenses that reached a family is -0.42. Convergent ideas rank
+    # high. Of 139 families, 85 were reached by exactly one lens and only 3 of those made the top
+    # 13 -- so the options closest to "something you had not already thought of" were in the band
+    # that gets 86 words and no judgement.
+    #
+    # This does not touch the ranking. It is a second index over the same list, pointing at the
+    # part of it the ranking is worst at surfacing, which is also the part the README's first
+    # sentence promises. `family_block` already prints "Proposed by N of the 9 passes" when N>=3
+    # and says nothing when N==1: convergence was badged and singularity was silent.
+    #
+    # Ranked order inside the band, so it is a way through and not a second ranking.
+    solo = [fid for fid in live
+            if len({m.split("-")[0] for m in fams[fid]["members"] if m not in rejected}) == 1]
+    if solo and len(solo) != len(live):
+        L += ["## Reached by one lens only", "",
+              f"*{len(solo)} of {len(live)} families came from a single pass. They are listed "
+              f"above in rank order too — collected here because one angle finding something no "
+              f"other angle found is the closest this run gets to an option you had not already "
+              f"considered, and the ranking above is by survivability, not by unusualness.*", ""]
+        for fid in solo:
+            L.append(f"- **#{rank_of[fid]}** — {fams[fid]['label']}")
+        L.append("")
+
     if rejected:
         L += ["## Checked and failed", "",
               "Searched, and the claim did not hold. Listed so you can see what was checked.", ""]
@@ -521,8 +582,6 @@ def main(wd, out):
     # It can still go hollow, and no script can tell: a closing line that would be true of any
     # run ("the top few are strongest, the rest are worth scanning") satisfies this exactly as
     # well as a real one. The tell is specificity, and it is readable in one glance.
-    L += ["{{CLOSING — where you would start and why; and one line on what this list is missing}}"]
-
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     open(out, "w", encoding="utf-8").write("\n".join(L) + "\n")
 
