@@ -6116,6 +6116,161 @@ def t_the_assumption_line_is_rendered_not_retyped():
         shutil.rmtree(d, True)
 
 
+def t_a_changed_verdict_is_visible_and_can_be_recorded():
+    """The ledger, and the door beside it.
+
+    A live run deleted 25 verdicts from seventeen shards and re-judged them in an eighteenth it
+    made by hand. Every gate passed and passed correctly: the union of the shards still
+    reconciled, one verdict per pair. The sanctioned repair has that same signature, so no
+    end-state check can separate them -- only a record of what was judged FIRST can.
+    """
+    print("\na changed verdict is visible, and can be recorded")
+    with tempfile.TemporaryDirectory() as d:
+        full_fixture(d)
+        led = os.path.join(d, "verdict-ledger.json")
+        check("the first merge writes a ledger", os.path.exists(led), "no verdict-ledger.json")
+
+        rc, out = run("merge_relations.py", d)
+        check("re-merging an unchanged run says nothing about drift",
+              "carry a different verdict" not in out, out.strip()[:160])
+
+        # Flipped WITHIN the joining set. Moving a verdict across the joinable/separating line
+        # invalidates joinable.json, and verify_pipeline refuses that first and correctly -- which
+        # would test the cascade instead of the ledger. duplicate <-> implementation_variant
+        # leaves every downstream artifact valid, so what is left is the ledger's own signal.
+        JOINING_TWO = ("duplicate", "implementation_variant")
+        # NOT A PROBE PAIR. The probe deals some pairs to two adjudicators and the merge resolves
+        # disagreement toward separation, so flipping one copy of a doubly-judged pair is absorbed
+        # by resolution and never reaches the ledger -- which is correct behaviour, and would make
+        # this test pass or fail for the wrong reason. Pick a pair only one shard holds.
+        import glob as _g
+        counts, where = {}, {}
+        for _f in _g.glob(os.path.join(d, "relations-*.json")):
+            _doc = json.load(open(_f))
+            for _r in (_doc["relations"] if isinstance(_doc, dict) else _doc):
+                _k = frozenset((_r["a"], _r["b"]))
+                counts[_k] = counts.get(_k, 0) + 1
+                where.setdefault(_k, _f)
+        solo = [k for k, n in counts.items() if n == 1]
+        shard = tgt = None
+        for k in solo:
+            _doc = json.load(open(where[k]))
+            for _r in (_doc["relations"] if isinstance(_doc, dict) else _doc):
+                if frozenset((_r["a"], _r["b"])) == k and _r["relation"] in JOINING_TWO:
+                    shard, tgt = where[k], _r
+                    break
+            if tgt: break
+        check("the fixture has a singly-judged joining verdict to flip", tgt is not None, "none")
+        if tgt is None: return
+        doc = json.load(open(shard))
+        rows = doc["relations"] if isinstance(doc, dict) else doc
+        for _r in rows:
+            if (_r["a"], _r["b"]) == (tgt["a"], tgt["b"]):
+                _r["relation"] = (JOINING_TWO[1] if _r["relation"] == JOINING_TWO[0]
+                                  else JOINING_TWO[0])
+        json.dump(doc, open(shard, "w"))
+
+        rc, out = run("merge_relations.py", d)
+        check("a changed verdict is named at merge",
+              "carry a different verdict" in out, out.strip()[:200])
+        rc, out = run("verify_pipeline.py", d)
+        check("...and again at the gate, where someone is looking",
+              "differ from what the ledger recorded" in out, out.strip()[:200])
+        check("...without refusing the run, because the remedy depends on which file moved",
+              rc == 0, out.strip()[:160])
+
+        rc, out = run("merge_relations.py", d, "--supersede")
+        check("--supersede records it", "superseded 1 verdict" in out, out.strip()[:160])
+        rc, out = run("merge_relations.py", d)
+        check("...and the warning stops",
+              "carry a different verdict" not in out, out.strip()[:160])
+        check("...with the change kept in the ledger, not erased",
+              "superseded" in json.load(open(led)), "no superseded key")
+
+
+def t_grounding_reaches_the_generators_through_the_brief():
+    """`current_state` renders inside the PROBLEM block, or the key is absent entirely.
+
+    SKILL.md tells a run to ground inward before it asks. Written into a dispatch prompt by hand
+    it is outside the readback, outside the hash and outside every later stage; in the brief it
+    gets all three.
+    """
+    print("\ngrounding reaches the generators through the brief")
+    with tempfile.TemporaryDirectory() as d:
+        brief = {"verbatim_prompt": "x", "reading": "r", "actor": "a", "decision": "dd",
+                 "counts_as_solved": "", "tried_or_ruled_out": ["t"], "invented": ["i"]}
+        bp = os.path.join(d, "brief.json")
+        json.dump(brief, open(bp, "w"))
+        run("brief_gate.py", d, "skip", "--reason", "no-ask-mechanism")
+        rc, out = run("brief_gate.py", d, "render-brief")
+        check("no heading when the run grounded on nothing",
+              "YOUR OWN DATA" not in out, out.strip()[:160])
+
+        brief["current_state"] = ["their retention is 40% at month six", "two of four are new"]
+        json.dump(brief, open(bp, "w"))
+        rc, out = run("brief_gate.py", d, "render-brief")
+        check("the block carries it when there is something to carry",
+              "YOUR OWN DATA" in out, out.strip()[:160])
+        check("...as one line per fact",
+              "- their retention is 40% at month six" in out, out.strip()[:200])
+        check("...marked as given rather than as a proposal",
+              "treat as given, not as a proposal" in out, out.strip()[:200])
+
+
+def t_a_large_family_gets_a_note_slot_and_singles_get_an_index():
+    """Two report-composition guarantees that only appear on shapes the default fixture lacks.
+
+    A FAMILY-NOTE fires at six members. The default fixture's families cap out at two, because
+    grouping only joins what adjudication ruled together -- so the slot could never be reached
+    and neither its rendering nor its --check behaviour was covered. The family is built here
+    directly, the way the lead-collision test builds its shape.
+    """
+    print("\na large family gets a note slot, and single-lens families get an index")
+    with tempfile.TemporaryDirectory() as d:
+        ids, fams = full_fixture(d)
+        fp = os.path.join(d, "families.json")
+        fam = json.load(open(fp))
+        # Six members, drawn from one pool so it is also a single-lens family. Internal pairs are
+        # mostly unadjudicated, which keeps it under SHARE_MAX's ten-pair floor.
+        pool1 = [i for i in ids if i.startswith("p1-")][:6]
+        if len(pool1) < 6:
+            check("fixture has six options in one pool", False, f"only {len(pool1)}")
+            return
+        # Remove the six from whatever families hold them, keeping every OTHER member -- the
+        # partition has to stay exact. Dropping whole families instead loses their other options,
+        # and build_report refuses the report rather than presenting a short list, which is the
+        # gate doing its job on a badly built fixture.
+        keep = []
+        for f in fam["families"]:
+            rest = [m for m in f["members"] if m not in set(pool1)]
+            if rest: keep.append({**f, "members": rest})
+        big = {"id": "f900", "label": "A design space", "members": pool1, "pools": 1}
+        fam["families"] = keep + [big]
+        json.dump(fam, open(fp, "w"))
+        order = [f["id"] for f in fam["families"]]
+        # Rank it below the top 3 -- that is where the slot is meant to fire.
+        order.remove("f900"); order.insert(6, "f900")
+        rk = json.load(open(os.path.join(d, "ranked.json")))
+        rk["ranked"] = order
+        json.dump(rk, open(os.path.join(d, "ranked.json"), "w"))
+
+        rep = os.path.join(d, "report.md")
+        rc, out = run("build_report.py", d, "--out", rep)
+        check("the report builds with a six-member family", rc == 0, out.strip()[:160])
+        body = open(rep).read()
+        check("a FAMILY-NOTE slot is created for it",
+              "{{FAMILY-NOTE-7 " in body, body[:160])
+        check("...and it names the number of variants",
+              "these 6 variants" in body, body[:160])
+        check("the one-lens band lists it",
+              "## Reached by one lens only" in body and "**#7**" in body, body[:160])
+
+        # The slot must be a real obligation, not decoration: --check refuses an unfilled one.
+        rc, out = run("build_report.py", "--check", rep)
+        check("--check refuses the report while the note is unfilled",
+              rc != 0 and "placeholder" in out, out.strip()[:160])
+
+
 def t_the_adversary_pass_is_optional_but_never_silent():
     """Objections render under their option; a missing file is reported, not required.
 
@@ -6290,6 +6445,9 @@ TESTS = (t_brief_gate_asks_once, t_the_assumption_line_is_rendered_not_retyped, 
     t_family_gloss_is_in_the_report_not_only_the_narration,
     t_risk_marks_carry_their_own_scope,
     t_a_refuted_lead_that_slides_two_families_onto_one_move_is_reported,
+    t_a_changed_verdict_is_visible_and_can_be_recorded,
+    t_grounding_reaches_the_generators_through_the_brief,
+    t_a_large_family_gets_a_note_slot_and_singles_get_an_index,
     t_the_adversary_pass_is_optional_but_never_silent,
     t_every_test_is_registered,
 )

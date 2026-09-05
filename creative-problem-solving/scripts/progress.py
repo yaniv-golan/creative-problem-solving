@@ -63,6 +63,14 @@ SAY = "SAY: "
 # for. They are also the two a run under pressure would most want to claim without doing.
 PRINTABLE = ("generated", "sharded", "ranked", "verified")
 
+# RENDERABLE BUT NOT REQUIRED. `argued` is the adversary pass, and it is the first stage that can
+# legitimately not happen: a host without sub-agent dispatch cannot run it, and no run made before
+# it existed did. Putting it in PRINTABLE would put it in BOUNDARIES too -- the set verify_pipeline
+# reads as "must have spoken" -- and every such run would then be warned for skipping a stage it
+# could not perform. This is exactly the two-meanings collapse the comment above records, so the
+# name that can be printed and the name that must be spoken stay in different tuples.
+SAYABLE = PRINTABLE + ("argued",)
+
 # Every pre-gate boundary that must tell the reader something. The integrity check is the seventh
 # boundary in references/pipeline-report.md's table and is deliberately absent: it is the auditor,
 # and a stage cannot record its own attendance to itself.
@@ -201,6 +209,35 @@ def _ranked(wd):
             f"rather than quietly dropped.")
 
 
+def _argued(wd):
+    """What the adversary pass found, said in the reader's terms.
+
+    NOT "n objections". The number alone reads as a defect count and invites the reader to treat
+    a long list as a bad run -- while the honest reading is the opposite: an adversary that
+    objects to twelve of thirteen has done its job, and one that objects to none has either
+    found a clean list or not looked. So the line says how many of the leads carry one, out of
+    how many were examined, and stays silent about quality.
+    """
+    files = sorted(glob.glob(os.path.join(wd, "adversary*.json")))
+    if not files: return None
+    objs = []
+    for f in files:
+        try:
+            objs += [e for e in (load(f, "objections") or [])
+                     if e.get("id") and str(e.get("objection") or "").strip()]
+        except SystemExit:
+            return None
+    if not objs: return None
+    dep = sum(1 for e in objs if e.get("depends_on_invented"))
+    _n, _one = len(objs), len(objs) == 1
+    return (f"{_n} of the top options now {'carries' if _one else 'carry'} an objection — the "
+            f"strongest single reason it might not survive, with what would settle it, printed "
+            f"under the option"
+            + (f". {dep} of {'them' if dep > 1 else 'those'} "
+               f"{'is' if dep == 1 else 'are'} only right if a pressure this run invented holds"
+               if dep else "") + ".")
+
+
 def _verified(wd):
     files = sorted(glob.glob(os.path.join(wd, "verified-*.json")))
     if not files: return None
@@ -289,13 +326,14 @@ def line(wd, stage=None):
     # cannot render -- the scripts that own those stages print them. Validating against BOUNDARIES
     # here would accept `progress.py <wd> grouped` and then fall through to _furthest, printing
     # some other boundary's line under the caller's name.
-    if stage is not None and stage not in PRINTABLE:
-        sys.exit(f"FAIL: unknown stage {stage!r} — progress.py prints {', '.join(PRINTABLE)}. "
+    if stage is not None and stage not in SAYABLE:
+        sys.exit(f"FAIL: unknown stage {stage!r} — progress.py prints {', '.join(SAYABLE)}. "
                  f"(`adjudicated` and `grouped` are boundaries too, but merge_relations.py and "
                  f"merge_families.py print and record those.) A misspelled stage would otherwise "
                  f"print the wrong boundary's line, or none.")
     out = {"generated": _generated, "sharded": _sharded,
-           "ranked": _ranked, "verified": _verified}.get(stage, _furthest)(wd)
+           "ranked": _ranked, "verified": _verified,
+           "argued": _argued}.get(stage, _furthest)(wd)
     # Only a boundary that actually printed is recorded. A stage called too early returns None,
     # and recording that would report a line the reader never got.
     if out and stage: record(wd, stage)

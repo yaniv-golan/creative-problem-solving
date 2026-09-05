@@ -1023,6 +1023,48 @@ def main(wd):
     # `slots` is counted off the render loop rather than derived from the partition, so it catches a
     # divergence between what the report emitted and what the grouping says. That is the first point
     # in the run where a number for "presented" exists independently at all.
+    # WHAT THE LEDGER SAYS, reported here as well as at merge time.
+    #
+    # merge_relations.py warns when a verdict changed since it was first merged -- but that warns
+    # once, in the output of a stage that ran earlier and whose lines may be long gone by the time
+    # anyone looks. This is the gate every run passes through immediately before the answer is
+    # written, so it is where a reader or a maintainer actually sees it.
+    #
+    # Compared against relations.json, not against the shards: this is the file every later stage
+    # reads, so a disagreement here is a disagreement the grouping and the ranking were built on.
+    _led = os.path.join(wd, "verdict-ledger.json")
+    if not os.path.exists(_led):
+        warn("no verdict-ledger.json — this run cannot say whether an adjudicator verdict "
+             "changed after it was first merged. Re-run merge_relations.py to start one.")
+    else:
+        try:
+            _ld = json.load(open(_led, encoding="utf-8"))
+            _first = _ld.get("first_seen") or {}
+            _now = {f"{min(e['a'], e['b'])}~{max(e['a'], e['b'])}": e.get("relation") for e in rel}
+            _drift = sorted(p for p, v in _first.items()
+                            if p in _now and _now[p] != (v[0] if isinstance(v, list) else v))
+            _sup = _ld.get("superseded") or []
+            # REPORTED, NOT REFUSED, and the remedy depends on which file moved -- which is
+            # why this does not prescribe one. If a SHARD verdict changed, merge_relations.py
+            # already warned at merge time and --supersede records it. If relations.json itself
+            # was edited, --supersede fixes nothing: it reads the shards, finds them unchanged,
+            # and re-running the merge simply discards the edit. Naming one remedy would be
+            # wrong half the time, so this names the disagreement and the two shapes it comes in.
+            if _drift:
+                warn(f"{len(_drift)} verdict(s) in relations.json differ from what the ledger "
+                     f"recorded when they were first merged (e.g. {_drift[:4]}). Everything "
+                     f"downstream — the grouping, the ranking, the report — was built on the "
+                     f"current verdicts. Either a shard was re-adjudicated, in which case "
+                     f"merge_relations.py --supersede records it, or relations.json was edited "
+                     f"directly, in which case re-running merge_relations.py regenerates it from "
+                     f"the shards and the edit is discarded. Check which before doing either.")
+            print(f"verdict ledger: {len(_first)} pair(s) recorded over {_ld.get('merges', 1)} "
+                  f"merge(s)" + (", no verdict changed since first merge" if not _drift else "")
+                  + (f"; {len(_sup)} deliberately superseded" if _sup else ""))
+        except (ValueError, KeyError, TypeError) as _e:
+            warn(f"verdict-ledger.json could not be read ({_e}), so this run cannot say whether "
+                 f"a verdict changed after it was first merged")
+
     # DID THE ADVERSARY RUN? Reported, never required. The file is absent on a host with no
     # sub-agent dispatch and on every run made before the stage existed, so refusing without it
     # would fail runs that could not have produced it. But silence is the wrong default the other
@@ -1039,8 +1081,16 @@ def main(wd):
                  f"wrote something this script cannot count, so no objection will render")
     if _adv:
         _on_top13 = sum(1 for e in _adv if e.get("id") in set(top13))
+        # BY GROUNDS, because the grounds are the point. An adversary that only ever objects on
+        # `arithmetic` has not read the brief, and one that never cites `brief` has not made the
+        # catch this stage exists for -- an option handing back something the user ruled out.
+        # A count nobody breaks down is a count that cannot show either.
+        _g = Counter(str(e.get("grounds") or "unstated") for e in _adv)
+        _dep = sum(1 for e in _adv if e.get("depends_on_invented"))
         print(f"adversary: {len(_adv)} objection(s), {_on_top13} on a top-13 lead — each renders "
-              f"under its option")
+              f"under its option. Grounds: "
+              + ", ".join(f"{k} {v}" for k, v in sorted(_g.items()))
+              + (f". {_dep} option(s) depend on an invented premise." if _dep else "."))
     else:
         print("adversary: no objections file — nothing in this run argued against its own "
               "options. If sub-agent dispatch was available, step 8b was skipped.")

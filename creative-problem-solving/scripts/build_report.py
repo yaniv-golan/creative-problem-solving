@@ -395,6 +395,17 @@ def main(wd, out):
             _ans = one_line(str(_obj.get("answerable") or "").strip())
             b += ["", f"*Objection — {one_line(_obj['objection'])}"
                       + (f" **Answerable by:** {_ans}*" if _ans else "*")]
+        # DEPENDENCE ON AN INVENTED PREMISE IS A LABEL, NEVER AN OBJECTION.
+        #
+        # `invented` holds premises this run added to push generation past the obvious answer.
+        # They are ours, not the reader's, so an option is not wrong for needing one -- the
+        # adversary is told not to object on that ground and the ranker is told not to reward it.
+        # But an option that is only right if one of them holds is a different KIND of thing from
+        # one that is right either way, and the reader cannot see which is which. Rendered
+        # separately from the objection so it reads as a condition rather than a doubt.
+        if _obj and _obj.get("depends_on_invented"):
+            b += ["", "*Depends on a pressure this run invented — it is right only if that "
+                      "premise holds, and the premise is ours rather than yours.*"]
 
         # THE RISK MARK, UNGATED BY RANK. On the run this came from, nine options worked by
         # withholding, degrading or coercing the people the reader is trying to serve, and they

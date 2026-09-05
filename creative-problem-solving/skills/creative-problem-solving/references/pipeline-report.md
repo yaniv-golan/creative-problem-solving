@@ -211,6 +211,13 @@ The step numbers continue from `pipeline.md` and are not restarted, so a cross-r
 
    **It may not reword an option.** Ids only, like every stage after generation.
 
+   Then say what the phase produced, with one Bash call, and repeat the `SAY:` line it prints:
+
+   `python3 "$CPS/scripts/progress.py" "$BASE/$RUN/_work" argued`
+
+   It prints nothing when there is no file, which is the correct behaviour on a host that could
+   not run the stage — an absent line and a line saying "none" are different claims.
+
    This stage is optional in the sense that the report builds without it — on a host with no
    sub-agent dispatch there is no file and nothing renders. It is not optional in the sense of
    being skippable when dispatch works: `verify_pipeline.py` reports whether it ran, and a run

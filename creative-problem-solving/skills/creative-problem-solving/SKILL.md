@@ -295,10 +295,10 @@ as a step it skipped; `docs/DESIGN-NOTES.md` has why.
 
 ## Phase 3 — Prune, don't polish
 
-**Critique for feasibility. Never critique for novelty.** Self-refinement pulls ideas back toward
-the domain prototype, and sycophancy grows across a session, so late-loop critique is the most
-flattering and least useful. Once an idea exists its novelty is fixed; the only legitimate edits
-are killing it, merging duplicates, or noting what it costs.
+**Critique for feasibility. Never critique for novelty.** Once an idea exists its novelty is
+fixed; the only legitimate edits are killing it, merging duplicates, or noting what it costs.
+The feasibility critique is a dispatched `adversary` pass — step 8b — never one you do in your
+own context, where sycophancy has been growing all session.
 
 Run the steps once, in order, with no second refinement loop. **They are in
 `references/pruning.md`**, required before you prune.
