@@ -13,6 +13,9 @@ is guaranteed by construction.
 
   shard_candidates.py <work-dir> [--shards N] [--probe 48] [--per-shard 126] [--dry-run]
 
+Without --probe, a pool too large for a 48-pair probe to cross-check gets the smallest probe
+that can; an explicit --probe is kept as given and warns instead.
+
 Reads candidates.json, writes cand-1.json .. cand-N.json. Deterministic: the probe sample is
 evenly spaced through the deduplicated list, so the same input always produces the same shards.
 """
@@ -263,7 +266,14 @@ def dedup(pairs):
     return uniq, n_dupe, n_malformed, n_self
 
 
+PROBE_DEFAULT = 48
+
+
 def main(wd, nshards, nprobe, per_shard=PER_SHARD):
+    # nprobe None = the caller did not pass --probe, so the probe size is this script's to choose.
+    probe_explicit = nprobe is not None
+    if nprobe is None:
+        nprobe = PROBE_DEFAULT
     pairs = load(os.path.join(wd, "candidates.json"), "pairs")
 
     # THREE REASONS, COUNTED SEPARATELY. These were one `continue` and the summary reported the
@@ -285,6 +295,19 @@ def main(wd, nshards, nprobe, per_shard=PER_SHARD):
 
     if nshards is None:
         nshards, want, cap = plan_shards(len(uniq), nprobe, per_shard)
+        # APPLY THE FIXED POINT WHEN THE PROBE SIZE IS OURS TO CHOOSE. The WARN below used to be
+        # the only outcome, and its remedy was always the same: re-run with the value this script
+        # had already computed. A live run hit it at 48 -> 52 and spent a turn re-running. A
+        # larger probe costs a few extra adjudications against ~2,000 and buys the per-shard
+        # budget back. An explicit --probe is the caller's decision and still gets the WARN.
+        if want > cap and not probe_explicit:
+            _p = probe_for(len(uniq), nprobe, per_shard)
+            if _p is not None:
+                print(f"{len(uniq)} unique pairs want {want} shards, more than a {nprobe}-pair "
+                      f"probe can cross-check ({cap}); raised the probe to {_p}, the smallest "
+                      f"size that covers them.")
+                nprobe = _p
+                nshards, want, cap = plan_shards(len(uniq), nprobe, per_shard)
         if want > cap:
             # NAME THE VALUE, NOT THE LEVER. This used to end at "Raise --probe to lift the
             # ceiling", which names the knob and not the number -- and the relationship needed to
@@ -441,7 +464,7 @@ if __name__ == "__main__":
     # file, mid-run, by a caller who had already spent the pair-proposal stage; this makes it
     # answerable before committing to a sharding.
     if "--dry-run" in a:
-        _wd, _probe, _ps = a[0], opt("--probe", 48), opt("--per-shard", PER_SHARD)
+        _wd, _probe, _ps = a[0], opt("--probe", PROBE_DEFAULT), opt("--per-shard", PER_SHARD)
         _pairs = load(os.path.join(_wd, "candidates.json"), "pairs")
         _u, _d, _m, _sp = dedup(_pairs)
         _n = len(_u)
@@ -464,10 +487,15 @@ if __name__ == "__main__":
         print(f"  plan {_ns} shards, about {(_n + _probe) // _ns} pairs each")
         if _want > _cap:
             _p = probe_for(_n, _probe, _ps)
-            print("  OVER BUDGET. " + (f"--probe {_p} clears it "
-                  f"({plan_shards(_n, _p, _ps)[0]} shards)." if _p else
-                  f"No probe value clears it; use --shards {_want} deliberately."))
+            if _p and "--probe" not in a:
+                # main() applies this itself when --probe is absent; preview what it will do.
+                print(f"  OVER BUDGET at --probe {_probe}; the real run raises it to {_p} "
+                      f"({plan_shards(_n, _p, _ps)[0]} shards).")
+            else:
+                print("  OVER BUDGET. " + (f"--probe {_p} clears it "
+                      f"({plan_shards(_n, _p, _ps)[0]} shards)." if _p else
+                      f"No probe value clears it; use --shards {_want} deliberately."))
         else:
             print("  within budget")
         sys.exit(0)
-    main(a[0], opt("--shards", None), opt("--probe", 48), opt("--per-shard", PER_SHARD))
+    main(a[0], opt("--shards", None), opt("--probe", None), opt("--per-shard", PER_SHARD))

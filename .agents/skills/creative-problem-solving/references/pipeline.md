@@ -443,6 +443,24 @@ exactly that, and the nine generators were steered by a paragraph no gate has ev
 **Facts, not proposals.** Each string is something that is true of the reader's situation. An
 option belongs in a pool, and a "fact" that is really a suggestion steers every pass toward it.
 
+**When the problem involves other people or an asset, check these before you write it.** Each one
+you know and leave out is a premise nine generators will fill in for themselves:
+
+- **Every party the outcome needs, besides the actor:** where they are and what they are doing now,
+  and what they have said they want or refuse.
+- **Every third party whose consent is required** (a lender, landlord, regulator, licensor, co-owner,
+  board) and what is already pledged, promised or contracted to them.
+- **What each party gets if no agreement is reached**, where the user or their data says so. An
+  option that leaves someone worse off than that is one they will refuse.
+- **The hard numbers the outcome has to fit:** the amount, the deadline, the capacity, each with
+  its unit.
+
+Only what the user said or their connected data shows: a checklist answered from supposition is
+step 0c's invented premise under another name. **If a fact arrives after this point, it has no
+route into the run**: the brief is locked once `go` runs. A run that missed one fact
+here had it reach only the stage it was hand-added to, and premises it would have killed survived
+everywhere else.
+
 **The last two are the user's answers at step 0d, and they are recorded separately from
 `invented` for the same reason `invented` is recorded separately from `verbatim_prompt`.** Once
 three kinds of sentence are in one list nothing downstream can tell them apart: a pressure this
@@ -598,7 +616,17 @@ python3 "$CPS/scripts/brief_gate.py" "$BASE/$RUN/_work" go
 **Anything else the user says** — a correction to the reading, the actor, the decision or a
 pressure, *and equally an answer to either question*. Answering is the expected reply, not the
 exception: they were asked two things, and the words they give back are the whole reason the
-gate exists. Do all four of these, in order:
+gate exists.
+
+**A reply that chooses to correct and says nothing to correct is neither of the two.** A host that
+asks with options can return the option alone: the reader clicked "correct the reading" and the
+text they meant to type never arrived. Do not record it as a correction and do not start. Ask
+once, in one line, what they want changed, and wait. This is the same exchange as the gate, not a
+second one: no script has run, and nothing has been recorded. It is also the one line here that no
+script prints, because `brief_gate.py` never sees the reply. Whatever they answer is the reply
+below. If they answer "go", it is `go`.
+
+Do all four of these, in order:
 
 1. **Write what they said into `brief.json`**, in their words: `counts_as_solved` and
    `tried_or_ruled_out` (step 0c), plus any correction they made. **This is the step that is
@@ -766,15 +794,12 @@ assumed: a negation round against that structure returned one search-verified op
 
    `python3 "$CPS/scripts/shard_candidates.py" "$BASE/$RUN/_work"`
 
-   **If it warns that the shards are over budget, act on it — it names the remedy and this is the
-   one WARN that has one.** `Raise --probe to lift the ceiling, or --shards to override
-   deliberately` means what it says: the agreement probe caps how many shards can be cross-checked,
-   so a large pool gets fewer, bigger shards than the 126-pair budget wants. Re-run the command
-   with `--probe` raised (the ceiling is a quarter of it — but raising the probe also adds pairs and
-   so raises the shard demand, which makes the right value a fixed point rather than an inversion.
-   The script computes it and prints it; `--dry-run` shows the arithmetic without writing) rather than accepting the excess. A run
-   passed this one to the reader instead — every other WARN in this pipeline is for the reader to
-   judge, and this one is for you to fix before continuing.
+   **Do not pass `--probe`.** The agreement probe caps how many shards can be cross-checked (a
+   quarter of its size), so a large pool would get fewer, bigger shards than the 126-pair budget
+   wants. Without `--probe` the script raises the probe to the smallest size that covers the shards
+   and says so in one line. If you passed `--probe` and it warns that the shards are over budget,
+   act on it: it names the value, and this is the one WARN that is for you to fix before
+   continuing, not for the reader to judge. `--dry-run` shows the arithmetic without writing.
 
    That drops repeated proposals, deals the rest into balanced shards, and plants the
    agreement probe — 48 pairs dealt to a *second* shard so two adjudicators judge them without

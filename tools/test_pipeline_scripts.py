@@ -3042,6 +3042,28 @@ def t_probe_advice_actually_clears():
     check("the recorded run's 1,772 pairs advise 60", probe_for(1772, 48, PER_SHARD) == 60,
           str(probe_for(1772, 48, PER_SHARD)))
 
+    # End to end: with no --probe the script applies the advice itself instead of warning, and an
+    # explicit --probe is kept as given. A live run over budget at 48 spent a turn re-running
+    # with the value the WARN had already computed.
+    d = tempfile.mkdtemp()
+    try:
+        ids = make_pools(d, 6, 40)
+        pairs = [{"a": x, "b": y} for x, y in itertools.combinations(ids, 2)][:1772]
+        json.dump({"pairs": pairs}, open(os.path.join(d, "candidates.json"), "w"))
+        rc, out = run("shard_candidates.py", d, "--dry-run")
+        check("dry-run previews the raise", "raises it to 60" in out, out.strip()[-160:])
+        rc, out = run("shard_candidates.py", d)
+        n = len(glob.glob(os.path.join(d, "cand-*.json")))
+        check("no --probe: raised, not warned", rc == 0 and "raised the probe to 60" in out
+              and "WARN" not in out.split("raised the probe")[1][:400], out.strip()[:200])
+        check("...into the shards the raised probe allows", n == plan_shards(1772, 60, PER_SHARD)[0],
+              f"{n} shards")
+        rc, out = run("shard_candidates.py", d, "--probe", 48)
+        check("explicit --probe 48: kept, and still warns",
+              "WARN" in out and "raised the probe" not in out, out.strip()[:200])
+    finally:
+        shutil.rmtree(d, True)
+
 
 def t_shard_budget():
     """The shard count follows pair volume, and the probe still reaches every adjudicator.

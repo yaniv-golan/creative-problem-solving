@@ -7,7 +7,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-_Nothing yet._
+- **The run records the facts every option will take for granted.** When the problem involves
+  other people or an asset, the procedure now checks for each before the gate: where every party is
+  and what they have said they want or refuse, whose consent is needed and what is already pledged
+  to them, what each side gets with no agreement, and the hard numbers the outcome has to fit. A
+  fact left out reaches no generator, and nine of them fill the gap with their own assumption.
+- **"Correct the reading" with nothing typed now gets asked what to change**, instead of being
+  recorded as a correction and starting the run.
+- **A large pool no longer stops to be re-sharded by hand.** When the agreement probe is too small
+  to cross-check the shards a pool needs, `shard_candidates.py` raises it to the smallest size that
+  can, and says so. An explicit `--probe` is kept as given and still warns.
 
 ## [0.5.1] — 2026-09-06
 
