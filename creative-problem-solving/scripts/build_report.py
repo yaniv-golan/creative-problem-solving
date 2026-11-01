@@ -18,6 +18,8 @@ that it would otherwise copy out by hand.
   build_report.py --slots <report.md>      # list the {{...}} tokens still to fill
   build_report.py --fill <report.md> --slots-json <slots.json>   # fill them; refuses a key that
                                                                  # was never a slot, or an empty value
+  build_report.py --lock-closing <report.md>     # fix the closing; write the reviewer's input
+  build_report.py --attach-review <report.md> [--none "<reason>"]   # render the answer review
   build_report.py --check <report.md>      # every {{...}} filled in, and the options intact
   build_report.py --emit-reply <report.md>                          # write reply.md from it
   build_report.py --check-reply <reply.md> --against <report.md>   # the reply carries the report
@@ -621,6 +623,18 @@ def main(wd, out):
     # run ("the top few are strongest, the rest are worth scanning") satisfies this exactly as
     # well as a real one. The tell is specificity, and it is readable in one glance.
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    # NO REBUILD ONCE THE CLOSING IS LOCKED. A rebuild wipes the lock and the review with it, so
+    # rebuild -> refill -> relock -> redispatch is how a run would keep re-asking until a review
+    # it liked came back. Checked against the lock, not the attach: the gap between the two is
+    # exactly where that loop would run.
+    try:
+        _prev = json.load(open(out + ".manifest.json", encoding="utf-8"))
+    except Exception:
+        _prev = {}
+    if isinstance(_prev, dict) and _prev.get("closing_sha1"):
+        sys.exit(f"FAIL: {out} has a closing locked for review; rebuilding would discard it and "
+                 f"the review. A request to verify more options after this point is answered "
+                 f"in the conversation, not by rebuilding the report.")
     open(out, "w", encoding="utf-8").write("\n".join(L) + "\n")
 
     # What was built, recorded beside it. --check reads this rather than being handed a number:
@@ -788,7 +802,9 @@ def _slot_check(body, man, path):
     which reads as fact and is the harder half; that is what the echo scan is for. Anyone
     reading this as complete coverage of invented premises will be wrong.
     """
-    bad = [(ln, l) for ln, l in _model_written(body, man) if ATTRIBUTION.search(l)]
+    exempt = _response_lines(body, man)
+    bad = [(ln, l) for ln, l in _model_written(body, man)
+           if ln not in exempt and ATTRIBUTION.search(l)]
     if bad:
         ex = "; ".join(f"line {ln}: {l.strip()[:70]}" for ln, l in bad[:3])
         sys.exit(f"FAIL: {len(bad)} line(s) you wrote attribute something to the reader — {ex}\n"
@@ -1199,6 +1215,16 @@ def fill(path, slots_path):
                  f"passes, and a value containing another token's literal text has that token "
                  f"substituted in turn -- neither is worth a gate, and both are worth knowing.")
 
+    # A VALUE THAT WOULD BREAK THE DOCUMENT. This loop used to paste blind: an unclosed `<!--`
+    # in any slot hid every option after it, a stray `{{` failed the placeholder scan with no
+    # token to blame, and a heading line moved the boundaries the answer review hashes.
+    unsafe = [(k, _unsafe(v)) for k, v in slots.items() if _unsafe(v)]
+    if unsafe:
+        ex = "; ".join(f"{k[:40]!r}: {why}" for k, why in unsafe[:3])
+        sys.exit(f"FAIL: {len(unsafe)} value(s) in {slots_path} contain text that would break the "
+                 f"report: {ex}\n      Rewrite them in plain prose. A family is cited as #N, which "
+                 f"is fine; a line that starts with `#` and a space is a heading.")
+
     # Counted from `present`, the token set read BEFORE any substitution. Counting inside the loop
     # would over-report if a value happened to contain another token's literal text, and counting
     # len(slots) reported substitutions that did not happen once already-filled keys are allowed.
@@ -1322,6 +1348,10 @@ def check(path, skeleton_words=None):
                      f"counting repeats: {ex}\n      every option the build wrote must still be "
                      f"there, and one that appears twice must appear twice.")
 
+        # Structure before content: a duplicated or missing review heading makes the RESPONSE
+        # span unfindable, and the attribution check below would then fail on an ordinary
+        # concession and name the wrong cause.
+        _review_check(body, man, path)
         _slot_check(body, man, path)
         brief = _find_brief(path)
         if brief: _echo_scan(body, man, brief, os.path.basename(path))
@@ -1334,6 +1364,375 @@ def check(path, skeleton_words=None):
         sys.exit(f"FAIL: {path} is {words} words against a generated {skeleton_words}. Filling "
                  f"the placeholders should not shrink it — content was cut after generation.")
     print(f"{path}: complete, {len(heads)} families, {words} words")
+
+
+# ---------------------------------------------------------------------------------------------
+# THE ANSWER REVIEW (steps 10a-10c).
+#
+# Every other check in this pipeline reads a PIECE -- an option, a lead, a family, the file's
+# integrity. Nothing read the ANSWER: the closing paragraph and the combination it recommends.
+# On a field run every gate was green while that paragraph recommended a plan that did not fit
+# the reader's own numbers and paid the other party twice for one risk; a fresh reader took it
+# apart in minutes once someone asked for one. These functions put that second reading in the
+# report, beside the closing, in a form the orchestrator cannot edit:
+#
+#   --lock-closing   hash the closing as written, assign the attempt number, write the
+#                    reviewer's input. The closing is fixed from here on.
+#   --attach-review  validate the reviewer's file, render it under the closing, number its
+#                    points, add a RESPONSE slot. Or --none "<reason>" when no review exists.
+#   --check          the closing and the review still hash to what was locked and attached, and
+#                    RESPONSE answers every point by number.
+#
+# Detection, not prevention: a hand edit to a locked span is caught by its hash, the same
+# guarantee brief_gate.py's readback_sha1 gives the brief.
+# ---------------------------------------------------------------------------------------------
+
+# Off until the stage has passed its measurement and run once on a real host: a stage whose
+# reviews have never been scored should not be able to fail a run. Off: an unreviewed report passes --check with a printed note, and --none is always
+# available. On: --check requires a review or --none, and --none is refused on a run that
+# dispatched the adversary -- a host that could dispatch one sub-agent can dispatch this one.
+# Either way, once a lock or a review exists, every hash and response rule below is enforced.
+REVIEW_REQUIRED = False
+
+CLOSING_HEAD = "## Where I would start"
+REVIEW_HEAD = "### A second reading of this"
+RESPONSE_HEAD = "### Response"
+VERDICTS = {"stands": "Stands", "stands-with-changes": "Stands with changes",
+            "does-not-stand": "Does not stand"}
+GROUNDS = {"arithmetic", "counterparty", "contradiction", "premise", "brief", "brief-insufficient"}
+MAX_POINTS = 5
+
+# Text that can break the document it is pasted into. An unclosed comment hides everything after
+# it, `{{` fails the placeholder scan, an unclosed fence turns every option below into code, and a
+# markdown heading moves the boundaries the review's hashes are anchored on. `fill()` used to
+# paste values blind, so any slot could do the first three; a reviewer's string now could too.
+# `^#{1,6}\s` and not `^#`: "#15 is the one to drop" is how real closings cite families.
+_UNSAFE = [(re.compile(r"<!--|-->"), "an HTML comment marker"),
+           (re.compile(r"\{\{|\}\}"), "a {{ or }}"),
+           (re.compile(r"^\s{0,3}(```|~~~)", re.M), "a code fence"),
+           (re.compile(r"^\s{0,3}#{1,6}\s", re.M), "a markdown heading line")]
+
+
+def _unsafe(value):
+    """The first reason `value` cannot be pasted into the report, or None."""
+    for pat, what in _UNSAFE:
+        if pat.search(value): return what
+    for h in (CLOSING_HEAD, REVIEW_HEAD, RESPONSE_HEAD):
+        if h in value: return f"the heading {h!r}"
+    return None
+
+
+def _span(lines, heading):
+    """(start, end) of the section under `heading`: from it to the next `## `/`### ` line.
+
+    Ends at the next heading of either level, NOT at "## Top 3" -- that heading is only written
+    when the top band is non-empty, and a run whose top three were all refuted has none. Returns
+    None when the heading is absent; raises ValueError when it occurs more than once, because
+    every span below is anchored on the heading being unique.
+    """
+    at = [i for i, l in enumerate(lines) if l.rstrip() == heading]
+    if not at: return None
+    if len(at) > 1:
+        raise ValueError(f"{heading!r} appears {len(at)} times; it must appear exactly once")
+    end = len(lines)
+    for j in range(at[0] + 1, len(lines)):
+        if lines[j].startswith("## ") or lines[j].startswith("### "):
+            end = j
+            break
+    return at[0], end
+
+
+def _span_text(lines, heading):
+    s = _span(lines, heading)
+    if s is None: return None
+    return "\n".join(l.rstrip() for l in lines[s[0] + 1:s[1]]).strip()
+
+
+def _sha1(text):
+    import hashlib
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()
+
+
+def _work_dir(report_path):
+    return os.path.join(os.path.dirname(os.path.abspath(report_path)), "_work")
+
+
+def _load_man(report_path):
+    mp = report_path + ".manifest.json"
+    if not os.path.exists(mp):
+        sys.exit(f"FAIL: {mp} is missing. Build the report first; the review is recorded in it.")
+    return mp, load_obj(mp)
+
+
+def _attribution_hits(lines_numbered, man):
+    skeleton = set(man.get("skeleton") or [])
+    return [(ln, l) for ln, l in lines_numbered
+            if l.strip() and l not in skeleton and ATTRIBUTION.search(l)]
+
+
+_RANK_REF = re.compile(r"#(\d{1,3})(?:\s*[-–—]\s*#?(\d{1,3}))?")
+
+
+def _cited_ranks(text):
+    """Every family rank a closing cites: #N, (#N), #N-M, #N–M. Ranges capped at 30 wide."""
+    out = []
+    for m in _RANK_REF.finditer(text or ""):
+        a = int(m.group(1)); b = int(m.group(2)) if m.group(2) else a
+        if b < a or b - a > 30: b = a
+        out += [r for r in range(a, b + 1) if r not in out]
+    return out
+
+
+# What the reviewer must not inherit: the adversary's objections and the verifier's badges. A
+# reader who has seen the pipeline's own doubts argues inside their frame, and a fresh frame is
+# the reason this stage exists.
+_STAGE_LINES = ("*Objection —", "*Checked —", "*Not verified*", "*Proposal — nothing to verify*",
+                "*Not checkable from outside", "*Note —", "*Depends on a pressure this run invented")
+
+
+def _family_blocks(lines):
+    """{rank: [lines]} for every `### N.` family block in the report."""
+    out, cur, buf = {}, None, []
+    for l in lines:
+        m = re.match(r"^### (\d+)\. ", l)
+        if m or l.startswith("## ") or (l.startswith("### ") and not m):
+            if cur is not None: out[cur] = buf
+            cur, buf = (int(m.group(1)), [l]) if m else (None, [])
+            continue
+        if cur is not None: buf.append(l)
+    if cur is not None: out[cur] = buf
+    return out
+
+
+def lock_closing(report_path):
+    """Step 10a. Fix the closing, assign the attempt, and write what the reviewer reads."""
+    mp, man = _load_man(report_path)
+    if man.get("review_mode"):
+        sys.exit("FAIL: this report already has a review attached. One review per run: a second "
+                 "one is how a review gets shopped for.")
+    body = open(report_path, encoding="utf-8-sig").read()
+    lines = body.splitlines()
+    try:
+        closing = _span_text(lines, CLOSING_HEAD)
+    except ValueError as exc:
+        sys.exit(f"FAIL: {exc}")
+    if closing is None:
+        sys.exit(f"FAIL: {report_path} has no {CLOSING_HEAD!r} section to lock.")
+    if not closing or SLOT_RE.search(closing):
+        sys.exit("FAIL: the closing is not written yet. Fill CLOSING first -- the review reads "
+                 "the closing the reader will read, so there has to be one.")
+    # THE CLOSING'S OWN CHECK RUNS HERE, while it can still be edited. Run only at --check, it
+    # would demand an edit to a paragraph the lock has already fixed.
+    s, e = _span(lines, CLOSING_HEAD)
+    bad = _attribution_hits([(i + 1, lines[i]) for i in range(s + 1, e)], man)
+    if bad:
+        ex = "; ".join(f"line {ln}: {l.strip()[:70]}" for ln, l in bad[:3])
+        sys.exit(f"FAIL: the closing attributes something to the reader -- {ex}\n"
+                 f"      Fix it before locking: once locked it cannot change. Say \"if X holds\" "
+                 f"or \"this assumes X\", never \"they said X\".")
+    sha = _sha1(closing)
+    if man.get("closing_sha1") and man["closing_sha1"] != sha:
+        sys.exit("FAIL: the closing has changed since it was first locked. A failed review is "
+                 "retried against the same closing; rewriting it between attempts is choosing "
+                 "which review to keep.")
+    attempt = int(man.get("review_attempt_next") or 0) + 1
+    wd = _work_dir(report_path)
+    if not os.path.isdir(wd):
+        sys.exit(f"FAIL: {wd} does not exist; the reviewer's input is written there.")
+    review_file = f"answer-review-{attempt}.json"
+
+    # The reviewer's input: the closing, the Top 3, and every family the closing cites from
+    # anywhere in the report -- the field run's misses sat below rank 13, where no per-option
+    # stage looks. Built here rather than handing over the report, which runs to ~80 KB.
+    blocks = _family_blocks(lines)
+    ranks = [r for r in (1, 2, 3) if r in blocks]
+    ranks += [r for r in _cited_ranks(closing) if r in blocks and r not in ranks]
+    missing = [r for r in _cited_ranks(closing) if r not in blocks]
+    inp = ["# What you are reviewing", "",
+           "Written by build_report.py --lock-closing. The recommendation first, then every "
+           "family it relies on, as the reader sees them.", "", CLOSING_HEAD, "", closing, ""]
+    for r in ranks:
+        inp += [l for l in blocks[r] if not l.lstrip().startswith(_STAGE_LINES)] + [""]
+    if missing:
+        inp += [f"(The closing also cites #{', #'.join(map(str, missing))}, which this report does "
+                f"not contain.)", ""]
+    open(os.path.join(wd, "review-input.md"), "w", encoding="utf-8").write("\n".join(inp) + "\n")
+
+    man.update(closing_sha1=sha, review_attempt_next=attempt, review_file=review_file)
+    json.dump(man, open(mp, "w", encoding="utf-8"), indent=2)
+    print(f"locked the closing ({len(closing.split())} words); attempt {attempt}.")
+    print(f"  reviewer input: {os.path.join(wd, 'review-input.md')} "
+          f"({len(ranks)} families: {', '.join('#%d' % r for r in ranks)})")
+    print(f"  the reviewer writes: {os.path.join(wd, review_file)}")
+
+
+def _fail_review(msg, review_file):
+    sys.exit(f"FAIL: {review_file} -- {msg}\n      Nothing was attached. Dispatch the reviewer "
+             f"again: re-run --lock-closing first, which assigns the next attempt number. Every "
+             f"attempt is kept, and the one attached says which it was.")
+
+
+def attach_review(report_path, none_reason=None):
+    """Step 10b. Render the reviewer's file under the closing, or record that there is none."""
+    mp, man = _load_man(report_path)
+    if man.get("review_mode"):
+        sys.exit("FAIL: a review is already attached. One review per run.")
+    if not man.get("closing_sha1"):
+        sys.exit("FAIL: the closing is not locked. Run --lock-closing first: the review has to be "
+                 "of a closing that can no longer change.")
+    body = open(report_path, encoding="utf-8-sig").read()
+    lines = body.splitlines()
+    try:
+        closing = _span_text(lines, CLOSING_HEAD)
+        for h in (REVIEW_HEAD, RESPONSE_HEAD):
+            if _span(lines, h): sys.exit(f"FAIL: {h!r} is already in the report.")
+    except ValueError as exc:
+        sys.exit(f"FAIL: {exc}")
+    if closing is None or _sha1(closing) != man["closing_sha1"]:
+        sys.exit("FAIL: the closing has changed since it was locked. The review was written "
+                 "against the locked text; attaching it under different text misstates both.")
+    wd = _work_dir(report_path)
+    attempt = int(man.get("review_attempt_next") or 1)
+
+    if none_reason is not None:
+        reason = one_line(none_reason.strip())
+        if not reason:
+            sys.exit("FAIL: --none needs a reason the reader can read: why there is no review.")
+        if _unsafe(reason): sys.exit(f"FAIL: the reason contains {_unsafe(reason)}.")
+        if REVIEW_REQUIRED and glob.glob(os.path.join(wd, "adversary*.json")):
+            sys.exit("FAIL: this run dispatched the adversary, so it can dispatch the reviewer. "
+                     "--none is for hosts that cannot, or for a reviewer that failed twice.")
+        block = [REVIEW_HEAD, "", f"*Not reviewed: {reason}*", ""]
+        mode, verdict, n = "none", None, 0
+    else:
+        rf = os.path.join(wd, man.get("review_file") or f"answer-review-{attempt}.json")
+        if not os.path.exists(rf):
+            _fail_review("was never written. The lock printed this path; the reviewer must write "
+                         "exactly there.", rf)
+        try:
+            r = json.load(open(rf, encoding="utf-8-sig"))
+        except Exception as exc:
+            _fail_review(f"is not readable JSON: {exc}", rf)
+        if not isinstance(r, dict): _fail_review("must be a JSON object.", rf)
+        verdict = r.get("verdict")
+        if verdict not in VERDICTS:
+            _fail_review(f"verdict {verdict!r} is not one of {', '.join(VERDICTS)}.", rf)
+        pts = r.get("points")
+        if not isinstance(pts, list): _fail_review("`points` must be a list (empty is fine).", rf)
+        if len(pts) > MAX_POINTS:
+            _fail_review(f"{len(pts)} points; at most {MAX_POINTS}, strongest first.", rf)
+        for k, p in enumerate(pts, 1):
+            if not isinstance(p, dict): _fail_review(f"point {k} is not an object.", rf)
+            for f in ("challenges", "problem", "grounds", "settles"):
+                if not isinstance(p.get(f), str) or not p[f].strip():
+                    _fail_review(f"point {k} has no `{f}`.", rf)
+            if p["grounds"] not in GROUNDS:
+                _fail_review(f"point {k} grounds {p['grounds']!r} is not one of "
+                             f"{', '.join(sorted(GROUNDS))}.", rf)
+        for f, v in [("verdict", verdict)] + [(f"point {k} {f}", p[f]) for k, p in
+                                               enumerate(pts, 1) for f in
+                                               ("challenges", "problem", "settles")]:
+            why = _unsafe(v)
+            if why: _fail_review(f"{f} contains {why}, which would break the report.", rf)
+        brief = _find_brief(report_path) or {}
+        from verdicts import echo_problem
+        for key, full in (("prompt_echo", brief.get("verbatim_prompt") or ""),
+                          ("closing_echo", closing)):
+            prob = echo_problem(r.get(key) if isinstance(r.get(key), str) else "", full)
+            if prob:
+                _fail_review(f"`{key}` {prob}. It proves the reviewer read the brief and the "
+                             f"locked closing, not a summary of them or an earlier draft.", rf)
+        n = len(pts)
+        block = [REVIEW_HEAD, "",
+                 f"**{VERDICTS[verdict]}.** A separate reader was given only this recommendation, "
+                 f"the families it relies on and your brief, and asked whether it holds up"
+                 + (f" (attempt {attempt})" if attempt > 1 else "") + "."]
+        if not pts:
+            block += ["", "It raised no point."]
+        for k, p in enumerate(pts, 1):
+            block += ["", f"**R{k}.** *{one_line(p['challenges'])}* — {one_line(p['problem'])} "
+                          f"(Grounds: {p['grounds']}. What would settle it: "
+                          f"{one_line(p['settles'])})"]
+        block += ["", RESPONSE_HEAD, "",
+                  "{{RESPONSE — answer " + ("each of " + ", ".join(f"R{k}" for k in
+                                             range(1, n + 1)) if n else "the review")
+                  + " by number: concede or dispute, never restate the closing}}", ""]
+        mode = "review"
+
+    s, e = _span(lines, CLOSING_HEAD)
+    while e > s + 1 and not lines[e - 1].strip(): e -= 1
+    new = lines[:e] + [""] + block + lines[e:]
+    open(report_path, "w", encoding="utf-8").write("\n".join(new) + "\n")
+    rv = _span_text(new, REVIEW_HEAD)
+    man["skeleton"] = list(man.get("skeleton") or []) + [l for l in block if l.strip()]
+    man.update(review_mode=mode, review_sha1=_sha1(rv), review_points=n,
+               review_attempt=attempt if mode == "review" else 0, review_verdict=verdict)
+    json.dump(man, open(mp, "w", encoding="utf-8"), indent=2)
+    if mode == "none":
+        print(f"{report_path}: recorded no review ({reason}).")
+    else:
+        print(f"{report_path}: attached the review -- {VERDICTS[verdict].lower()}, "
+              f"{n} point(s). Fill the RESPONSE slot, then --check:")
+        for tok in SLOT_RE.findall("\n".join(block)): print(f"    {tok}")
+
+
+def _response_lines(body, man):
+    """1-based line numbers inside RESPONSE, exempt from the attribution check.
+
+    Conceding a review point naturally reads "you said a fair split" or "your brief states a
+    ceiling" -- three of six ordinary concede/dispute lines failed ATTRIBUTION when tried. The
+    review it answers sits directly above it, in the reader's view, so a misattribution here is
+    one the reader is positioned to catch.
+    """
+    if man.get("review_mode") != "review": return set()
+    lines = body.splitlines()
+    try:
+        s = _span(lines, RESPONSE_HEAD)
+    except ValueError:
+        return set()
+    return set(range(s[0] + 2, s[1] + 1)) if s else set()
+
+
+def _review_check(body, man, path):
+    lines = body.splitlines()
+    mode = man.get("review_mode")
+    if not man.get("closing_sha1"):
+        if REVIEW_REQUIRED:
+            sys.exit(f"FAIL: {path} was never reviewed. Run --lock-closing, dispatch the "
+                     f"answer-reviewer, then --attach-review (or --attach-review --none).")
+        print("note: this report has no answer review (steps 10a-10b were not run).")
+        return
+    if not mode:
+        sys.exit(f"FAIL: the closing is locked but nothing is attached. Dispatch the reviewer and "
+                 f"run --attach-review, or --attach-review --none \"<reason>\".")
+    try:
+        closing = _span_text(lines, CLOSING_HEAD)
+        review = _span_text(lines, REVIEW_HEAD)
+        resp = _span(lines, RESPONSE_HEAD)
+    except ValueError as exc:
+        sys.exit(f"FAIL: {exc}")
+    if closing is None or review is None:
+        sys.exit(f"FAIL: {path} is missing {CLOSING_HEAD!r} or {REVIEW_HEAD!r}; the review's "
+                 f"structure was removed.")
+    if _sha1(closing) != man["closing_sha1"]:
+        sys.exit("FAIL: the closing was edited after it was locked for review. The review below "
+                 "it answers the locked text; restore it, or the reader gets a review of a "
+                 "paragraph they are not reading.")
+    if _sha1(review) != man.get("review_sha1"):
+        sys.exit("FAIL: the review was edited after it was attached. It is the one part of this "
+                 "report the run may not write.")
+    if mode == "none":
+        if resp: sys.exit(f"FAIL: {RESPONSE_HEAD!r} is present with no review to respond to.")
+        return
+    if not resp:
+        sys.exit(f"FAIL: {RESPONSE_HEAD!r} is missing; the review's points must be answered.")
+    text = "\n".join(lines[resp[0] + 1:resp[1]])
+    n = int(man.get("review_points") or 0)
+    unanswered = [f"R{k}" for k in range(1, n + 1) if not re.search(rf"\bR{k}\b", text)]
+    if unanswered:
+        sys.exit(f"FAIL: the response does not answer {', '.join(unanswered)}. Answer every point "
+                 f"by its number -- concede it or say why it is wrong.")
+
 
 if __name__ == "__main__":
     a = sys.argv[1:]
@@ -1348,6 +1747,15 @@ if __name__ == "__main__":
     if a[0] == "--check":
         floor = int(a[a.index("--min-words") + 1]) if "--min-words" in a else None
         check(a[1], floor); sys.exit(0)
+    if a[0] == "--lock-closing":
+        if len(a) < 2: sys.exit("usage: build_report.py --lock-closing <report.md>")
+        lock_closing(a[1]); sys.exit(0)
+    if a[0] == "--attach-review":
+        if len(a) < 2:
+            sys.exit('usage: build_report.py --attach-review <report.md> [--none "<reason>"]')
+        if "--none" in a and a.index("--none") + 1 >= len(a):
+            sys.exit('usage: build_report.py --attach-review <report.md> --none "<reason>"')
+        attach_review(a[1], a[a.index("--none") + 1] if "--none" in a else None); sys.exit(0)
     if a[0] == "--emit-reply":
         if len(a) < 2:
             sys.exit("usage: build_report.py --emit-reply <report.md> [<reply.md>]")

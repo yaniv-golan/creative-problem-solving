@@ -101,6 +101,22 @@ that they did not ask. If you cannot name one, say that in a line — but a clos
 true of any run ("the top few are strongest, the rest are worth scanning") is the failure mode
 here, and no check can catch it.
 
+**If the closing recommends a combination, check it as a combination before you lock it.** Does it
+fit the numbers the brief states? Does every party it needs get at least what they would get by
+walking away? Do its parts pay for the same thing twice? A separate reader is about to ask exactly
+this (`pipeline-report.md` step 10b), and once the closing is locked a flaw it finds stays in the
+report beside your paragraph.
+
+**The response to that review** answers each point by its number, R1, R2 and so on. Concede a
+point and say what it changes for the reader, or dispute it and say why. Do not restate the
+closing, and do not paraphrase the review: it sits directly above, and a gentler retelling of it
+is the one edit this stage exists to prevent. A conceded point is not a failure of the run. It is
+the review doing its job, and the reader is better served by "R1 is right: at the stated budget
+this misses by about a third, so start with #4 alone" than by a defence.
+
+**If the reader asks for more options to be verified after the review**, answer in the
+conversation. The report is not rebuilt once the closing is locked.
+
 The raised ceilings are a **reallocation, not an expansion**. The budget comes from the cut
 list, which shrinks as fewer ideas are cut. Options past the first four or five carry their
 mechanism and a one-line risk and nothing else — a compact entry the reader can evaluate in a

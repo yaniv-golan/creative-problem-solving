@@ -24,6 +24,7 @@
   "commands": "./creative-problem-solving/commands",
   "agents": [
     "./creative-problem-solving/agents/adjudicator.md",
+    "./creative-problem-solving/agents/answer-reviewer.md",
     "./creative-problem-solving/agents/adversary.md",
     "./creative-problem-solving/agents/generator.md",
     "./creative-problem-solving/agents/grouper.md",

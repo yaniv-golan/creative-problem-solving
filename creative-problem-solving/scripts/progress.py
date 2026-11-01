@@ -69,7 +69,7 @@ PRINTABLE = ("generated", "sharded", "ranked", "verified")
 # reads as "must have spoken" -- and every such run would then be warned for skipping a stage it
 # could not perform. This is exactly the two-meanings collapse the comment above records, so the
 # name that can be printed and the name that must be spoken stay in different tuples.
-SAYABLE = PRINTABLE + ("argued",)
+SAYABLE = PRINTABLE + ("argued", "reviewed")
 
 # Every pre-gate boundary that must tell the reader something. The integrity check is the seventh
 # boundary in references/pipeline-report.md's table and is deliberately absent: it is the auditor,
@@ -238,6 +238,32 @@ def _argued(wd):
                if dep else "") + ".")
 
 
+def _reviewed(wd):
+    """Whether the answer was reviewed, read from the REPORT MANIFEST and not the reviewer's file.
+
+    The file can exist and never have been attached -- malformed, or written to the wrong path --
+    and announcing it would tell the reader there is a review under the closing when there is
+    none. The manifest only records one after --attach-review has validated and rendered it.
+    Optional, like `argued`: not every host can dispatch the reviewer.
+    """
+    mp = os.path.join(wd, "..", "report.md.manifest.json")
+    try:
+        man = load_obj(mp) if os.path.exists(mp) else {}
+    except SystemExit:
+        return None
+    mode = man.get("review_mode")
+    if mode == "none":
+        return (f"{SAY}The recommendation was not reviewed by a separate reader this time; the "
+                f"report says why, under Where I would start.")
+    if mode != "review": return None
+    v = {"stands": "it holds up", "stands-with-changes": "it holds up with changes",
+         "does-not-stand": "it does not hold up as written"}.get(man.get("review_verdict"), "")
+    n = int(man.get("review_points") or 0)
+    return (f"{SAY}A separate reader checked the recommendation against your brief: {v}"
+            + (f", with {_plural(n, 'point')} to weigh" if n else "")
+            + ". Its reading is under Where I would start, followed by my response.")
+
+
 def _verified(wd):
     files = sorted(glob.glob(os.path.join(wd, "verified-*.json")))
     if not files: return None
@@ -333,7 +359,7 @@ def line(wd, stage=None):
                  f"print the wrong boundary's line, or none.")
     out = {"generated": _generated, "sharded": _sharded,
            "ranked": _ranked, "verified": _verified,
-           "argued": _argued}.get(stage, _furthest)(wd)
+           "argued": _argued, "reviewed": _reviewed}.get(stage, _furthest)(wd)
     # Only a boundary that actually printed is recorded. A stage called too early returns None,
     # and recording that would report a line the reader never got.
     if out and stage: record(wd, stage)

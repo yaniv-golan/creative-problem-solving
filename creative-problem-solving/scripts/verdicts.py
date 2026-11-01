@@ -243,3 +243,35 @@ def pool_index_set_problem(paths):
                 f"generator whose pool never landed; every per-pool share below is then measured "
                 f"against a universe short by that pool, and nothing else in the run says so.")
     return None
+
+
+def norm_ws(s):
+    """Collapse every whitespace run to one space. THE normalisation for prompt echoes.
+
+    One copy, because there are now two readers of echoes -- verify_pipeline.py checks the
+    ranker's, build_report.py checks the answer reviewer's -- and two hand-written copies of a
+    normalisation are how one of them comes to refuse an honest multi-paragraph prompt while the
+    other accepts it. verify_pipeline.py records the bug that taught this: slicing the target at
+    the RAW echo's length made a byte-perfect copy fail on any prompt with a paragraph break.
+    """
+    return " ".join((s or "").split())
+
+
+ECHO_FLOOR = 40
+
+
+def echo_problem(echo, full):
+    """None if `echo` is a faithful opening of `full`, else a one-line reason.
+
+    Normalise both, then compare against `full` sliced at the NORMALISED echo's length. An echo
+    shorter than min(ECHO_FLOOR, len(full)) is too little to show anything was read -- "H"
+    matches every prompt that starts with H.
+    """
+    e, f = norm_ws(echo), norm_ws(full)
+    if not e:
+        return "absent"
+    if len(e) < min(ECHO_FLOOR, len(f)):
+        return f"only {len(e)} characters, too short to show it was read"
+    if e != f[:len(e)]:
+        return f"does not match: echoed {e[:60]!r}, actual {f[:len(e)][:60]!r}"
+    return None

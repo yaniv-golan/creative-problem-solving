@@ -6339,6 +6339,308 @@ def t_the_adversary_pass_is_optional_but_never_silent():
               body[:200])
 
 
+REVIEW_CLOSING = ("Start with #2 and pair it with #20–21: the first is cheap, the other two cover "
+                  "the gap it leaves. Missing: nobody priced the evening shift.")
+
+
+def _review_run(d, closing=REVIEW_CLOSING, adversary=False, extra=None):
+    """A built, filled, --check-green report at d/report.md over d/_work, ready to lock."""
+    wd = os.path.join(d, "_work"); os.makedirs(wd)
+    ids, fams = full_fixture(wd)
+    if adversary:
+        json.dump({"objections": [{"id": fams[0]["members"][0], "objection": "ADVERSARY DOUBT.",
+                                   "answerable": "ASK."}]},
+                  open(os.path.join(wd, "adversary-1.json"), "w"))
+    rep = os.path.join(d, "report.md")
+    rc, out = run("build_report.py", wd, "--out", rep)
+    assert rc == 0, out
+    rc, toks = run("build_report.py", "--slots", rep)
+    slots = {t: ("written in plain prose" if not t.startswith("{{CLOSING") else closing)
+             for t in toks.split("\n") if t.startswith("{{")}
+    slots.update(extra or {})
+    sp = os.path.join(wd, "slots.json"); json.dump(slots, open(sp, "w"))
+    rc, out = run("build_report.py", "--fill", rep, "--slots-json", sp)
+    assert rc == 0, out
+    return wd, rep
+
+
+def _write_review(wd, rep, n=2, verdict="does-not-stand", points=None, **over):
+    brief = json.load(open(os.path.join(wd, "brief.json")))
+    pts = points if points is not None else [
+        {"challenges": f"#{k}", "problem": f"Problem {k}: over the stated budget by a third.",
+         "grounds": "arithmetic", "settles": "price it"} for k in range(1, n + 1)]
+    closing = REVIEW_CLOSING
+    r = {"verdict": verdict, "points": pts,
+         "prompt_echo": brief["verbatim_prompt"][:60], "closing_echo": closing[:60]}
+    r.update(over)
+    man = json.load(open(rep + ".manifest.json"))
+    p = os.path.join(wd, man["review_file"])
+    open(p, "w").write(r if isinstance(r, str) else json.dumps(r))
+    return p
+
+
+def _fill_response(wd, rep, text):
+    # From the manifest skeleton, not --slots: a re-fill must use the token after it is gone.
+    tok = [t for t in json.load(open(rep + ".manifest.json"))["skeleton"]
+           if t.startswith("{{RESPONSE")]
+    sp = os.path.join(wd, "resp.json"); json.dump({tok[0]: text}, open(sp, "w"))
+    return run("build_report.py", "--fill", rep, "--slots-json", sp)
+
+
+def t_the_answer_review_is_locked_attached_and_answered():
+    """Steps 10a-10c: the closing is locked, a separate reader's review is attached under it in a
+    form the run cannot edit, and the response must answer every point by number.
+
+    Every other check reads a piece. This is the only one that reads the answer, so each rule here
+    is one a run under pressure would want to bend: rewrite the closing after seeing the review,
+    soften the review, answer two points of three, rebuild until a friendlier review comes back.
+
+    NEGATIVE CONTROLS run in-process at the end: with the closing hash neutralised the closing-edit
+    case passes, and with the RESPONSE exemption removed an ordinary concession fails.
+    """
+    print("\nthe answer review is locked, attached and answered")
+    import contextlib, io
+    from importlib.machinery import SourceFileLoader
+
+    # -- 10a: the lock
+    with tempfile.TemporaryDirectory() as d:
+        wd = os.path.join(d, "_work"); os.makedirs(wd); full_fixture(wd)
+        rep = os.path.join(d, "report.md"); run("build_report.py", wd, "--out", rep)
+        rc, out = run("build_report.py", "--lock-closing", rep)
+        check("lock refuses an unwritten closing", rc != 0 and "not written" in out, out[:160])
+
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d, closing="Start with #2, because the team said budget is fixed.")
+        rc, out = run("build_report.py", "--lock-closing", rep)
+        check("lock refuses a closing that attributes something to the reader",
+              rc != 0 and "attributes something" in out, out[:160])
+
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d, adversary=True)
+        rc, out = run("build_report.py", "--lock-closing", rep)
+        check("lock succeeds and assigns attempt 1", rc == 0 and "answer-review-1.json" in out,
+              out[:200])
+        inp = open(os.path.join(wd, "review-input.md")).read()
+        heads = re.findall(r"^### (\d+)\.", inp, re.M)
+        check("review input holds the Top 3 and every cited family, en-dash range included",
+              heads == ["1", "2", "3", "20", "21"], str(heads))
+        check("...and not the adversary's objection", "ADVERSARY DOUBT" not in inp, inp[:200])
+        check("...and carries the closing verbatim", REVIEW_CLOSING in inp, inp[:200])
+        rc, out = run("build_report.py", wd, "--out", rep)
+        check("a rebuild after the lock is refused", rc != 0 and "locked" in out, out[:160])
+        check("...and leaves the report alone", REVIEW_CLOSING in open(rep).read(), "")
+
+        # -- 10b: attach refusals
+        rc, out = run("build_report.py", "--attach-review", rep)
+        check("attach refuses when the reviewer wrote nothing", rc != 0 and "never written" in out,
+              out[:160])
+        for name, kw, needle in [
+            ("bad verdict", dict(verdict="fine"), "verdict"),
+            ("bad grounds", dict(points=[{"challenges": "#2", "problem": "p", "grounds": "vibes",
+                                          "settles": "s"}]), "grounds"),
+            ("six points", dict(n=6), "at most 5"),
+            ("a wrong prompt echo", dict(prompt_echo="Something else entirely, not the prompt "
+                                                     "this run was given at all"), "prompt_echo"),
+            ("a closing echo of an earlier draft",
+             dict(closing_echo="Start with #4 because it is cheapest and the rest can wait for "
+                               "now"), "closing_echo"),
+            ("an HTML comment", dict(points=[{"challenges": "#2", "problem": "x <!-- y",
+                                              "grounds": "brief", "settles": "s"}]), "HTML"),
+            ("a placeholder", dict(points=[{"challenges": "#2", "problem": "x {{Y}}",
+                                            "grounds": "brief", "settles": "s"}]), "{{"),
+            ("a code fence", dict(points=[{"challenges": "#2", "problem": "x\n```\ny",
+                                           "grounds": "brief", "settles": "s"}]), "fence"),
+            ("a heading line", dict(points=[{"challenges": "#2", "problem": "x\n## Top 3",
+                                             "grounds": "brief", "settles": "s"}]), "heading"),
+        ]:
+            _write_review(wd, rep, **kw)
+            rc, out = run("build_report.py", "--attach-review", rep)
+            check(f"attach refuses {name}", rc != 0 and needle in out, out[:200])
+        open(os.path.join(wd, "answer-review-1.json"), "w").write("{not json")
+        rc, out = run("build_report.py", "--attach-review", rep)
+        check("attach refuses malformed JSON", rc != 0 and "not readable JSON" in out, out[:160])
+
+        # A retry is a new attempt with a new path; the failed file is kept.
+        rc, out = run("build_report.py", "--lock-closing", rep)
+        check("re-locking an unchanged closing assigns attempt 2",
+              rc == 0 and "answer-review-2.json" in out, out[:200])
+
+        # The edit that matters most: the closing rewritten after the lock.
+        body = open(rep).read()
+        open(rep, "w").write(body.replace("nobody priced", "nobody costed"))
+        _write_review(wd, rep)
+        rc, out = run("build_report.py", "--attach-review", rep)
+        check("attach refuses a closing edited after the lock", rc != 0 and "changed" in out,
+              out[:160])
+        open(rep, "w").write(body)
+
+        # -- 10b: a good review, with the reader-facing phrasing that sank rev 1 of this design
+        _write_review(wd, rep, points=[
+            {"challenges": "#15", "problem": "Your brief states a ceiling of 40 hours; this needs 55.",
+             "grounds": "arithmetic", "settles": "count the hours"},
+            {"challenges": "pair it with #20", "problem": "They said they will not renegotiate.",
+             "grounds": "counterparty", "settles": "ask them"}])
+        rc, out = run("build_report.py", "--attach-review", rep)
+        check("attach accepts a review that cites #15 and quotes the reader", rc == 0, out[:200])
+        body = open(rep).read()
+        check("the review renders directly under the closing",
+              body.index("### A second reading of this") > body.index(REVIEW_CLOSING)
+              and body.index("### A second reading of this") < body.index("## Top 3"), "")
+        check("...numbered by the script", "**R1.**" in body and "**R2.**" in body, "")
+        check("...with an attempt label, since this is attempt 2", "(attempt 2)" in body, "")
+        rc, out = run("build_report.py", "--attach-review", rep)
+        check("a second attach is refused", rc != 0 and "already attached" in out, out[:160])
+        rc, out = run("build_report.py", "--check", rep)
+        check("--check refuses an unanswered review", rc != 0 and "placeholder" in out, out[:160])
+
+        # -- 10c: the response
+        rc, out = _fill_response(wd, rep, "R2 is wrong: they said that about the old contract.")
+        rc, out = run("build_report.py", "--check", rep)
+        check("--check refuses a response that skips R1", rc != 0 and "R1" in out, out[:160])
+
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d)
+        run("build_report.py", "--lock-closing", rep)
+        _write_review(wd, rep, n=2)
+        run("build_report.py", "--attach-review", rep)
+        _fill_response(wd, rep, "R12 does not exist; R2 is fair.")
+        rc, out = run("build_report.py", "--check", rep)
+        check("R12 does not answer R1", rc != 0 and "R1" in out, out[:160])
+
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d)
+        rc, out = run("build_report.py", "--check", rep)
+        check("an unreviewed report passes while the stage is optional, and says so",
+              rc == 0 and "no answer review" in out, out[-200:])
+        run("build_report.py", "--lock-closing", rep)
+        rc, out = run("build_report.py", "--check", rep)
+        check("locked but nothing attached fails", rc != 0 and "nothing is attached" in out,
+              out[:160])
+        _write_review(wd, rep, n=2)
+        run("build_report.py", "--attach-review", rep)
+        concede = ("R1: you said a fair split, and your brief states a ceiling; conceded, start "
+                   "with #2 alone. R2: they raised the price last year, so this stands.")
+        rc, out = _fill_response(wd, rep, concede)
+        rc, out = run("build_report.py", "--check", rep)
+        check("a response that quotes the reader passes --check", rc == 0, out[-300:])
+        rc, out = _fill_response(wd, rep, concede)
+        check("re-filling RESPONSE is a reported no-op, not a refusal",
+              rc == 0 and "ALREADY filled" in out, out[:200])
+        rc, out = run("build_report.py", "--emit-reply", rep)
+        reply = os.path.join(d, "reply.md")
+        rc2, out2 = run("build_report.py", "--check-reply", reply, "--against", rep)
+        check("emit and check-reply pass with the review in the reply",
+              rc == 0 and rc2 == 0 and "A second reading of this" in open(reply).read(),
+              (out + out2)[-200:])
+        check("...and the reply carries no HTML comment", "<!--" not in open(reply).read(), "")
+        good = open(rep).read()
+        for name, mutate, needle in [
+            ("an edited closing", lambda b: b.replace("nobody priced", "nobody costed"), "closing"),
+            ("an edited review", lambda b: b.replace("over the stated budget", "a little over"),
+             "review was edited"),
+            ("a duplicated heading", lambda b: b + "\n### Response\n", "exactly once"),
+        ]:
+            open(rep, "w").write(mutate(good))
+            rc, out = run("build_report.py", "--check", rep)
+            check(f"--check refuses {name}", rc != 0 and needle in out, out[:160])
+        open(rep, "w").write(good)
+
+        # NEGATIVE CONTROLS. Each rule has to be what makes its case fail.
+        br = SourceFileLoader("br_neg", str(SCRIPTS / "build_report.py")).load_module()
+        def quiet(fn, *a):
+            buf = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(buf): fn(*a)
+                return 0
+            except SystemExit as e:
+                return 1 if e.code not in (None, 0) else 0
+        open(rep, "w").write(good.replace("nobody priced", "nobody costed"))
+        _m = json.load(open(rep + ".manifest.json"))
+        _saved = json.dumps(_m)
+        _m.update(closing_sha1="same", review_sha1="same")
+        json.dump(_m, open(rep + ".manifest.json", "w"))
+        br._sha1 = lambda t: "same"
+        check("CONTROL: without the closing hash, an edited closing passes",
+              quiet(br.check, rep) == 0, "")
+        open(rep + ".manifest.json", "w").write(_saved)
+        br = SourceFileLoader("br_neg2", str(SCRIPTS / "build_report.py")).load_module()
+        open(rep, "w").write(good)
+        br._response_lines = lambda body, man: set()
+        check("CONTROL: without the RESPONSE exemption, the concession fails",
+              quiet(br.check, rep) == 1, "")
+
+    # Zero points, and --none.
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d)
+        run("build_report.py", "--lock-closing", rep)
+        _write_review(wd, rep, verdict="stands", points=[])
+        run("build_report.py", "--attach-review", rep)
+        _fill_response(wd, rep, "Nothing to answer; the review raised no point.")
+        rc, out = run("build_report.py", "--check", rep)
+        check("a 'stands' review with no points passes", rc == 0, out[-200:])
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d, adversary=True)
+        run("build_report.py", "--lock-closing", rep)
+        rc, out = run("build_report.py", "--attach-review", rep, "--none",
+                      "this host cannot dispatch sub-agents")
+        body = open(rep).read()
+        check("--none renders the reason where the review would be",
+              rc == 0 and "*Not reviewed: this host cannot dispatch sub-agents*" in body, out[:160])
+        rc, out = run("build_report.py", "--check", rep)
+        check("...and --check passes with no RESPONSE", rc == 0, out[-200:])
+        rc, out = run("progress.py", wd, "reviewed")
+        check("progress says it was not reviewed", "not reviewed" in out, out[:160])
+        br = SourceFileLoader("br_req", str(SCRIPTS / "build_report.py")).load_module()
+
+    # The switch: once the stage is mandatory, --none is refused on a run that ran the adversary.
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d, adversary=True)
+        br = SourceFileLoader("br_req2", str(SCRIPTS / "build_report.py")).load_module()
+        br.REVIEW_REQUIRED = True
+        try:
+            with contextlib.redirect_stdout(io.StringIO()): br.check(rep)
+            unreviewed = 0
+        except SystemExit as e:
+            unreviewed = 1 if "never reviewed" in str(e.code) else 0
+        check("REQUIRED: an unreviewed report fails", unreviewed == 1, "")
+        with contextlib.redirect_stdout(io.StringIO()): br.lock_closing(rep)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()): br.attach_review(rep, "no reason")
+            refused = 0
+        except SystemExit as e:
+            refused = 1 if "dispatched the adversary" in str(e.code) else 0
+        check("REQUIRED: --none is refused after the adversary ran", refused == 1, "")
+
+    # The span ends at the next heading, not at "## Top 3", which an all-refuted top band lacks.
+    br = SourceFileLoader("br_span", str(SCRIPTS / "build_report.py")).load_module()
+    lines = ["## Where I would start", "", "close", "", "## The next 10", "### 4. x"]
+    check("the closing span ends at whichever band comes next", br._span(lines,
+          "## Where I would start") == (0, 4), str(br._span(lines, "## Where I would start")))
+    check("ranks: #N, (#N), #N-M, #N–M", br._cited_ranks("(#3), #7-8 and #10–11") ==
+          [3, 7, 8, 10, 11], str(br._cited_ranks("(#3), #7-8 and #10–11")))
+
+    # fill() now refuses text that would break the document, but not a cited rank.
+    with tempfile.TemporaryDirectory() as d:
+        wd = os.path.join(d, "_work"); os.makedirs(wd); full_fixture(wd)
+        rep = os.path.join(d, "report.md"); run("build_report.py", wd, "--out", rep)
+        tok = run("build_report.py", "--slots", rep)[1].split("\n")[0]
+        sp = os.path.join(wd, "s.json")
+        json.dump({tok: "Start here <!-- and hide the rest"}, open(sp, "w"))
+        rc, out = run("build_report.py", "--fill", rep, "--slots-json", sp)
+        check("--fill refuses an HTML comment in a value", rc != 0 and "HTML" in out, out[:160])
+        json.dump({tok: "#15 is the one to drop; start with #2."}, open(sp, "w"))
+        rc, out = run("build_report.py", "--fill", rep, "--slots-json", sp)
+        check("--fill accepts a value that opens with a cited rank", rc == 0, out[:160])
+
+    from verdicts import echo_problem
+    check("the shared echo helper survives a paragraph break",
+          echo_problem("How do we grow deal flow? We have tried events, newsletters",
+                       "How do we grow deal flow?\n\nWe have tried events,  newsletters and more")
+          is None, "")
+    check("...and still refuses one that is too short to show anything was read",
+          echo_problem("How", "How do we grow deal flow? We have tried events") is not None, "")
+
+
 def t_a_refuted_lead_that_slides_two_families_onto_one_move_is_reported():
     """Two families whose FIRST members differ, but whose PRESENTED leads collide once a lead
     is refuted.
@@ -6471,6 +6773,7 @@ TESTS = (t_brief_gate_asks_once, t_the_assumption_line_is_rendered_not_retyped, 
     t_grounding_reaches_the_generators_through_the_brief,
     t_a_large_family_gets_a_note_slot_and_singles_get_an_index,
     t_the_adversary_pass_is_optional_but_never_silent,
+    t_the_answer_review_is_locked_attached_and_answered,
     t_every_test_is_registered,
 )
 

@@ -14,6 +14,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
   fact left out reaches no generator, and nine of them fill the gap with their own assumption.
 - **"Correct the reading" with nothing typed now gets asked what to change**, instead of being
   recorded as a correction and starting the run.
+- **A separate reader can check the recommendation before you see it (optional for now).** Every
+  earlier check reads one piece: an option, a claim, a family. Nothing read "Where I would start",
+  the paragraph you act on, or the combination of options it recommends. A new `answer-reviewer`
+  gets only that paragraph, the families it relies on and your brief. It asks whether the plan fits
+  the numbers you gave, whether everyone it needs would agree compared with walking away, whether
+  its parts contradict or pay for the same thing twice, and whether it rests on something your
+  brief contradicts. Its verdict and numbered points appear directly under the recommendation,
+  followed by a response to each point. The run can't edit either the recommendation or the
+  review once the review starts: `build_report.py --check` refuses a report where either has
+  changed, or where any point goes unanswered. The stage is not yet required, and becomes so once
+  its reviews have been measured.
+- **Slot text that would break the report is refused.** `--fill` now rejects values containing an
+  HTML comment, a `{{`, a code fence or a heading line. Any of these could hide every option below
+  it.
 - **A large pool no longer stops to be re-sharded by hand.** When the agreement probe is too small
   to cross-check the shards a pool needs, `shard_candidates.py` raises it to the smallest size that
   can, and says so. An explicit `--probe` is kept as given and still warns.

@@ -40,7 +40,7 @@ from brief_gate import SKIP_REASONS as GATE_SKIP_REASONS
 from progress import announced, BOUNDARIES
 # One definition of the share rule; merge_families.py bounds its merges by the same import.
 from verdicts import JOINING, SEPARATING, SHARE_MAX as SEP_SHARE_MAX, share_breach  # noqa: F401
-from verdicts import relation_of
+from verdicts import relation_of, norm_ws
 from verdicts import pool_index_problem, pool_index_set_problem
 
 
@@ -664,8 +664,8 @@ def main(wd):
     # here, so this refused honest runs at the last gate, after every search was paid for, with a
     # message accusing the ranker of ranking against something else. A gate that punishes
     # compliance is worse than no gate.
-    _norm = " ".join(_echo.split())
-    _full = " ".join((brief.get("verbatim_prompt") or "").split())
+    _norm = norm_ws(_echo)
+    _full = norm_ws(brief.get("verbatim_prompt"))
     # A floor, because `_want` is sliced to whatever arrived: an echo of "H" matched any prompt
     # starting with H and passed with the evidentiary weight of one letter. 40 sits well below the
     # 60 asked for -- normalization only ever shrinks the echo, and never by twenty characters --

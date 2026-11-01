@@ -338,6 +338,58 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     the green certified a file that no longer existed. The edit was right; the missing re-check is
     the defect.
 
+10a. **Lock the closing.** Once `--check` passes and you have made every edit the echo scan
+    prompted:
+
+    `python3 "$CPS/scripts/build_report.py" --lock-closing "$BASE/$RUN/report.md"`
+
+    It refuses a closing that attributes something to the reader. Fix that now, because **after
+    this the closing cannot change**: `--check` compares it against the hash recorded here. It
+    writes `_work/review-input.md` (the closing, the Top 3, and every family the closing cites by
+    `#N` from anywhere in the report), and prints the one path the reviewer must write to.
+
+    Every check before this one read a piece: an option, a lead, a family. Nothing read the answer.
+    On a field run every gate was green while the closing recommended a combination that did not
+    fit the reader's own numbers and paid the other party twice for one risk; a separate reader
+    took it apart in minutes once someone asked for one.
+
+10b. **Dispatch ONE `answer-reviewer`**, and give it three things, all paths: `review-input.md`,
+    `brief.json`, and the output path the lock printed. Spell them as Step 0b settled. Give it
+    **nothing else**: not the adversary's file, not the slots, not your view of the run. A reader
+    who has followed the pipeline argues inside its frame, and a fresh frame is the reason this
+    step exists.
+
+    Then attach what it wrote:
+
+    `python3 "$CPS/scripts/build_report.py" --attach-review "$BASE/$RUN/report.md"`
+
+    It validates the file, renders it under the closing as *A second reading of this* with its
+    points numbered R1, R2…, and adds one slot, `RESPONSE`. **You cannot edit the review**:
+    `--check` refuses a report whose review no longer matches what was attached.
+
+    **If it refuses the reviewer's file** (malformed, wrong path, an echo that does not match),
+    run `--lock-closing` again, which assigns the next attempt number and a new path, and dispatch
+    once more. Every attempt is kept, and the attached review says which attempt it was. **If no
+    review can be obtained** (this host cannot dispatch sub-agents, or two attempts failed), record
+    that instead of skipping the step, and the report says so where the review would be:
+
+    `python3 "$CPS/scripts/build_report.py" --attach-review "$BASE/$RUN/report.md" --none "<why, in one sentence>"`
+
+10c. **Answer the review, then check again.** Fill `RESPONSE` with `--fill`, the same way as the
+    other slots, using the token the attach step printed. Answer **every point by its number**:
+    concede it and say what changes for the reader, or say why it is wrong. Do not restate the
+    closing, and do not soften the review by paraphrasing it. It is directly above, and the
+    reader can read it. `--check` refuses a response that leaves a point unanswered.
+
+    Then `--check` again, and say what this step found, with one Bash call, repeating the `SAY:`
+    line it prints:
+
+    `python3 "$CPS/scripts/progress.py" "$BASE/$RUN/_work" reviewed`
+
+    **Do not rebuild the report after locking.** The build refuses, because a rebuild discards the
+    lock and the review. If the reader later asks you to verify more options, answer in the
+    conversation.
+
     **The file is the answer, and the reply is the file.** Emit its contents as your reply. Do
     not compose a second, shorter version: everything in the report has been through the checks
     above, and a summary written afterwards has been through none of them. On the run that
