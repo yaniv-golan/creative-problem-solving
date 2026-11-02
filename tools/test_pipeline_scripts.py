@@ -767,7 +767,7 @@ def t_three_states_and_report():
     out_md = os.path.join(d, "report.md")
     rc, out = run("build_report.py", d, "--out", out_md)
     body = open(out_md).read()
-    heads = [l for l in body.splitlines() if l.startswith("### ")]
+    heads = [l for l in body.splitlines() if re.match(r"### \d+\.", l)]
     nums = [int(h.split(".")[0][4:]) for h in heads]
     check("rejected family leaves a gap", 2 not in nums, f"numbers start {nums[:4]}")
     check("no two families share a number", len(nums) == len(set(nums)), str(nums[:6]))
@@ -6408,6 +6408,49 @@ def t_the_answer_review_is_locked_attached_and_answered():
         rep = os.path.join(d, "report.md"); run("build_report.py", wd, "--out", rep)
         rc, out = run("build_report.py", "--lock-closing", rep)
         check("lock refuses an unwritten closing", rc != 0 and "not written" in out, out[:160])
+
+    # -- the default: a report nobody reviewed says so, and cannot stop saying so
+    NOT_REV = "*Not reviewed: no second reading was run on this answer.*"
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d)
+        body = open(rep).read()
+        check("an unreviewed report tells the reader, under the closing",
+              body.count("### A second reading of this") == 1 and NOT_REV in body
+              and body.index(REVIEW_CLOSING) < body.index(NOT_REV) < body.index("## Top 3"),
+              body[:400])
+        rc, out = run("build_report.py", "--check", rep)
+        check("...and passes --check with the note", rc == 0 and "says so under the closing" in out,
+              out[-200:])
+        for label, edit in (("deleted", lambda b: b.replace("### A second reading of this\n\n" + NOT_REV + "\n", "")),
+                            ("reworded", lambda b: b.replace(NOT_REV, "*Reviewed and fine.*")),
+                            ("emptied", lambda b: b.replace(NOT_REV, ""))):
+            open(rep, "w").write(edit(body))
+            rc, out = run("build_report.py", "--check", rep)
+            check(f"the not-reviewed line {label} fails --check",
+                  rc != 0 and "not reviewed was removed or edited" in out, out[-200:])
+        open(rep, "w").write(body)
+        run("build_report.py", "--lock-closing", rep)
+        _write_review(wd, rep)
+        rc, out = run("build_report.py", "--attach-review", rep)
+        b2 = open(rep).read()
+        check("attaching a review replaces the not-reviewed line",
+              rc == 0 and NOT_REV not in b2 and b2.count("### A second reading of this") == 1
+              and "**R1.**" in b2, out[:200])
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d)
+        open(rep, "a").write("\n<details><summary>copy</summary>\n\n" + open(rep).read() + "</details>\n")
+        rc, out = run("build_report.py", "--check", rep)
+        check("a full copy in an appendix does not trip the not-reviewed check",
+              "not reviewed was removed" not in out, out[-200:])
+    with tempfile.TemporaryDirectory() as d:
+        wd, rep = _review_run(d)
+        body = open(rep).read()
+        open(rep, "w").write(body.replace(NOT_REV, NOT_REV + "\n\nAdded by hand."))
+        run("build_report.py", "--lock-closing", rep)
+        _write_review(wd, rep)
+        rc, out = run("build_report.py", "--attach-review", rep)
+        check("attach refuses a review section written by hand", rc != 0 and "already in the report" in out,
+              out[:200])
 
     with tempfile.TemporaryDirectory() as d:
         wd, rep = _review_run(d, closing="Start with #2, because the team said budget is fixed.")

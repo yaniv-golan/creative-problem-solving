@@ -24,7 +24,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   followed by a response to each point. The run can't edit either the recommendation or the
   review once the review starts: `build_report.py --check` refuses a report where either has
   changed, or where any point goes unanswered. The stage is not yet required, and becomes so once
-  its reviews have been measured.
+  its reviews have been measured. Until then a report that skipped it says so under the
+  recommendation ("Not reviewed"), and `--check` refuses a report that removed that line.
 - **Slot text that would break the report is refused.** `--fill` now rejects values containing an
   HTML comment, a `{{`, a code fence or a heading line. Any of these could hide every option below
   it.

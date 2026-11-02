@@ -363,8 +363,10 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
 
     `python3 "$CPS/scripts/build_report.py" --attach-review "$BASE/$RUN/report.md"`
 
-    It validates the file, renders it under the closing as *A second reading of this* with its
-    points numbered R1, R2…, and adds one slot, `RESPONSE`. **You cannot edit the review**:
+    Until then the report carries a line under the closing saying it was not reviewed, and
+    `--check` refuses a report that removed it. The attach step replaces it: it validates the
+    file, renders it as *A second reading of this* with its points numbered R1, R2…, and adds one
+    slot, `RESPONSE`. **You cannot edit the review**:
     `--check` refuses a report whose review no longer matches what was attached.
 
     **If it refuses the reviewer's file** (malformed, wrong path, an echo that does not match),

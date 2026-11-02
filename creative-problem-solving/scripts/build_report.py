@@ -507,6 +507,10 @@ def main(wd, out):
     L += ["## Where I would start", "",
           "{{CLOSING — where you would start and why; and one line on what this list is missing}}",
           ""]
+    # The reader sees a skipped review. Until the review is attached this line stands where it
+    # would be, and --check refuses a report that removed it without attaching one: a step a run
+    # can skip silently is a step runs skip.
+    L += REVIEW_DEFAULT + [""]
 
     for fid in top:
         if fid == top[0]: L += ["## Top 3", ""]
@@ -659,7 +663,7 @@ def main(wd, out):
     # adds words, so excluding them leaves the guard catching exactly what it is for.
     _skeleton_words = len(re.sub(r"\{\{[^}]*\}\}", "", "\n".join(L)).split())
     json.dump({"families": len(live), "words": _skeleton_words,
-               "options": rendered, "skeleton": L},
+               "options": rendered, "skeleton": L, "review_default": True},
               open(out + ".manifest.json", "w", encoding="utf-8"), indent=2)
     slots = sum(1 for fid in live for m in fams[fid]["members"] if m not in rejected)
     # The resolved path, echoed in the same form as the other writing scripts, because a caller
@@ -1397,6 +1401,8 @@ REVIEW_REQUIRED = False
 CLOSING_HEAD = "## Where I would start"
 REVIEW_HEAD = "### A second reading of this"
 RESPONSE_HEAD = "### Response"
+NOT_REVIEWED = "*Not reviewed: no second reading was run on this answer.*"
+REVIEW_DEFAULT = [REVIEW_HEAD, "", NOT_REVIEWED]
 VERDICTS = {"stands": "Stands", "stands-with-changes": "Stands with changes",
             "does-not-stand": "Does not stand"}
 GROUNDS = {"arithmetic", "counterparty", "contradiction", "premise", "brief", "brief-insufficient"}
@@ -1584,10 +1590,19 @@ def attach_review(report_path, none_reason=None):
     lines = body.splitlines()
     try:
         closing = _span_text(lines, CLOSING_HEAD)
-        for h in (REVIEW_HEAD, RESPONSE_HEAD):
-            if _span(lines, h): sys.exit(f"FAIL: {h!r} is already in the report.")
+        if _span(lines, RESPONSE_HEAD): sys.exit(f"FAIL: {RESPONSE_HEAD!r} is already in the report.")
+        rs = _span(lines, REVIEW_HEAD)
     except ValueError as exc:
         sys.exit(f"FAIL: {exc}")
+    # The build's "not reviewed" line is the one review section that may be replaced; anything
+    # else under that heading was written by hand.
+    if rs:
+        if _span_text(lines, REVIEW_HEAD) != NOT_REVIEWED:
+            sys.exit(f"FAIL: {REVIEW_HEAD!r} is already in the report.")
+        e = rs[1]
+        while e > rs[0] and not lines[e - 1].strip(): e -= 1
+        while e < len(lines) and not lines[e].strip(): e += 1
+        lines = lines[:rs[0]] + lines[e:]
     if closing is None or _sha1(closing) != man["closing_sha1"]:
         sys.exit("FAIL: the closing has changed since it was locked. The review was written "
                  "against the locked text; attaching it under different text misstates both.")
@@ -1700,7 +1715,22 @@ def _review_check(body, man, path):
         if REVIEW_REQUIRED:
             sys.exit(f"FAIL: {path} was never reviewed. Run --lock-closing, dispatch the "
                      f"answer-reviewer, then --attach-review (or --attach-review --none).")
-        print("note: this report has no answer review (steps 10a-10b were not run).")
+        if man.get("review_default"):
+            # The FIRST occurrence, not a unique one: before a lock nothing is hashed against
+            # this heading, and a full copy of the report in an appendix -- which the burial
+            # gates already judge -- repeats it legitimately.
+            at = [i for i, l in enumerate(lines) if l.rstrip() == REVIEW_HEAD]
+            rv = None
+            if at:
+                end = next((j for j in range(at[0] + 1, len(lines))
+                            if lines[j].startswith(("## ", "### "))), len(lines))
+                rv = "\n".join(l.rstrip() for l in lines[at[0] + 1:end]).strip()
+            if rv != NOT_REVIEWED:
+                sys.exit(f"FAIL: the line saying this answer was not reviewed was removed or "
+                         f"edited. Restore {REVIEW_HEAD!r} with {NOT_REVIEWED!r}, or run "
+                         f"--lock-closing and --attach-review (or --attach-review --none).")
+        print("note: this report has no answer review (steps 10a-10b were not run); "
+              "it says so under the closing.")
         return
     if not mode:
         sys.exit(f"FAIL: the closing is locked but nothing is attached. Dispatch the reviewer and "
