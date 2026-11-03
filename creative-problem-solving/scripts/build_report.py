@@ -1759,8 +1759,8 @@ def _review_check(body, man, path):
               "it says so under the closing.")
         return
     if not mode:
-        sys.exit(f"FAIL: the closing is locked but nothing is attached. Dispatch the reviewer and "
-                 f"run --attach-review, or --attach-review --none \"<reason>\".")
+        sys.exit("FAIL: the closing is locked but nothing is attached. Dispatch the reviewer and "
+                 "run --attach-review, or --attach-review --none \"<reason>\".")
     try:
         closing = _span_text(lines, CLOSING_HEAD)
         review = _span_text(lines, REVIEW_HEAD)

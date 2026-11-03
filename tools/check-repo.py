@@ -24,7 +24,6 @@ import glob
 import json
 import os
 import ast
-import importlib.machinery
 import re
 import shutil
 import subprocess
@@ -73,6 +72,15 @@ failures = []
 warnings = []
 checks_run = 0
 
+
+
+def _load_src(name, path):
+    """Load a module from a file path. SourceFileLoader.load_module() is gone in Python 3.14."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, str(path))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 def fail(msg):
     failures.append(msg)
@@ -570,7 +578,7 @@ _hp = os.path.join(_scripts_dir, _home)
 if not os.path.exists(_hp):
     fail("%s/scripts/%s does not exist, so the share rule has no home" % (plugin_name, _home))
 else:
-    _hm = importlib.machinery.SourceFileLoader("_chk_verdicts", _hp).load_module()
+    _hm = _load_src("_chk_verdicts", _hp)
     _lacks = [n for n in ("JOINING", "SEPARATING", "SHARE_MAX", "SHARE_MIN_ADJUDICATED",
                           "share_counts", "share_breach", "share_ok") if not hasattr(_hm, n)]
     if _lacks:

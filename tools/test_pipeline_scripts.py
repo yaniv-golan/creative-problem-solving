@@ -11,7 +11,6 @@ Fixtures are synthetic and deliberately so. Real run data belongs to whoever ran
 """
 import glob
 import re
-import importlib.machinery
 import itertools, json, os, random, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
@@ -20,6 +19,15 @@ SCRIPTS = ROOT / "creative-problem-solving" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 FAILURES = []
+
+
+def _load_src(name, path):
+    """Load a module from a file path. SourceFileLoader.load_module() is gone in Python 3.14."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, str(path))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 def check(name, cond, detail=""):
     if cond: print(f"  ok   {name}")
@@ -1134,8 +1142,7 @@ def t_json_repairs_compose():
     # the same "green locally, red for everyone else" class the repo already guards against.
     spec = _u.spec_from_file_location("corpus_json", ROOT / "tools" / "corpus_json.py")
     corpus = _u.module_from_spec(spec); spec.loader.exec_module(corpus)
-    import importlib.machinery as _mach
-    rj = _mach.SourceFileLoader("rj_corpus", str(SCRIPTS / "robust_json.py")).load_module()
+    rj = _load_src("rj_corpus", str(SCRIPTS / "robust_json.py"))
 
     d = tempfile.mkdtemp(); f = os.path.join(d, "x.json")
     bad = []
@@ -1174,10 +1181,10 @@ def t_heartbeat_counts_pairs_not_judgements():
     the reader. Shapes are in tools/corpus_heartbeat.py, imported rather than restated.
     """
     print("\nthe heartbeat counts distinct pairs, and claims a second adjudicator only when there is one")
-    import importlib.machinery as _mach, importlib.util as _u
+    import importlib.util as _u
     spec = _u.spec_from_file_location("corpus_heartbeat", ROOT / "tools" / "corpus_heartbeat.py")
     corpus = _u.module_from_spec(spec); spec.loader.exec_module(corpus)
-    pg = _mach.SourceFileLoader("prog_x", str(SCRIPTS / "progress.py")).load_module()
+    pg = _load_src("prog_x", str(SCRIPTS / "progress.py"))
 
     bad = []
     for name, shards, want_pairs, want_probe, why in corpus.CORPUS:
@@ -1933,8 +1940,7 @@ def t_merge_never_widens_past_the_share_rule():
     died on NameError. Assert on what the run WROTE, and never silence stderr while measuring.
     """
     print("\na merge may not widen a family past the share rule")
-    import importlib.machinery as _m
-    mf = _m.SourceFileLoader("mf_share", str(SCRIPTS / "merge_families.py")).load_module()
+    mf = _load_src("mf_share", str(SCRIPTS / "merge_families.py"))
 
     # Two 3-member families, joined so a merge is attractive, whose union is 4 of 15 separated.
     A = [f"p1-{i:03d}" for i in (1, 2, 3)]
@@ -2005,8 +2011,7 @@ def t_forced_merge_is_bounded_too():
     # Derived from the script, not restated. These two numbers decide whether this fixture proves
     # anything at all: if the rule is retuned and the guard is not, the test goes on passing while
     # the shape it names stops existing. check-repo.py asserts this import is here.
-    from_share_rule = importlib.machinery.SourceFileLoader(
-        "share_rule", str(SCRIPTS / "verdicts.py")).load_module()
+    from_share_rule = _load_src("share_rule", str(SCRIPTS / "verdicts.py"))
     FLOOR, CEIL = from_share_rule.SHARE_MIN_ADJUDICATED, from_share_rule.SHARE_MAX
 
     check("the fixture is below the floor on each half, or it proves nothing",
@@ -2078,8 +2083,7 @@ def t_repair_stays_inside_the_pinned_component():
     D and E fused into one four-member family -- and the first assertion fails.
     """
     print("\nthe lead repair only merges inside the component that is proven stuck")
-    import importlib.machinery as _m
-    mf = _m.SourceFileLoader("mf_comp", str(SCRIPTS / "merge_families.py")).load_module()
+    mf = _load_src("mf_comp", str(SCRIPTS / "merge_families.py"))
 
     A, B, C = ["p1-001", "p1-002"], ["p1-003"], ["p1-004"]
     D, E = ["p1-005", "p1-008"], ["p1-006", "p1-007"]
@@ -2354,8 +2358,7 @@ def t_promoted_lead_gate():
     f013 case and the whole point is lost.
     """
     print("\nthe presented lead must be the checked lead")
-    import importlib.machinery as _m
-    br = _m.SourceFileLoader("br_g", str(SCRIPTS / "build_report.py")).load_module()
+    br = _load_src("br_g", str(SCRIPTS / "build_report.py"))
 
     # f013's shape: lead refuted, replacement never checked.
     check("a promoted replacement that was never checked is the defect",
@@ -2394,8 +2397,7 @@ def t_source_link():
     paren and space cases render `](https://...(...))`, and the two assertions below fail.
     """
     print("\na source renders as its domain, with destinations that would break the link bracketed")
-    import importlib.machinery as _m
-    br = _m.SourceFileLoader("br_mod", str(SCRIPTS / "build_report.py")).load_module()
+    br = _load_src("br_mod", str(SCRIPTS / "build_report.py"))
 
     check("a plain url renders as its bare domain",
           br.source_link("https://www.iaa.gov.il/en/airports/") == "[iaa.gov.il](https://www.iaa.gov.il/en/airports/)",
@@ -2433,8 +2435,7 @@ def t_effective_lead():
     the renderer.
     """
     print("\nthe effective lead is the first member that was not refuted")
-    import importlib.machinery as _m
-    br = _m.SourceFileLoader("br_mod2", str(SCRIPTS / "build_report.py")).load_module()
+    br = _load_src("br_mod2", str(SCRIPTS / "build_report.py"))
 
     mem = ["p1-005", "p2-006", "p3-004"]
     check("with nothing refuted the lead is members[0]",
@@ -2589,9 +2590,8 @@ def t_infeasible_lead_core():
     the instance solvable, so the arm is not reached and nothing is merged.
     """
     print("\na proven-impossible lead assignment is merged rather than refused")
-    import importlib.machinery as _m
-    pg = _m.SourceFileLoader("pg_mod", str(SCRIPTS / "plan_groups.py")).load_module()
-    mf = _m.SourceFileLoader("mf_mod", str(SCRIPTS / "merge_families.py")).load_module()
+    pg = _load_src("pg_mod", str(SCRIPTS / "plan_groups.py"))
+    mf = _load_src("mf_mod", str(SCRIPTS / "merge_families.py"))
 
     # Two clusters; the singleton's only possible lead joins BOTH of the pair's members, so no
     # assignment separates them. Nothing else can be moved to fix it.
@@ -3092,8 +3092,7 @@ def t_shard_budget():
         past the 48-pair probe's ability to cross-check them; the ceiling assertion fails.
     """
     print("\nshard count follows pair volume, with the probe still covering every adjudicator")
-    from importlib.machinery import SourceFileLoader
-    sc = SourceFileLoader("sc_mod", str(SCRIPTS / "shard_candidates.py")).load_module()
+    sc = _load_src("sc_mod", str(SCRIPTS / "shard_candidates.py"))
 
     # Every recorded run keeps the shard count it already had -- this change is not meant to
     # re-shard the runs the reliability record was taken on.
@@ -3287,8 +3286,8 @@ def t_lead_search_scales_and_preserves():
     instantly; the blowup is their product, not the pinch.
     """
     print("\nlead assignment proves a pinch by inference, not by exhausting a product")
-    import importlib.machinery as _m, time as _t
-    pg = _m.SourceFileLoader("pg_scale", str(SCRIPTS / "plan_groups.py")).load_module()
+    import time as _t
+    pg = _load_src("pg_scale", str(SCRIPTS / "plan_groups.py"))
 
     pinched = [f"p1-{i:03d}" for i in range(6)]
     blockers = [[f"p2-{i:03d}"] for i in range(6)]
@@ -3450,9 +3449,9 @@ def t_lead_search_is_numbering_invariant():
     when it is the weaker of the two solvers.
     """
     print("\nrenumbering the same instance does not change the answer")
-    import importlib.machinery as _m, itertools as _it, random as _r
-    pg = _m.SourceFileLoader("pg_inv", str(SCRIPTS / "plan_groups.py")).load_module()
-    mf = _m.SourceFileLoader("mf_inv", str(SCRIPTS / "merge_families.py")).load_module()
+    import itertools as _it, random as _r
+    pg = _load_src("pg_inv", str(SCRIPTS / "plan_groups.py"))
+    mf = _load_src("mf_inv", str(SCRIPTS / "merge_families.py"))
 
     # Permuting the cluster list must not change the leads chosen or the verdict. Small budgets are
     # where an order-sensitive search shows it: the tree straddles the cap, so one numbering
@@ -3562,8 +3561,8 @@ def t_no_evidence_merge_is_refused():
     reasons a merge can be unavailable.
     """
     print("\na merge with no joining evidence behind it is refused, not guessed")
-    import importlib.machinery as _m, itertools as _it, random as _r
-    mf = _m.SourceFileLoader("mf_noev", str(SCRIPTS / "merge_families.py")).load_module()
+    import itertools as _it, random as _r
+    mf = _load_src("mf_noev", str(SCRIPTS / "merge_families.py"))
 
     # The minimal case: nothing adjudicated between any of them, so no merge follows the evidence.
     fams = [{"members": ["a1", "a2"], "label": "A", "cid": "c001", "origin": set()},
@@ -4986,7 +4985,7 @@ def t_every_phase_boundary_speaks():
         # which left nothing testing that a fully-narrated run draws NO warning, i.e. that the
         # audit does not fire on a correct run. Record the last boundary by hand rather than
         # re-running merge_families.py, which would invalidate the ranking by mtime.
-        _p = importlib.machinery.SourceFileLoader("progress", str(SCRIPTS / "progress.py")).load_module()
+        _p = _load_src("progress", str(SCRIPTS / "progress.py"))
         _p.record(d, "grouped")
         rc, out = run("verify_pipeline.py", d)
         check("CONTROL: a fully-narrated run draws no boundary warning",
@@ -6420,7 +6419,6 @@ def t_the_answer_review_is_locked_attached_and_answered():
     """
     print("\nthe answer review is locked, attached and answered")
     import contextlib, io
-    from importlib.machinery import SourceFileLoader
 
     # -- 10a: the lock
     with tempfile.TemporaryDirectory() as d:
@@ -6612,7 +6610,7 @@ def t_the_answer_review_is_locked_attached_and_answered():
         open(rep, "w").write(good)
 
         # NEGATIVE CONTROLS. Each rule has to be what makes its case fail.
-        br = SourceFileLoader("br_neg", str(SCRIPTS / "build_report.py")).load_module()
+        br = _load_src("br_neg", str(SCRIPTS / "build_report.py"))
         def quiet(fn, *a):
             buf = io.StringIO()
             try:
@@ -6629,7 +6627,7 @@ def t_the_answer_review_is_locked_attached_and_answered():
         check("CONTROL: without the closing hash, an edited closing passes",
               quiet(br.check, rep) == 0, "")
         open(rep + ".manifest.json", "w").write(_saved)
-        br = SourceFileLoader("br_neg2", str(SCRIPTS / "build_report.py")).load_module()
+        br = _load_src("br_neg2", str(SCRIPTS / "build_report.py"))
         open(rep, "w").write(good)
         br._response_lines = lambda body, man: set()
         check("CONTROL: without the RESPONSE exemption, the concession fails",
@@ -6656,7 +6654,7 @@ def t_the_answer_review_is_locked_attached_and_answered():
         check("...and --check passes with no RESPONSE", rc == 0, out[-200:])
         rc, out = run("progress.py", wd, "reviewed")
         check("progress says it was not reviewed", "not reviewed" in out, out[:160])
-        br = SourceFileLoader("br_req", str(SCRIPTS / "build_report.py")).load_module()
+        br = _load_src("br_req", str(SCRIPTS / "build_report.py"))
 
     # The switch. On: --check before the lock passes (the lock comes after it), the reply is
     # refused until a review or --none is recorded, and --none is refused after the adversary.
@@ -6683,7 +6681,7 @@ def t_the_answer_review_is_locked_attached_and_answered():
         check("REQUIRED: a deleted manifest is refused, not waved through",
               rc != 0 and "missing" in out, out[:200])
         open(mp, "w").write(real)
-        br = SourceFileLoader("br_req2", str(SCRIPTS / "build_report.py")).load_module()
+        br = _load_src("br_req2", str(SCRIPTS / "build_report.py"))
         br.REVIEW_REQUIRED = True
         with contextlib.redirect_stdout(io.StringIO()): br.lock_closing(rep)
         try:
@@ -6702,7 +6700,7 @@ def t_the_answer_review_is_locked_attached_and_answered():
         check("...and the reply then goes out", rc == 0, out[:200])
 
     # The span ends at the next heading, not at "## Top 3", which an all-refuted top band lacks.
-    br = SourceFileLoader("br_span", str(SCRIPTS / "build_report.py")).load_module()
+    br = _load_src("br_span", str(SCRIPTS / "build_report.py"))
     lines = ["## Where I would start", "", "close", "", "## The next 10", "### 4. x"]
     check("the closing span ends at whichever band comes next", br._span(lines,
           "## Where I would start") == (0, 4), str(br._span(lines, "## Where I would start")))
