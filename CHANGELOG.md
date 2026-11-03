@@ -14,7 +14,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   fact left out reaches no generator, and nine of them fill the gap with their own assumption.
 - **"Correct the reading" with nothing typed now gets asked what to change**, instead of being
   recorded as a correction and starting the run.
-- **A separate reader can check the recommendation before you see it (optional for now).** Every
+- **A separate reader checks the recommendation before you see it.** Every
   earlier check reads one piece: an option, a claim, a family. Nothing read "Where I would start",
   the paragraph you act on, or the combination of options it recommends. A new `answer-reviewer`
   gets only that paragraph, the families it relies on and your brief. It asks whether the plan fits
@@ -23,9 +23,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   brief contradicts. Its verdict and numbered points appear directly under the recommendation,
   followed by a response to each point. The run can't edit either the recommendation or the
   review once the review starts: `build_report.py --check` refuses a report where either has
-  changed, or where any point goes unanswered. The stage is not yet required, and becomes so once
-  its reviews have been measured. Until then a report that skipped it says so under the
-  recommendation ("Not reviewed"), and `--check` refuses a report that removed that line.
+  changed, or where any point goes unanswered. The step is required: `--emit-reply` and
+  `--check-reply` refuse a report that was never reviewed, whose closing or review changed after
+  the lock, or whose response leaves a point unanswered. A host that cannot dispatch the reviewer
+  records why with `--attach-review --none`, and the report says so under the recommendation
+  ("Not reviewed: …"). A run that dispatched the adversary can use `--none` only after a second
+  reviewer attempt has failed. Until a lock, the report carries "Not reviewed" under the
+  recommendation, so a reply sent without these commands still says the answer was not checked.
+  Expect a few points under most answers, and some of them minor: the reviewer was measured
+  catching every planted flaw in a combination, and it rarely returns no points.
 - **Slot text that would break the report is refused.** `--fill` now rejects values containing an
   HTML comment, a `{{`, a code fence or a heading line. Any of these could hide every option below
   it.

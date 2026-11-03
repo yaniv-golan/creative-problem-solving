@@ -941,7 +941,7 @@ def t_invention_surfaces():
           out.strip()[:90])
 
     # Both reach the reply, which is the surface with the highest observed leak rate.
-    body = open(rep).read()
+    body = _review_settled(rep)
     rp = os.path.join(d, "reply.md")
     open(rp, "w").write("The team told us hours are stretched.\n\n" + body)
     rc, out = run("build_report.py", "--check-reply", rp, "--against", rep)
@@ -1003,14 +1003,17 @@ def t_burial_reaches_variants_and_the_reply():
     check(f"--check agrees with all {len(corpus.CORPUS)} corpus shapes", not bad, "; ".join(bad[:3]))
 
     run("build_report.py", d, "--out", rep)
-    body = fill_placeholders(rep)
+    fill_placeholders(rep)
+    body = _review_settled(rep)
     rp = os.path.join(d, "reply.md")
     real_man = open(man_path, encoding="utf-8").read()
     bad2 = []
     for name, doc, want, why in corpus.CORPUS:
         open(rp, "w").write(_stage(doc, name))
         rc, _out = run("build_report.py", "--check-reply", rp, "--against", rep)
-        got = "REFUSE" if rc != 0 else "PASS"
+        # A shape with its own manifest was never reviewed, and the review refusal runs last:
+        # reaching it means every content gate passed, which is the verdict under test.
+        got = "REFUSE" if rc != 0 and "never reviewed" not in _out else "PASS"
         if got != want:
             bad2.append(f"{name}: wanted {want}, got {got} ({why})")
     check(f"--check-reply agrees with all {len(corpus.CORPUS)} corpus shapes",
@@ -1287,7 +1290,8 @@ def t_reply_gate():
     ids, fams = full_fixture(d, multi=True)
     rep = os.path.join(d, "report.md")
     run("build_report.py", d, "--out", rep)
-    body = fill_placeholders(rep)
+    fill_placeholders(rep)
+    body = _review_settled(rep)
 
     good = os.path.join(d, "good.md")
     open(good, "w").write("Here is the full list — I would start with the first.\n\n" + body)
@@ -6343,6 +6347,22 @@ REVIEW_CLOSING = ("Start with #2 and pair it with #20–21: the first is cheap, 
                   "the gap it leaves. Missing: nobody priced the evening shift.")
 
 
+def _review_settled(rep):
+    """Settle the review step with a real lock and `--none`, for a test about the reply's CONTENT.
+
+    The reply is refused until a review or a `--none` is recorded; tests of what the reply must
+    contain are not about that, and the refusal itself is tested in
+    t_the_answer_review_is_locked_attached_and_answered. Returns the settled report body.
+    """
+    wd = os.path.join(os.path.dirname(rep), "_work")
+    if not os.path.exists(wd):  # fixtures that keep _work's files beside the report
+        os.symlink(os.path.dirname(rep), wd)
+    for args in (("--lock-closing", rep), ("--attach-review", rep, "--none", "test fixture")):
+        rc, out = run("build_report.py", *args)
+        assert rc == 0, out
+    return open(rep).read()
+
+
 def _review_run(d, closing=REVIEW_CLOSING, adversary=False, extra=None):
     """A built, filled, --check-green report at d/report.md over d/_work, ready to lock."""
     wd = os.path.join(d, "_work"); os.makedirs(wd)
@@ -6540,6 +6560,9 @@ def t_the_answer_review_is_locked_attached_and_answered():
         rc, out = _fill_response(wd, rep, "R2 is wrong: they said that about the old contract.")
         rc, out = run("build_report.py", "--check", rep)
         check("--check refuses a response that skips R1", rc != 0 and "R1" in out, out[:160])
+        rc, out = run("build_report.py", "--emit-reply", rep)
+        check("...and so does --emit-reply, when the final --check is left out",
+              rc != 0 and "R1" in out, out[:160])
 
     with tempfile.TemporaryDirectory() as d:
         wd, rep = _review_run(d)
@@ -6553,7 +6576,7 @@ def t_the_answer_review_is_locked_attached_and_answered():
     with tempfile.TemporaryDirectory() as d:
         wd, rep = _review_run(d)
         rc, out = run("build_report.py", "--check", rep)
-        check("an unreviewed report passes while the stage is optional, and says so",
+        check("an unreviewed report passes --check before the lock, and says so",
               rc == 0 and "no answer review" in out, out[-200:])
         run("build_report.py", "--lock-closing", rep)
         rc, out = run("build_report.py", "--check", rep)
@@ -6622,7 +6645,7 @@ def t_the_answer_review_is_locked_attached_and_answered():
         rc, out = run("build_report.py", "--check", rep)
         check("a 'stands' review with no points passes", rc == 0, out[-200:])
     with tempfile.TemporaryDirectory() as d:
-        wd, rep = _review_run(d, adversary=True)
+        wd, rep = _review_run(d)
         run("build_report.py", "--lock-closing", rep)
         rc, out = run("build_report.py", "--attach-review", rep, "--none",
                       "this host cannot dispatch sub-agents")
@@ -6635,17 +6658,33 @@ def t_the_answer_review_is_locked_attached_and_answered():
         check("progress says it was not reviewed", "not reviewed" in out, out[:160])
         br = SourceFileLoader("br_req", str(SCRIPTS / "build_report.py")).load_module()
 
-    # The switch: once the stage is mandatory, --none is refused on a run that ran the adversary.
+    # The switch. On: --check before the lock passes (the lock comes after it), the reply is
+    # refused until a review or --none is recorded, and --none is refused after the adversary.
     with tempfile.TemporaryDirectory() as d:
         wd, rep = _review_run(d, adversary=True)
+        rc, out = run("build_report.py", "--check", rep)
+        check("REQUIRED: --check before the lock still passes", rc == 0, out[-200:])
+        rc, out = run("build_report.py", "--emit-reply", rep)
+        check("REQUIRED: --emit-reply refuses an unreviewed report",
+              rc != 0 and "never reviewed" in out, out[:200])
+        open(os.path.join(d, "reply.md"), "w").write(open(rep).read())
+        rc, out = run("build_report.py", "--check-reply", os.path.join(d, "reply.md"),
+                      "--against", rep)
+        check("REQUIRED: --check-reply refuses a copied, unreviewed report",
+              rc != 0 and "never reviewed" in out, out[:200])
+        mp = rep + ".manifest.json"
+        real = open(mp).read()
+        man = json.loads(real); man["review_mode"] = "none"; json.dump(man, open(mp, "w"))
+        rc, out = run("build_report.py", "--emit-reply", rep)
+        check("REQUIRED: a manifest marked reviewed with no lock is refused",
+              rc != 0 and "never reviewed" in out, out[:200])
+        os.remove(mp)
+        rc, out = run("build_report.py", "--emit-reply", rep)
+        check("REQUIRED: a deleted manifest is refused, not waved through",
+              rc != 0 and "missing" in out, out[:200])
+        open(mp, "w").write(real)
         br = SourceFileLoader("br_req2", str(SCRIPTS / "build_report.py")).load_module()
         br.REVIEW_REQUIRED = True
-        try:
-            with contextlib.redirect_stdout(io.StringIO()): br.check(rep)
-            unreviewed = 0
-        except SystemExit as e:
-            unreviewed = 1 if "never reviewed" in str(e.code) else 0
-        check("REQUIRED: an unreviewed report fails", unreviewed == 1, "")
         with contextlib.redirect_stdout(io.StringIO()): br.lock_closing(rep)
         try:
             with contextlib.redirect_stdout(io.StringIO()): br.attach_review(rep, "no reason")
@@ -6653,6 +6692,14 @@ def t_the_answer_review_is_locked_attached_and_answered():
         except SystemExit as e:
             refused = 1 if "dispatched the adversary" in str(e.code) else 0
         check("REQUIRED: --none is refused after the adversary ran", refused == 1, "")
+        # A reviewer that failed twice must not leave the run with no way out.
+        rc, out = run("build_report.py", "--lock-closing", rep)
+        rc, out = run("build_report.py", "--attach-review", rep, "--none",
+                      "the reviewer's file was refused twice")
+        check("REQUIRED: --none is allowed on the second attempt, after the adversary ran",
+              rc == 0, out[:200])
+        rc, out = run("build_report.py", "--emit-reply", rep)
+        check("...and the reply then goes out", rc == 0, out[:200])
 
     # The span ends at the next heading, not at "## Top 3", which an all-refuted top band lacks.
     br = SourceFileLoader("br_span", str(SCRIPTS / "build_report.py")).load_module()

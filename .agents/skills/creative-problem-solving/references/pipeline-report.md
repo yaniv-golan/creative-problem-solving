@@ -405,7 +405,8 @@ Do not let a sub-agent pick its own lens. Do not skip the verification or the in
     `python3 "$CPS/scripts/build_report.py" --check-reply "$BASE/$RUN/reply.md" --against "$BASE/$RUN/report.md"`
 
     The first writes `reply.md` from the finished report and refuses if a placeholder is still
-    unfilled. **You do not author it**, which is the point: the step becomes "send these bytes"
+    unfilled, or if steps 10a–10c never ran (both commands refuse a report with no review and no
+    `--none`). **You do not author it**, which is the point: the step becomes "send these bytes"
     with no judgement in it, and the copy stops being something a run performs and then calls a
     gate.
 

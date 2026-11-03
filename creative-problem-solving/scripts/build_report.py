@@ -1057,6 +1057,7 @@ def emit_reply(report_path, reply_path=None):
         sys.exit(f"FAIL: {report_path} still has {len(left)} unfilled placeholder(s), e.g. "
                  f"{left[0][:60]}. Fill them with --fill before emitting the reply: a reply "
                  f"carrying a raw {{{{SLOT}}}} is what the reader would receive.")
+    _require_review(report_path)
     reply_path = reply_path or os.path.join(os.path.dirname(report_path), "reply.md")
     if os.path.abspath(reply_path) == os.path.abspath(report_path):
         sys.exit(f"FAIL: refusing to write the reply over the report itself ({reply_path})")
@@ -1116,6 +1117,8 @@ def check_reply(reply_path, report_path):
     _slot_check(reply, man, reply_path)
     brief = _find_brief(report_path)
     if brief: _echo_scan(reply, man, brief, os.path.basename(reply_path))
+    # Last, so a reply that is wrong in content is told so first.
+    _require_review(report_path)
 
     print(f"{reply_path}: carries all {len(man.get('options') or [])} options "
           f"({len(reply.split())} words)")
@@ -1391,12 +1394,12 @@ def check(path, skeleton_words=None):
 # guarantee brief_gate.py's readback_sha1 gives the brief.
 # ---------------------------------------------------------------------------------------------
 
-# Off until the stage has passed its measurement and run once on a real host: a stage whose
-# reviews have never been scored should not be able to fail a run. Off: an unreviewed report passes --check with a printed note, and --none is always
-# available. On: --check requires a review or --none, and --none is refused on a run that
-# dispatched the adversary -- a host that could dispatch one sub-agent can dispatch this one.
+# On: --emit-reply and --check-reply refuse a report with no review and no --none, and --none
+# is refused on a run that dispatched the adversary -- a host that could dispatch one sub-agent
+# can dispatch this one. --check before the lock passes with a printed note either way, because
+# the lock comes after it. Off: the reply is not held back and --none is always available.
 # Either way, once a lock or a review exists, every hash and response rule below is enforced.
-REVIEW_REQUIRED = False
+REVIEW_REQUIRED = True
 
 CLOSING_HEAD = "## Where I would start"
 REVIEW_HEAD = "### A second reading of this"
@@ -1468,6 +1471,30 @@ def _load_man(report_path):
     if not os.path.exists(mp):
         sys.exit(f"FAIL: {mp} is missing. Build the report first; the review is recorded in it.")
     return mp, load_obj(mp)
+
+
+def _require_review(report_path):
+    """Refuse to hand over a report that never went through steps 10a-10c.
+
+    Enforced here, at the reply, not at --check: the ordinary order is --check, then lock, so a
+    --check that failed on a missing review would fail on the normal path. The reply is the one
+    thing a run cannot skip, so this is where a skipped review stops it. `--none` counts: it is
+    the recorded answer for a host that cannot dispatch the reviewer.
+    """
+    if not REVIEW_REQUIRED: return
+    mp = report_path + ".manifest.json"
+    if not os.path.exists(mp):
+        sys.exit(f"FAIL: {mp} is missing, so there is no record that this answer was reviewed. "
+                 f"Build the report first.")
+    man = load_obj(mp)
+    if not (man.get("review_mode") and man.get("closing_sha1")):
+        sys.exit(f"FAIL: {report_path} was never reviewed. Run --lock-closing, dispatch the "
+                 f"answer-reviewer, then --attach-review (or --attach-review --none), answer it, "
+                 f"and --check again before the reply.")
+    # The same rules --check applies after the lock: the closing and the review are unchanged
+    # and every point is answered. Re-run here because the final --check is a step a run can
+    # leave out, and the reply is the one it cannot.
+    _review_check(open(report_path, encoding="utf-8-sig").read(), man, report_path)
 
 
 def _attribution_hits(lines_numbered, man):
@@ -1614,9 +1641,11 @@ def attach_review(report_path, none_reason=None):
         if not reason:
             sys.exit("FAIL: --none needs a reason the reader can read: why there is no review.")
         if _unsafe(reason): sys.exit(f"FAIL: the reason contains {_unsafe(reason)}.")
-        if REVIEW_REQUIRED and glob.glob(os.path.join(wd, "adversary*.json")):
+        if REVIEW_REQUIRED and attempt < 2 and glob.glob(os.path.join(wd, "adversary*.json")):
             sys.exit("FAIL: this run dispatched the adversary, so it can dispatch the reviewer. "
-                     "--none is for hosts that cannot, or for a reviewer that failed twice.")
+                     "--none is for a host that cannot, or after a second attempt has failed: "
+                     "re-run --lock-closing, dispatch once more, and use --none only if that "
+                     "attempt is refused too.")
         block = [REVIEW_HEAD, "", f"*Not reviewed: {reason}*", ""]
         mode, verdict, n = "none", None, 0
     else:
@@ -1712,9 +1741,6 @@ def _review_check(body, man, path):
     lines = body.splitlines()
     mode = man.get("review_mode")
     if not man.get("closing_sha1"):
-        if REVIEW_REQUIRED:
-            sys.exit(f"FAIL: {path} was never reviewed. Run --lock-closing, dispatch the "
-                     f"answer-reviewer, then --attach-review (or --attach-review --none).")
         if man.get("review_default"):
             # The FIRST occurrence, not a unique one: before a lock nothing is hashed against
             # this heading, and a full copy of the report in an appendix -- which the burial
