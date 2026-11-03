@@ -7,6 +7,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.5.2] — 2026-11-04
+
+Every check before this release read one piece of the answer. This one adds a reader for the
+whole of it: the recommendation you act on, checked against your own numbers and the people it
+needs, before you see it. A run now takes a few minutes longer and costs a little more.
+
 - **The run records the facts every option will take for granted.** When the problem involves
   other people or an asset, the procedure now checks for each before the gate: where every party is
   and what they have said they want or refuse, whose consent is needed and what is already pledged
