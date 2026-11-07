@@ -9,6 +9,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [0.5.3] — 2026-11-07
+
+- **The skill loads under strict YAML parsers again.** Since 0.2.0 its description contained an
+  unquoted `: `, which strict parsers such as PyYAML and Ruby's Psych reject with "mapping values
+  are not allowed in this context", refusing the whole skill. Claude Code's parser is lenient and
+  loaded it, so the failure appeared only on platforms with a strict one. The description is now a
+  quoted string with unchanged text. `tools/check-repo.py` now reads every frontmatter value in the
+  skill, agents and command the way a strict parser does, so the build fails on this class of error.
+  Thanks to [Joey Simhon](https://github.com/joeysim) (@joeysim) for reporting it.
+
 ## [0.5.2] — 2026-11-04
 
 Every check before this release read one piece of the answer. This one adds a reader for the
