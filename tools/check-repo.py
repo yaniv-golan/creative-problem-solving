@@ -74,6 +74,42 @@ checks_run = 0
 
 
 
+def frontmatter_scalar(frontmatter, key):
+    """The value of a top-level one-line ``key:`` in YAML frontmatter, decoded as YAML would.
+
+    Returns ``(value, error)``. Lenient loaders (Claude Code's among them) accept a plain
+    scalar containing ``": "``; strict ones (PyYAML, Ruby's Psych, which reports "mapping
+    values are not allowed in this context") refuse the whole file, so the skill fails to load
+    on every platform that uses one. A regex read cannot see the difference, so this reads the
+    value the way the strict parsers do and reports what they would refuse.
+    """
+    m = re.search(r"^%s:[ \t]*(.*)$" % re.escape(key), frontmatter, re.M)
+    if not m:
+        return None, "has no %s:" % key
+    raw = m.group(1).rstrip()
+    if raw.startswith('"'):
+        if not raw.endswith('"') or len(raw) < 2:
+            return None, "%s: opens a double-quoted string it does not close on the same line" % key
+        try:
+            return json.loads(raw), None
+        except ValueError as e:
+            return None, "%s: double-quoted string does not decode (%s)" % (key, e)
+    if raw.startswith("'"):
+        if not raw.endswith("'") or len(raw) < 2:
+            return None, "%s: opens a single-quoted string it does not close on the same line" % key
+        return raw[1:-1].replace("''", "'"), None
+    if not raw or raw[0] in "|>":
+        return None, "%s: must be a one-line scalar (block scalars are not read here)" % key
+    if raw[0] in "[]{},#&*!%@`" or (raw[0] in "-?:" and raw[1:2] in ("", " ")):
+        return None, "%s: plain value starts with YAML indicator %r; quote it" % (key, raw[0])
+    if ": " in raw or " #" in raw or raw.endswith(":"):
+        bad = ": " if ": " in raw else (" #" if " #" in raw else ":")
+        return None, ("%s: unquoted value contains %r, which strict YAML parsers reject "
+                      "(\"mapping values are not allowed\"); wrap the value in double quotes"
+                      % (key, bad))
+    return raw, None
+
+
 def _load_src(name, path):
     """Load a module from a file path. SourceFileLoader.load_module() is gone in Python 3.14."""
     import importlib.util
@@ -359,8 +395,9 @@ if os.path.isdir(agents_dir):
 print("\nskill and plugin descriptions each agree across files")
 
 md = read_text("%s/skills/%s/SKILL.md" % (plugin_name, skill_names[0]))
-m = re.search(r"^description:\s*(.+?)(?=\n\w+:|\n---)", md, re.M | re.S)
-canonical_desc = " ".join(m.group(1).split()) if m else None
+_fm_end = md.find("\n---\n", 4) if md.startswith("---\n") else -1
+_cd, _ = frontmatter_scalar(md[4:_fm_end], "description") if _fm_end != -1 else (None, None)
+canonical_desc = " ".join(_cd.split()) if _cd else None
 
 # The cap the Desktop/Cowork upload validator enforces on a plugin description.
 PLUGIN_DESC_MAX = 500
@@ -474,14 +511,20 @@ for sname in skill_names:
         fail("%s frontmatter name is %r, directory is %r"
              % (rel, name_match.group(1), sname))
 
-    desc_match = re.search(r"^description:\s*(.+?)(?=\n\w+:|\Z)", frontmatter, re.M | re.S)
-    if not desc_match:
-        fail("%s frontmatter has no description:" % rel)
+    desc, err = frontmatter_scalar(frontmatter, "description")
+    if err:
+        fail("%s frontmatter %s" % (rel, err))
     else:
-        desc = " ".join(desc_match.group(1).split())
+        desc = " ".join(desc.split())
         if len(desc) > DESCRIPTION_MAX_CHARS:
             fail("%s description is %d chars, limit is %d"
                  % (rel, len(desc), DESCRIPTION_MAX_CHARS))
+
+    for _key in re.findall(r"^([A-Za-z][\w-]*):[ \t]*\S", frontmatter, re.M):
+        if _key != "description":
+            _, err = frontmatter_scalar(frontmatter, _key)
+            if err:
+                fail("%s frontmatter %s" % (rel, err))
 
     n_lines = text.count("\n") + 1
     if n_lines > SKILL_MD_MAX_LINES:
@@ -500,6 +543,26 @@ for sname in skill_names:
                 cut.count("\n") + 1))
     else:
         ok("%s: %d/%d characters, survives compaction" % (rel, n_chars, SKILL_MD_COMPACTION_CHARS))
+
+# Agents and commands are loaded by the same frontmatter parsers, so they are held to the same rule.
+_fm_files = sorted(glob.glob(os.path.join(REPO, plugin_name, "agents", "*.md"))
+                   + glob.glob(os.path.join(REPO, plugin_name, "commands", "*.md")))
+_fm_bad = 0
+for _path in _fm_files:
+    _rel = os.path.relpath(_path, REPO)
+    _text = read_text(_rel)
+    _end = _text.find("\n---\n", 4) if _text.startswith("---\n") else -1
+    if _end == -1:
+        fail("%s has no closed YAML frontmatter block" % _rel)
+        _fm_bad += 1
+        continue
+    for _key in re.findall(r"^([A-Za-z][\w-]*):[ \t]*\S", _text[4:_end], re.M):
+        _, err = frontmatter_scalar(_text[4:_end], _key)
+        if err:
+            fail("%s frontmatter %s" % (_rel, err))
+            _fm_bad += 1
+if not _fm_bad:
+    ok("%d agent/command frontmatter blocks parse under strict YAML rules" % len(_fm_files))
 
 
 # --------------------------------------------------------------------------
